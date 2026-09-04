@@ -6,12 +6,20 @@ import { createQrCodes, IDLE } from "../actions";
 import { Feedback } from "./Feedback";
 import { SubmitButton } from "./SubmitButton";
 
-export function NewQrForm({ defaultDestination }: { defaultDestination: string }) {
+export type DesignOption = { id: number; name: string };
+
+export function NewQrForm({
+  defaultDestination,
+  designs,
+}: {
+  defaultDestination: string;
+  designs: DesignOption[];
+}) {
   const [state, formAction] = useActionState(createQrCodes, IDLE);
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-[110px_1fr_1fr]">
+      <div className="grid gap-3 sm:grid-cols-[100px_1fr_1fr_170px]">
         <div>
           <label className="label" htmlFor="count">
             Cantidad
@@ -48,6 +56,21 @@ export function NewQrForm({ defaultDestination }: { defaultDestination: string }
             defaultValue={defaultDestination}
             required
           />
+        </div>
+        <div>
+          <label className="label" htmlFor="design_id">
+            Diseño
+          </label>
+          <select id="design_id" name="design_id" className="input" disabled={designs.length === 0}>
+            <option value="">
+              {designs.length === 0 ? "Todavía no hay diseños" : "Sin asignar"}
+            </option>
+            {designs.map((design) => (
+              <option key={design.id} value={design.id}>
+                {design.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

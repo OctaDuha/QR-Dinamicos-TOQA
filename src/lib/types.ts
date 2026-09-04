@@ -3,9 +3,11 @@ export type QrCode = {
   label: string | null;
   destination_url: string;
   created_at: string;
+  design_id: number | null;
 };
 
 export type QrCodeWithStats = QrCode & {
+  design_name: string | null;
   total_scans: number;
   last_scan_at: string | null;
 };

@@ -24,7 +24,7 @@ export async function fetchQrCodes(
   for (let offset = 0; offset < max; offset += pageSize) {
     let query = supabase
       .from("qr_codes")
-      .select("id, label, destination_url, created_at")
+      .select("id, label, destination_url, created_at, design_id")
       .order("id", { ascending: true })
       .range(offset, Math.min(offset + pageSize, max) - 1);
 

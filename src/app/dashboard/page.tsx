@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { listDesigns } from "@/lib/placa-designs";
 import { formatQrCode, qrTargetUrl, siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
 import type { QrCodeWithStats } from "@/lib/types";
@@ -37,9 +38,10 @@ export default async function DashboardPage({
       : listQuery.or(`label.ilike.%${query}%,destination_url.ilike.%${query}%`);
   }
 
-  const [{ data, count, error }, { count: totalScans }] = await Promise.all([
+  const [{ data, count, error }, { count: totalScans }, designs] = await Promise.all([
     listQuery,
     supabase.from("scans").select("id", { count: "exact", head: true }),
+    listDesigns(supabase),
   ]);
 
   const codes = (data ?? []) as QrCodeWithStats[];
@@ -61,7 +63,7 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <Toolbar defaultDestination={`${base}/`} />
+      <Toolbar defaultDestination={`${base}/`} designs={designs.map((d) => ({ id: d.id, name: d.name }))} />
 
       <form className="flex gap-2" action="/dashboard">
         <input
@@ -102,7 +104,7 @@ export default async function DashboardPage({
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
+            <table className="w-full min-w-[860px] border-collapse text-sm">
               <thead>
                 <tr
                   className="text-left text-xs tracking-wide text-ink-2 uppercase"
@@ -111,6 +113,7 @@ export default async function DashboardPage({
                   <Th className="w-24">Número</Th>
                   <Th>Etiqueta</Th>
                   <Th>Destino actual</Th>
+                  <Th className="w-36">Diseño</Th>
                   <Th className="w-28 text-right">Escaneos</Th>
                   <Th className="w-44 text-right">Acciones</Th>
                 </tr>
@@ -138,6 +141,13 @@ export default async function DashboardPage({
                       >
                         {code.destination_url}
                       </a>
+                    </Td>
+                    <Td>
+                      {code.design_name ? (
+                        <span className="chip">{code.design_name}</span>
+                      ) : (
+                        <span className="text-ink-3">—</span>
+                      )}
                     </Td>
                     <Td className="text-right font-mono tabular-nums">{code.total_scans}</Td>
                     <Td className="text-right">

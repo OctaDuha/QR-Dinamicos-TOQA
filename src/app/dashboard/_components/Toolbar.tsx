@@ -3,11 +3,17 @@
 import { useState } from "react";
 
 import { ImportCsvForm } from "./ImportCsvForm";
-import { NewQrForm } from "./NewQrForm";
+import { NewQrForm, type DesignOption } from "./NewQrForm";
 
 type Panel = "new" | "import" | null;
 
-export function Toolbar({ defaultDestination }: { defaultDestination: string }) {
+export function Toolbar({
+  defaultDestination,
+  designs,
+}: {
+  defaultDestination: string;
+  designs: DesignOption[];
+}) {
   const [panel, setPanel] = useState<Panel>(null);
 
   const toggle = (next: Exclude<Panel, null>) => setPanel((current) => (current === next ? null : next));
@@ -41,7 +47,7 @@ export function Toolbar({ defaultDestination }: { defaultDestination: string }) 
 
       {panel === "new" ? (
         <div className="card p-5">
-          <NewQrForm defaultDestination={defaultDestination} />
+          <NewQrForm defaultDestination={defaultDestination} designs={designs} />
         </div>
       ) : null}
 

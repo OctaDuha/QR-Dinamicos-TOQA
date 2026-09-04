@@ -126,22 +126,22 @@ mantenerse **idénticos**.
 
 ## 9. Las placas para imprenta
 
-Pestaña **Placas**:
+Pestaña **Placas**. Podés tener varios diseños (Google Reseñas, Instagram,
+WhatsApp…) y cada uno recuerda dónde va su QR.
 
-1. En Canva, abrí tu diseño “NFC y QR”, dejá **vacío** el marco del QR y
-   descargalo con *Compartir → Descargar → PDF para imprimir*.
-2. Subí ese PDF en la pestaña Placas.
-3. Movés los números de **Izquierda**, **Arriba** y **Lado del QR** hasta que el
-   QR quede donde va. Lo que ves a la derecha es el archivo real que sale a
-   imprenta.
-4. **Guardar posición**.
-5. Elegís desde qué número hasta qué número y tocás **Descargar PDF único**.
+1. En Canva, abrí el diseño y descargalo con *Compartir → Descargar → PDF para
+   imprimir*. **Dejá el QR de ejemplo puesto**: se usa para saber dónde va.
+2. En la web: **Agregar un diseño** → ponele nombre y subí el PDF.
+3. Solo, el sistema busca el QR adentro y te dice dónde lo encontró. No hay que
+   medir nada. Si no lo encuentra, podés ubicarlo a mano con los campos en
+   milímetros, mirando el preview.
+4. Cuando creás QR nuevos en la pestaña **QRs**, elegí a qué diseño pertenecen.
+5. En **Generar el lote**: elegís el diseño (o “el de cada QR”), el rango de
+   números, y bajás el PDF.
 6. Abrí el PDF y **escaneá el QR con el celular** antes de mandarlo a imprimir.
 
-Si algún día rediseñás la placa, la cambiás en Canva, exportás de nuevo y subís
-el PDF. No hay que tocar nada más.
-
----
+Si algún día rediseñás una placa, la cambiás en Canva, exportás de nuevo y la
+volvés a agregar. No hay que tocar nada más.
 
 ## Dos cosas para tener en cuenta
 

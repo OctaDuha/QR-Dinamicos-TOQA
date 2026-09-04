@@ -106,55 +106,62 @@ function drawQr(page: PDFPage, text: string, layout: PlacaLayout, pageHeight: nu
   }
 }
 
-export type PlacaJob = {
-  ids: number[];
+export type LoadedDesign = {
+  id: number;
+  name: string;
   backgroundPdf: Buffer | null;
   layout: PlacaLayout;
-  baseUrl: string;
 };
 
+export type PlacaItem = { qrId: number; design: LoadedDesign };
+
 /**
- * Un PDF con todas las placas del lote. Si el fondo tiene varias paginas
- * (frente y dorso), cada placa las emite todas y el QR va en la que diga
- * `qrPage`.
+ * Un PDF con todas las placas del lote. Cada QR se estampa sobre el fondo de
+ * SU diseno, en la posicion de ese diseno, asi que un lote puede mezclar
+ * Google, Instagram y WhatsApp sin que se corra nada.
+ *
+ * Si un fondo tiene varias paginas (frente y dorso), cada placa las emite
+ * todas y el QR va en la que diga `qrPage`.
  */
 export async function renderPlacas({
-  ids,
-  backgroundPdf,
-  layout,
+  items,
   baseUrl,
-}: PlacaJob): Promise<Uint8Array> {
+}: {
+  items: PlacaItem[];
+  baseUrl: string;
+}): Promise<Uint8Array> {
   const output = await PDFDocument.create();
   output.setTitle("Placas TOQA");
   output.setCreator("Panel de QR dinámicos TOQA");
 
-  let embedded: PDFEmbeddedPage[] = [];
-  let pageSize = { width: 105 * MM, height: 148 * MM }; // A6 vertical por defecto
+  // Cada fondo se incrusta una sola vez aunque lo usen 100 placas: por eso
+  // un lote de 1000 pesa poco mas de un megabyte.
+  const embedded = new Map<number, PDFEmbeddedPage[]>();
 
-  if (backgroundPdf) {
-    const source = await PDFDocument.load(backgroundPdf, { ignoreEncryption: true });
-    const indices = source.getPageIndices();
-    embedded = await output.embedPdf(source, indices);
-    const first = source.getPage(0);
-    pageSize = { width: first.getWidth(), height: first.getHeight() };
+  for (const { design } of items) {
+    if (embedded.has(design.id) || !design.backgroundPdf) continue;
+    const source = await PDFDocument.load(design.backgroundPdf, { ignoreEncryption: true });
+    embedded.set(design.id, await output.embedPdf(source, source.getPageIndices()));
   }
 
-  const qrPageIndex = Math.min(layout.qrPage, Math.max(1, embedded.length)) - 1;
+  for (const { qrId, design } of items) {
+    const target = qrTargetUrl(qrId, baseUrl);
+    const pages = embedded.get(design.id) ?? [];
 
-  for (const id of ids) {
-    const target = qrTargetUrl(id, baseUrl);
-
-    if (embedded.length === 0) {
-      const page = output.addPage([pageSize.width, pageSize.height]);
-      drawQr(page, target, layout, pageSize.height);
+    if (pages.length === 0) {
+      // Sin fondo cargado: hoja A6 en blanco, solo para no fallar en seco.
+      const page = output.addPage([105 * MM, 148 * MM]);
+      drawQr(page, target, design.layout, 148 * MM);
       continue;
     }
 
-    embedded.forEach((background, index) => {
+    const qrPageIndex = Math.min(design.layout.qrPage, pages.length) - 1;
+
+    pages.forEach((background, index) => {
       const page = output.addPage([background.width, background.height]);
       page.drawPage(background, { x: 0, y: 0, width: background.width, height: background.height });
       if (index === qrPageIndex) {
-        drawQr(page, target, layout, background.height);
+        drawQr(page, target, design.layout, background.height);
       }
     });
   }
@@ -162,7 +169,17 @@ export async function renderPlacas({
   return output.save();
 }
 
-export function placaFileName(ids: number[]): string {
-  if (ids.length === 1) return `placa-${formatQrCode(ids[0])}.pdf`;
-  return `placas-${formatQrCode(ids[0])}-${formatQrCode(ids[ids.length - 1])}.pdf`;
+export function placaFileName(ids: number[], designName?: string): string {
+  const slug = designName
+    ? "-" +
+      designName
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 30)
+    : "";
+  if (ids.length === 1) return `placa${slug}-${formatQrCode(ids[0])}.pdf`;
+  return `placas${slug}-${formatQrCode(ids[0])}-${formatQrCode(ids[ids.length - 1])}.pdf`;
 }

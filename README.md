@@ -16,8 +16,8 @@ redirige esa URL.
   export ZIP/CSV.
 - **`/dashboard/qr/[id]`** — detalle: editar destino, descargar el PNG y gráfico
   de escaneos por día / semana / mes.
-- **`/dashboard/placa`** — placas listas para imprenta: tu diseño de Canva de
-  fondo y el QR estampado por código, en lote.
+- **`/dashboard/placa`** — varios diseños de placa; detecta solo dónde va el QR
+  en cada uno y genera los lotes listos para imprenta.
 - **`/dashboard/canva`** — generación vía Canva Connect API (requiere Enterprise).
 
 ## Stack
@@ -132,31 +132,44 @@ admite hasta 1000 PNG por vez).
 
 ## Placas para imprenta
 
-`/dashboard/placa` genera los diseños finales sin depender del plan de Canva:
-tu diseño exportado de Canva va de **fondo vectorial** y el QR se **dibuja
-encima como vectores** (rectángulos, no una imagen), así que imprime nítido a
-cualquier tamaño y un lote de 1000 placas pesa poco más de un megabyte.
+`/dashboard/placa` genera los diseños finales sin depender del plan de Canva.
+Cada modelo de placa —Google Reseñas, Instagram, WhatsApp— es un **diseño**:
+su PDF exportado de Canva va de fondo vectorial y el QR se **dibuja encima como
+vectores**, así que imprime nítido a cualquier tamaño y un lote de 1000 placas
+pesa poco más de un megabyte.
+
+### Detección automática
+
+Al subir un diseño, el sistema **busca el QR de ejemplo adentro del PDF** y fija
+solo su posición y su tamaño. No hay que medir nada: se exporta el diseño de
+Canva *con el QR puesto*, y el QR dinámico se estampa exactamente ahí encima
+(el recuadro blanco tapa el viejo).
+
+Funciona rasterizando la página con pdf.js y localizando el código con jsQR, en
+el navegador. Como jsQR sólo acepta un QR real, no se confunde con logos ni con
+otras imágenes cuadradas del diseño. Ambas librerías se cargan bajo demanda: no
+pesan en ninguna otra pantalla.
+
+Si el diseño no trae QR, o si querés correrlo, los campos en milímetros están al
+lado con el preview del PDF real.
 
 ### Cómo se usa
 
-1. **El fondo.** En Canva, abrí “NFC y QR”, dejá vacío el marco del QR y
-   descargá *PDF para imprimir* (con marcas de recorte y sangrado si la
-   imprenta lo pide). Subilo en la pantalla de Placas: queda guardado en la base
-   de datos, no hace falta redesplegar.
-2. **La posición.** Ajustás X, Y y tamaño en milímetros y el panel te muestra el
-   **PDF real** al lado, no una aproximación. Guardás una vez y queda fijo.
-3. **El lote.** Elegís el rango de números y bajás un PDF único multipágina (lo
-   que suele pedir la imprenta) o un ZIP con un PDF por placa.
+1. **Agregar el diseño.** Nombre + el PDF exportado de Canva. Queda guardado en
+   la base: rediseñar no implica tocar código ni redesplegar.
+2. **Revisar.** El preview muestra el PDF real, no una aproximación.
+3. **Crear los QR.** En el listado, *Nuevo QR / lote* permite elegir el diseño,
+   así cada QR sabe en qué placa se imprimió.
+4. **Generar el lote.** Elegís un diseño (o dejás “el de cada QR” y cada placa
+   sale con el suyo), el rango de números, y bajás un PDF único multipágina o un
+   ZIP con un PDF por placa.
 
-Si el fondo tiene varias páginas (frente y dorso), cada placa las emite todas y
-el QR va sólo en la que indiques en *Página del fondo*.
+Si un fondo tiene varias páginas (frente y dorso), cada placa las emite todas y
+el QR va sólo en la que indique *Página del fondo*.
 
 > Si exportás con marcas de recorte, la página del PDF es más grande que la
-> placa terminada y los milímetros se miden desde el borde del archivo, no desde
-> el corte. Por eso conviene posicionar mirando el preview en vez de calcular.
-
-Para rediseñar la placa: la cambiás en Canva, exportás de nuevo y subís el
-fondo. Ni una línea de código.
+> placa terminada. La detección automática lo maneja igual, porque mide sobre el
+> archivo real.
 
 ## Canva Connect API (sólo Enterprise)
 
@@ -208,9 +221,9 @@ src/
     api/
       qr/[id]/png/             PNG del QR (público)
       export/{csv,zip}/        export para imprenta
-      placa/                   fondo, posición del QR, preview y lotes PDF
+      placa/                   diseños, posición del QR, preview y lotes PDF
       canva/                   OAuth, lotes, procesamiento, PDFs
-  lib/                         QR, CSV, Supabase, Canva
+  lib/                         QR, CSV, Supabase, Canva, placas, detección
 supabase/
   schema.sql                   tablas, vistas, funciones, RLS y permisos
   ejemplo-import.csv           formato del CSV de migración

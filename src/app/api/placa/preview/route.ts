@@ -2,44 +2,45 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
 import { normalizeLayout, renderPlacas } from "@/lib/placa";
-import { loadPlacaSettings } from "@/lib/placa-settings";
+import { FALLBACK_DESIGN, loadDesign } from "@/lib/placa-designs";
 import { parseQrId, siteUrl } from "@/lib/qr";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Previsualiza UNA placa con la posicion que venga por querystring, sin
- * guardar nada. Es el PDF real que sale a imprenta, no una aproximacion.
+ * Previsualiza UNA placa de un diseño con la posición que venga por
+ * querystring, sin guardar nada. Es el PDF real que sale a imprenta.
  */
 export async function GET(request: NextRequest) {
   const { supabase, denied } = await requireAdmin();
   if (denied) return denied;
 
   const url = new URL(request.url);
-  const settings = await loadPlacaSettings(supabase, true);
+  const designId = Number(url.searchParams.get("design"));
+
+  const design = Number.isInteger(designId) ? await loadDesign(supabase, designId) : null;
+  const base = design ?? FALLBACK_DESIGN;
 
   const layout = normalizeLayout({
-    ...settings.layout,
+    ...base.layout,
     ...numeric(url, ["qrPage", "xMm", "yMm", "sizeMm", "quietModules"]),
     ...(url.searchParams.has("whiteBackdrop")
       ? { whiteBackdrop: url.searchParams.get("whiteBackdrop") === "true" }
       : {}),
   });
 
-  const id = parseQrId(url.searchParams.get("id") ?? "1") ?? 1;
+  const qrId = parseQrId(url.searchParams.get("id") ?? "1") ?? 1;
 
   const pdf = await renderPlacas({
-    ids: [id],
-    backgroundPdf: settings.backgroundPdf,
-    layout,
+    items: [{ qrId, design: { ...base, layout } }],
     baseUrl: siteUrl(),
   });
 
   return new NextResponse(pdf as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": "inline; filename=\"preview.pdf\"",
+      "Content-Disposition": 'inline; filename="preview.pdf"',
       "Cache-Control": "no-store",
     },
   });

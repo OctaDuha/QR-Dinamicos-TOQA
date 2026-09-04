@@ -1,28 +1,25 @@
+import { listDesigns } from "@/lib/placa-designs";
 import { createClient } from "@/lib/supabase/server";
-import { loadPlacaSettings } from "@/lib/placa-settings";
 
-import { PlacaEditor } from "./PlacaEditor";
+import { PlacaStudio, type Design } from "./PlacaStudio";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlacaPage() {
   const supabase = await createClient();
-  const settings = await loadPlacaSettings(supabase, false);
+  const designs = (await listDesigns(supabase)) as unknown as Design[];
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Placas para imprenta</h1>
         <p className="mt-1 text-sm text-ink-2">
-          Tu diseño de Canva como fondo, el QR estampado encima por código. Pedís 100 o 1000 y
-          bajás un PDF vectorial listo, sin tocar nada a mano.
+          Subís cada diseño una vez —Google, Instagram, WhatsApp— y el sistema encuentra solo dónde
+          va el QR. Después pedís 100 placas y salen con un QR dinámico distinto cada una.
         </p>
       </div>
 
-      <PlacaEditor
-        initialLayout={settings.layout}
-        initialBackground={settings.backgroundName}
-      />
+      <PlacaStudio initialDesigns={designs} />
     </div>
   );
 }

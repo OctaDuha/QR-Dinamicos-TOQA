@@ -18,6 +18,8 @@ export async function createQrCodes(_prev: ActionState, formData: FormData): Pro
   const count = Number(formData.get("count") ?? 1);
   const prefix = String(formData.get("label_prefix") ?? "").trim();
   const destination = normalizeDestination(String(formData.get("destination_url") ?? ""));
+  const rawDesign = String(formData.get("design_id") ?? "").trim();
+  const designId = rawDesign ? Number(rawDesign) : null;
 
   if (!Number.isInteger(count) || count < 1 || count > MAX_BATCH) {
     return { ok: false, message: `La cantidad tiene que estar entre 1 y ${MAX_BATCH}.` };
@@ -30,7 +32,12 @@ export async function createQrCodes(_prev: ActionState, formData: FormData): Pro
 
   const { data, error } = await supabase
     .from("qr_codes")
-    .insert(Array.from({ length: count }, () => ({ destination_url: destination })))
+    .insert(
+      Array.from({ length: count }, () => ({
+        destination_url: destination,
+        design_id: Number.isInteger(designId) ? designId : null,
+      })),
+    )
     .select("id");
 
   if (error) {
@@ -45,6 +52,7 @@ export async function createQrCodes(_prev: ActionState, formData: FormData): Pro
         id,
         label: count === 1 ? prefix : `${prefix} ${formatQrCode(id)}`,
         destination_url: destination,
+        design_id: Number.isInteger(designId) ? designId : null,
       })),
     );
     if (labelError) {
