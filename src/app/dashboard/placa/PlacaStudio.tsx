@@ -19,7 +19,13 @@ export type Design = {
 
 type Note = { kind: "ok" | "error" | "info"; text: string } | null;
 
-export function PlacaStudio({ initialDesigns }: { initialDesigns: Design[] }) {
+export function PlacaStudio({
+  initialDesigns,
+  defaultDestination,
+}: {
+  initialDesigns: Design[];
+  defaultDestination: string;
+}) {
   const [designs, setDesigns] = useState(initialDesigns);
   const [selectedId, setSelectedId] = useState<number | null>(initialDesigns[0]?.id ?? null);
   const [note, setNote] = useState<Note>(null);
@@ -85,7 +91,9 @@ export function PlacaStudio({ initialDesigns }: { initialDesigns: Design[] }) {
         />
       ) : null}
 
-      {designs.length > 0 ? <GeneratePanel designs={designs} /> : null}
+      {designs.length > 0 ? (
+        <GeneratePanel designs={designs} defaultDestination={defaultDestination} />
+      ) : null}
     </div>
   );
 }
@@ -416,14 +424,71 @@ function DesignEditor({
 
 /* --------------------------------------------------------------- generar */
 
-function GeneratePanel({ designs }: { designs: Design[] }) {
-  const [designId, setDesignId] = useState<string>("");
+function GeneratePanel({
+  designs,
+  defaultDestination,
+}: {
+  designs: Design[];
+  defaultDestination: string;
+}) {
+  const [modo, setModo] = useState<"nuevas" | "existentes">("nuevas");
+  const [designId, setDesignId] = useState<string>(String(designs[0]?.id ?? ""));
+  const [count, setCount] = useState("100");
+  const [destination, setDestination] = useState(defaultDestination);
+  const [labelPrefix, setLabelPrefix] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [rangoDesign, setRangoDesign] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<Note>(null);
 
-  const url = (zip: boolean) => {
+  const crear = async (zip: boolean) => {
+    setBusy(true);
+    setNote({ kind: "info", text: "Creando los QR y armando las placas…" });
+
+    try {
+      const response = await fetch("/api/placa/create-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          count: Number(count),
+          designId: Number(designId),
+          destination,
+          labelPrefix,
+          zip,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        setNote({ kind: "error", text: payload.error ?? "No pude generar el lote." });
+        return;
+      }
+
+      const desde = response.headers.get("X-Qr-From");
+      const hasta = response.headers.get("X-Qr-To");
+      const total = response.headers.get("X-Qr-Count");
+
+      descargar(
+        await response.blob(),
+        response.headers.get("Content-Disposition"),
+        zip ? "placas.zip" : "placas.pdf",
+      );
+
+      setNote({
+        kind: "ok",
+        text: `Listo: ${total} QR nuevos (#${desde} al #${hasta}) y su PDF descargado. Ya los ves en la pestaña QRs, con sus estadísticas.`,
+      });
+    } catch (error) {
+      setNote({ kind: "error", text: `Algo falló: ${(error as Error).message}` });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const urlExistentes = (zip: boolean) => {
     const params = new URLSearchParams();
-    if (designId) params.set("design", designId);
+    if (rangoDesign) params.set("design", rangoDesign);
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     if (zip) params.set("zip", "1");
@@ -433,50 +498,161 @@ function GeneratePanel({ designs }: { designs: Design[] }) {
 
   return (
     <div className="card p-5">
-      <h2 className="text-sm font-semibold">Generar el lote</h2>
-      <p className="mt-1 text-sm text-ink-2">
-        Hasta 1000 placas por tanda. Si dejás el diseño en “el de cada QR”, cada placa sale con el
-        diseño que le asignaste al crearla.
-      </p>
+      <h2 className="text-sm font-semibold">Generar placas</h2>
 
-      <div className="mt-4 flex flex-wrap items-end gap-3">
-        <div className="min-w-[190px]">
-          <label className="label" htmlFor="gen-design">
-            Diseño
-          </label>
-          <select
-            id="gen-design"
-            className="input"
-            value={designId}
-            onChange={(event) => setDesignId(event.target.value)}
-          >
-            <option value="">El de cada QR</option>
-            {designs.map((design) => (
-              <option key={design.id} value={design.id}>
-                {design.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="w-24">
-          <label className="label" htmlFor="gen-from">
-            Desde #
-          </label>
-          <input id="gen-from" className="input" value={from} onChange={(e) => setFrom(e.target.value.replace(/\D/g, ""))} placeholder="1" inputMode="numeric" />
-        </div>
-        <div className="w-24">
-          <label className="label" htmlFor="gen-to">
-            Hasta #
-          </label>
-          <input id="gen-to" className="input" value={to} onChange={(e) => setTo(e.target.value.replace(/\D/g, ""))} placeholder="100" inputMode="numeric" />
-        </div>
-        <a className="btn btn-primary" href={url(false)}>
-          Descargar PDF único
-        </a>
-        <a className="btn btn-secondary" href={url(true)}>
-          ZIP con un PDF por placa
-        </a>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          className={modo === "nuevas" ? "btn btn-primary" : "btn btn-secondary"}
+          onClick={() => setModo("nuevas")}
+        >
+          Crear QR nuevos
+        </button>
+        <button
+          type="button"
+          className={modo === "existentes" ? "btn btn-primary" : "btn btn-secondary"}
+          onClick={() => setModo("existentes")}
+        >
+          Reimprimir QR que ya tengo
+        </button>
       </div>
+
+      {modo === "nuevas" ? (
+        <>
+          <p className="mt-3 text-sm text-ink-2">
+            Decís cuántas querés y de qué diseño. Se crean los QR —numerados a continuación de los
+            que ya existen, cada uno distinto— y se descarga el PDF listo para imprenta.
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-[110px_1fr_1fr_1fr]">
+            <div>
+              <label className="label" htmlFor="gen-count">
+                Cantidad
+              </label>
+              <input
+                id="gen-count"
+                className="input"
+                value={count}
+                onChange={(e) => setCount(e.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                placeholder="100"
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="gen-design-new">
+                Diseño
+              </label>
+              <select
+                id="gen-design-new"
+                className="input"
+                value={designId}
+                onChange={(e) => setDesignId(e.target.value)}
+              >
+                {designs.map((design) => (
+                  <option key={design.id} value={design.id}>
+                    {design.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="gen-dest">
+                Destino inicial
+              </label>
+              <input
+                id="gen-dest"
+                className="input"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="gen-prefix">
+                Etiqueta <span className="font-normal text-ink-3">(opcional)</span>
+              </label>
+              <input
+                id="gen-prefix"
+                className="input"
+                value={labelPrefix}
+                onChange={(e) => setLabelPrefix(e.target.value)}
+                placeholder="Mesa, Cliente X…"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => crear(false)}
+              disabled={busy || !designId || !count}
+            >
+              {busy ? "Generando…" : `Crear ${count || "0"} y descargar el PDF`}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => crear(true)}
+              disabled={busy || !designId || !count}
+            >
+              Crear y bajar un PDF por placa (ZIP)
+            </button>
+          </div>
+
+          <p className="mt-3 text-xs text-ink-3">
+            El destino se puede cambiar después, uno por uno o de a varios, sin volver a imprimir
+            nada. Hasta 1000 por tanda.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="mt-3 text-sm text-ink-2">
+            Vuelve a generar las placas de QR que ya existen, por ejemplo si se perdió el archivo o
+            se arruinó una impresión. No crea números nuevos.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <div className="min-w-[180px]">
+              <label className="label" htmlFor="gen-design-old">
+                Diseño
+              </label>
+              <select
+                id="gen-design-old"
+                className="input"
+                value={rangoDesign}
+                onChange={(e) => setRangoDesign(e.target.value)}
+              >
+                <option value="">El de cada QR</option>
+                {designs.map((design) => (
+                  <option key={design.id} value={design.id}>
+                    {design.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-24">
+              <label className="label" htmlFor="gen-from">
+                Desde #
+              </label>
+              <input id="gen-from" className="input" value={from} onChange={(e) => setFrom(e.target.value.replace(/\D/g, ""))} placeholder="1" inputMode="numeric" />
+            </div>
+            <div className="w-24">
+              <label className="label" htmlFor="gen-to">
+                Hasta #
+              </label>
+              <input id="gen-to" className="input" value={to} onChange={(e) => setTo(e.target.value.replace(/\D/g, ""))} placeholder="100" inputMode="numeric" />
+            </div>
+            <a className="btn btn-primary" href={urlExistentes(false)}>
+              Descargar PDF único
+            </a>
+            <a className="btn btn-secondary" href={urlExistentes(true)}>
+              ZIP por placa
+            </a>
+          </div>
+        </>
+      )}
+
+      {note ? <div className="mt-3"><Banner note={note} /></div> : null}
 
       <p className="mt-3 text-xs text-ink-3">
         El PDF sale vectorial: el QR se dibuja como figuras, no como imagen, así que imprime nítido
@@ -484,6 +660,19 @@ function GeneratePanel({ designs }: { designs: Design[] }) {
       </p>
     </div>
   );
+}
+
+/** Dispara la descarga de lo que devolvió el servidor. */
+function descargar(blob: Blob, disposition: string | null, fallback: string) {
+  const match = disposition?.match(/filename="([^"]+)"/);
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = match?.[1] ?? fallback;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
 
 /* ---------------------------------------------------------------- comunes */

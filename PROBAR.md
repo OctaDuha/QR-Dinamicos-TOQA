@@ -135,10 +135,15 @@ WhatsApp…) y cada uno recuerda dónde va su QR.
 3. Solo, el sistema busca el QR adentro y te dice dónde lo encontró. No hay que
    medir nada. Si no lo encuentra, podés ubicarlo a mano con los campos en
    milímetros, mirando el preview.
-4. Cuando creás QR nuevos en la pestaña **QRs**, elegí a qué diseño pertenecen.
-5. En **Generar el lote**: elegís el diseño (o “el de cada QR”), el rango de
-   números, y bajás el PDF.
-6. Abrí el PDF y **escaneá el QR con el celular** antes de mandarlo a imprimir.
+4. En **Generar placas**, con *Crear QR nuevos*: escribís la cantidad (por
+   ejemplo 100), elegís el diseño y el destino inicial, y tocás **Crear 100 y
+   descargar el PDF**. Se crean los 100 QR y se baja el archivo, todo junto.
+5. Abrí el PDF y **escaneá algún QR con el celular** antes de mandarlo a
+   imprimir. Fijate que dos páginas distintas lleven a lugares distintos.
+
+Los 100 aparecen en la pestaña **QRs** con su número, su destino editable y sus
+estadísticas. La solapa *Reimprimir QR que ya tengo* rehace las placas de
+números que ya existen, sin crear nuevos.
 
 Si algún día rediseñás una placa, la cambiás en Canva, exportás de nuevo y la
 volvés a agregar. No hay que tocar nada más.

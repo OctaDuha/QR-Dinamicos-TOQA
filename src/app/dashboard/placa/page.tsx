@@ -1,4 +1,5 @@
 import { listDesigns } from "@/lib/placa-designs";
+import { siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
 
 import { PlacaStudio, type Design } from "./PlacaStudio";
@@ -19,7 +20,7 @@ export default async function PlacaPage() {
         </p>
       </div>
 
-      <PlacaStudio initialDesigns={designs} />
+      <PlacaStudio initialDesigns={designs} defaultDestination={`${siteUrl()}/`} />
     </div>
   );
 }

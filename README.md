@@ -165,11 +165,15 @@ lado con el preview del PDF real.
 1. **Agregar el diseño.** Nombre + el PDF exportado de Canva. Queda guardado en
    la base: rediseñar no implica tocar código ni redesplegar.
 2. **Revisar.** El preview muestra el PDF real, no una aproximación.
-3. **Crear los QR.** En el listado, *Nuevo QR / lote* permite elegir el diseño,
-   así cada QR sabe en qué placa se imprimió.
-4. **Generar el lote.** Elegís un diseño (o dejás “el de cada QR” y cada placa
-   sale con el suyo), el rango de números, y bajás un PDF único multipágina o un
+3. **Generar.** Escribís la cantidad, elegís el diseño, y en una sola operación
+   se crean esos QR —numerados a continuación de los existentes, cada uno
+   distinto— y se descarga el PDF listo para imprenta. PDF único multipágina o
    ZIP con un PDF por placa.
+
+La pestaña *Reimprimir QR que ya tengo* hace lo mismo sobre números que ya
+existen, sin crear ninguno: sirve para rehacer un archivo perdido o una
+impresión arruinada. Ahí se puede forzar un diseño o dejar que cada QR use el
+suyo.
 
 Si un fondo tiene varias páginas (frente y dorso), cada placa las emite todas y
 el QR va sólo en la que indique *Página del fondo*.
