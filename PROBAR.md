@@ -1,160 +1,186 @@
-# Probar el panel de punta a punta
+# Poner la web a funcionar
 
-Guía para levantar la web, verificar que todo anda y recién después mandar
-algo a imprenta. Toma unos 20 minutos.
+No hace falta instalar nada ni escribir un solo comando. Todo se hace desde el
+navegador, haciendo clic. Son unos 20 minutos.
 
----
-
-## Antes de empezar
-
-- **Node 20 o superior** (`node -v`). Si no lo tenés: [nodejs.org](https://nodejs.org).
-- **git**.
-- Una cuenta gratis en [supabase.com](https://supabase.com).
+*(Si sos programador y querés levantarlo en tu máquina, saltá al final.)*
 
 ---
 
-## 1. Traer el código
+## Qué es cada cosa
 
-```bash
-git clone -b claude/new-session-90xuc9 https://github.com/OctaDuha/QR-Din-micos-TOQA.git
-cd QR-Din-micos-TOQA
-npm install
-```
+Tres piezas. La primera ya está lista:
 
-## 2. Crear el proyecto en Supabase
+- **GitHub** — el archivador donde está guardado el código. No se toca.
+- **Supabase** — la base de datos: ahí viven los QR, sus destinos y cada
+  escaneo. Gratis.
+- **Vercel** — agarra el código de GitHub y lo publica en una dirección web.
+  Gratis.
 
-1. **New project**. Elegí la región **South America (São Paulo)**: es la más
-   cerca y el redirect del QR tiene que ser rápido.
-2. **SQL Editor → New query** → pegá todo `supabase/schema.sql` → **Run**.
-   Tiene que terminar en `Success`. Es idempotente: si lo corrés de nuevo, no
-   rompe nada.
-3. **Authentication → Users → Add user → Create new user**:
-   - email y contraseña que quieras
-   - ⚠️ **marcá "Auto Confirm User"**. Si no lo marcás, el login falla con
-     *Email not confirmed*.
-4. **Project Settings → API**: copiá `Project URL` y la clave **`anon` `public`**
-   (la `service_role` no se usa acá, no la pongas en ningún lado).
-
-## 3. Configurar las variables
-
-```bash
-cp .env.example .env.local
-```
-
-Editá `.env.local`:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
-## 4. Levantarlo
-
-```bash
-npm run dev
-```
-
-Abrí <http://localhost:3000>. Te manda al login.
+En Supabase y en Vercel te creás cuenta con el botón *"Continue with GitHub"*.
 
 ---
 
-## 5. Checklist de prueba
+## 1. Crear la base de datos
 
-Hacelo en orden: cada paso apoya al siguiente.
+1. Entrá a [supabase.com](https://supabase.com) → **New project**.
+2. Ponele un nombre y elegí la región **South America (São Paulo)**: es la más
+   cerca, y el redirect del QR tiene que ser rápido.
+3. Esperá un minuto a que termine de crearse.
 
-### ✅ Login
-Entrá con el usuario que creaste. Tenés que caer en el listado de QRs, vacío.
+## 2. Armar las tablas
 
-### ✅ Crear un lote
-**Nuevo QR / lote** → cantidad `5`, etiqueta `Mesa`, destino
-`https://instagram.com/toqa.ar` → **Crear QR**.
+Suena a programar, pero es copiar y pegar.
 
-Aparecen `0001` a `0005`, etiquetados *Mesa 0001*… *Mesa 0005*.
+1. Abrí el archivo [`supabase/schema.sql`](supabase/schema.sql) y copiá **todo**
+   el contenido (en GitHub hay un botón de copiar arriba a la derecha del texto).
+2. En Supabase, menú de la izquierda → **SQL Editor** → **New query**.
+3. Pegá todo y tocá **Run**.
+4. Tiene que decir **Success**.
 
-### ✅ El redirect (el corazón de todo)
-En la fila `0001` tocá **Copiar** y pegá esa URL en otra pestaña.
-Tiene que llevarte a Instagram.
+Si algún día hay que volver a correrlo, no pasa nada: está hecho para poder
+ejecutarse mil veces sin romper lo que ya existe.
 
-Volvé al panel y refrescá: la columna **Escaneos** de `0001` ahora dice `1`.
+## 3. Crear tu usuario
 
-### ✅ Cambiar el destino sin tocar el QR
-Entrá a `0001` → cambiá el destino a `https://toqa.com.ar` → **Guardar cambios**.
+En Supabase: **Authentication** → **Users** → **Add user** → *Create new user*.
 
-Volvé a abrir la **misma URL de antes** (`/r/0001`): ahora te lleva al destino
-nuevo. Esto es exactamente lo que va a pasar con una placa ya impresa.
+- Poné tu email y una contraseña.
+- ⚠️ **Tildá la casilla "Auto Confirm User".** Si no la tildás, después no vas a
+  poder entrar al panel.
 
-### ✅ El gráfico
-Abrí `/r/0001` unas cuantas veces. En el detalle del QR la barra de hoy sube.
-Probá **Por semana** y **Por mes**, y el botón **Ver tabla**.
+## 4. Copiar dos datos
 
-### ✅ La migración (lo más delicado)
-Es lo único que, si sale mal, rompe placas ya impresas.
+En Supabase: **Project Settings** → **API**. Anotá:
 
-1. **Importar CSV** → subí `supabase/ejemplo-import.csv`.
-2. Verificá que aparecieron con **esos números exactos**: `0001`, `0002` y
-   `0042`. Los dos primeros pisaron el destino de los que ya existían.
-3. Ahora creá **un QR nuevo**. Tiene que salir `0043`, no repetir un número
-   usado. (Eso es la secuencia reacomodándose sola.)
+- **`Project URL`** — una dirección que termina en `.supabase.co`
+- la clave **`anon` `public`** — larga, empieza con `eyJ`
 
-Cuando migres de verdad, exportá el CSV completo de la herramienta vieja y
-**no des de baja nada hasta haber escaneado una placa real**.
+> 🔒 En esa pantalla también vas a ver una clave **`service_role`**.
+> **No la copies ni la pegues en ningún lado.** Es la llave maestra de la base:
+> quien la tenga puede leer y borrar todo. Esta web no la necesita.
 
-### ✅ Export para Canva / imprenta
-**Exportar ZIP** → abrí el archivo. Adentro:
-- `png/` con un PNG por QR
-- `qrs.csv` con las columnas `numero, qr_code, destino_actual, url_qr`
+## 5. Publicar la web
 
-### ✅ Placas para imprenta
-1. Pestaña **Placas**.
-2. Subí un PDF de fondo. Para la prueba sirve cualquiera; para lo real,
-   exportá tu diseño de Canva (*Compartir → Descargar → PDF para imprimir*)
-   con el marco del QR vacío.
-3. Movés **Izquierda / Arriba / Lado** y el preview de la derecha se actualiza:
-   es el PDF real, no una simulación.
-4. **Guardar posición** → **Descargar PDF único**.
-5. Abrí el PDF y **escaneá el QR con el celular**. Tiene que abrir el destino
-   configurado.
+1. Entrá a [vercel.com](https://vercel.com) → **Add New** → **Project**.
+2. Elegí el repositorio `QR-Din-micos-TOQA`.
+3. Antes de publicar, abrí **Environment Variables** y cargá estas tres:
 
-> ⚠️ En local los QR apuntan a `http://localhost:3000`, así que **desde el
-> celular no van a funcionar** y no sirven para imprimir. Es esperable: recién
-> con el dominio final quedan buenos.
+   | Nombre | Qué poner |
+   |---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | el `Project URL` del paso 4 |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | la clave `anon public` del paso 4 |
+   | `NEXT_PUBLIC_SITE_URL` | por ahora dejalo vacío |
 
----
+4. **Deploy**. En un minuto te da una dirección tipo `algo.vercel.app`.
 
-## 6. Publicarlo en Vercel
+## 6. Conectar tu dominio
 
-1. [vercel.com](https://vercel.com) → **Add New → Project** → importá el repo.
-2. En **Branch**, elegí `claude/new-session-90xuc9` (o mergeá a `main` antes).
-3. **Environment Variables**: cargá las tres. Por ahora poné en
-   `NEXT_PUBLIC_SITE_URL` la URL que te dé Vercel.
-4. **Deploy**.
-5. **Settings → Domains** → conectá tu dominio.
-6. ⚠️ **Volvé a Environment Variables, poné el dominio final en
-   `NEXT_PUBLIC_SITE_URL` y hacé un redeploy.** Las variables `NEXT_PUBLIC_*`
-   se incrustan durante el build: cambiarlas sin volver a desplegar no tiene
-   ningún efecto.
-
-Repetí el checklist del punto 5 sobre el dominio real. Ahí sí, escaneá un QR
-con el celular.
+1. En Vercel: **Settings** → **Domains** → agregá tu dominio y seguí lo que te
+   indique.
+2. Volvé a **Settings → Environment Variables**, y ahora sí poné tu dominio
+   final en `NEXT_PUBLIC_SITE_URL` (por ejemplo `https://qr.tudominio.com`).
+3. ⚠️ **Andá a la pestaña Deployments y hacé "Redeploy".**
+   Sin este paso el cambio no tiene ningún efecto: esa dirección se graba
+   dentro de la web al momento de publicarla.
 
 ---
 
-## 7. Recién ahora, imprenta
+## 7. Probar que anda
 
-- El QR impreso apunta para siempre a `https://tu-dominio/r/0001`. Si el
-  dominio cambia, las placas mueren. Definilo antes de imprimir.
-- Escaneá una placa de prueba impresa antes de mandar las 1000.
+Entrá a tu dirección e iniciá sesión con el usuario del paso 3. Después:
+
+| Qué hacer | Qué tiene que pasar |
+|---|---|
+| **Nuevo QR / lote** → cantidad 5, etiqueta `Mesa`, destino `https://instagram.com/tucuenta` | Aparecen los números `0001` a `0005` |
+| En la fila `0001`, tocá **Copiar** y pegá esa dirección en otra pestaña | Te lleva a Instagram |
+| Volvé al panel y refrescá | La columna **Escaneos** de `0001` ahora dice `1` |
+| Entrá a `0001`, cambiá el destino a otra página y guardá. Volvé a abrir **la misma dirección de antes** | Ahora te lleva al destino nuevo. **Esto es lo importante: el QR no cambió, sólo a dónde apunta.** |
+| Escaneá el QR de `0001` con el celular | Te abre el destino |
+| **Exportar ZIP** | Se baja un archivo con las imágenes de los QR y una planilla |
+
+Si todo eso funciona, la web está lista.
+
+---
+
+## 8. Migrar los QR que ya tenés impresos
+
+Esto es lo único que, si sale mal, deja placas muertas. Los números tienen que
+mantenerse **idénticos**.
+
+1. Exportá de la herramienta vieja la lista completa: número y destino actual.
+2. Armá una planilla con esta forma (mirá
+   [`supabase/ejemplo-import.csv`](supabase/ejemplo-import.csv)) y guardala como
+   CSV:
+
+   | numero | destino_actual | label |
+   |---|---|---|
+   | 0001 | https://instagram.com/toqa | Mesa 1 |
+
+3. En el panel: **Importar CSV** → subila.
+4. Verificá que los números quedaron **exactamente iguales** a los de las placas.
+5. **Escaneá una placa real ya impresa** antes de dar de baja la herramienta
+   vieja.
+
+---
+
+## 9. Las placas para imprenta
+
+Pestaña **Placas**:
+
+1. En Canva, abrí tu diseño “NFC y QR”, dejá **vacío** el marco del QR y
+   descargalo con *Compartir → Descargar → PDF para imprimir*.
+2. Subí ese PDF en la pestaña Placas.
+3. Movés los números de **Izquierda**, **Arriba** y **Lado del QR** hasta que el
+   QR quede donde va. Lo que ves a la derecha es el archivo real que sale a
+   imprenta.
+4. **Guardar posición**.
+5. Elegís desde qué número hasta qué número y tocás **Descargar PDF único**.
+6. Abrí el PDF y **escaneá el QR con el celular** antes de mandarlo a imprimir.
+
+Si algún día rediseñás la placa, la cambiás en Canva, exportás de nuevo y subís
+el PDF. No hay que tocar nada más.
+
+---
+
+## Dos cosas para tener en cuenta
+
+**La dirección de los QR es para siempre.** El QR impreso apunta a
+`https://tu-dominio/r/0001`. Si mañana cambiás de dominio, todas las placas
+impresas dejan de funcionar. Por eso conviene definirlo antes de imprimir.
+
+**Supabase gratis se pausa.** Si pasa una semana sin actividad, el plan gratuito
+suspende la base y los QR dejan de redirigir hasta que la reactives a mano.
+Mientras la gente escanee no hay problema, pero cuando esto pase a ser algo
+serio conviene el plan pago (unos 25 USD por mes) para que no se apague nunca.
 
 ---
 
 ## Si algo falla
 
-| Síntoma | Qué pasa |
+| Lo que ves | Qué pasó |
 |---|---|
-| `Email not confirmed` al entrar | El usuario de Supabase no está confirmado. Borralo y crealo de nuevo con **Auto Confirm User**. |
-| `Falta la variable de entorno NEXT_PUBLIC_...` | No existe `.env.local`, o lo creaste con el server corriendo. Cortá con `Ctrl+C` y `npm run dev` de nuevo. |
-| `permission denied for table qr_codes` | No corriste `supabase/schema.sql`, o falló a la mitad. Corrélo entero otra vez. |
-| El QR lleva a `localhost` | Falta `NEXT_PUBLIC_SITE_URL` con el dominio real **y** un redeploy. |
-| `Este QR todavía no tiene destino` | Ese número no existe en la base. Fijate en el listado. |
-| El lote de placas dice que falta el fondo | Subí el PDF en la pestaña **Placas** antes de generar. |
+| `Email not confirmed` al entrar | El usuario no quedó confirmado. Borralo en Supabase y creá otro **tildando "Auto Confirm User"**. |
+| `Falta la variable de entorno...` | Falta alguna de las tres variables en Vercel, o las cargaste y no hiciste *Redeploy*. |
+| `permission denied for table qr_codes` | El paso 2 no se completó. Volvé a pegar y correr el archivo entero. |
+| El QR lleva a una dirección rara o no abre nada | Falta poner tu dominio en `NEXT_PUBLIC_SITE_URL` **y hacer Redeploy**. |
+| `Este QR todavía no tiene destino` | Ese número no existe en la base. Fijate en el listado del panel. |
+| Al generar placas dice que falta el fondo | Subí primero el PDF de Canva en la pestaña **Placas**. |
+
+---
+
+## Apéndice: levantarlo en tu máquina (para programadores)
+
+Requiere Node 20+ y git.
+
+```bash
+git clone https://github.com/OctaDuha/QR-Din-micos-TOQA.git
+cd QR-Din-micos-TOQA
+npm install
+cp .env.example .env.local   # completá las tres variables
+npm run dev
+```
+
+Con `NEXT_PUBLIC_SITE_URL=http://localhost:3000` los QR generados apuntan a
+localhost: sirven para probar desde la misma computadora, pero no desde el
+celular ni para imprimir.

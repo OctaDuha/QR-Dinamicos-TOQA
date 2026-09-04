@@ -65,15 +65,17 @@ npm install
 npm run dev
 ```
 
-Para levantarlo y verificarlo paso a paso, con checklist de prueba y los
-errores típicos, mirá **[PROBAR.md](PROBAR.md)**.
+Guía completa sin línea de comandos (Supabase + Vercel desde el navegador),
+checklist de prueba y errores típicos: **[PROBAR.md](PROBAR.md)**.
 
 ### 4. Deploy en Vercel
 
 1. Importá el repo desde GitHub en [vercel.com](https://vercel.com).
 2. Cargá las variables de entorno.
-3. Conectá el dominio en *Settings → Domains* y poné ese dominio en
-   `NEXT_PUBLIC_SITE_URL`.
+3. Conectá el dominio en *Settings → Domains*, poné ese dominio en
+   `NEXT_PUBLIC_SITE_URL` y **redesplegá**: las variables `NEXT_PUBLIC_*` se
+   incrustan durante el build, así que cambiarlas sin volver a desplegar no
+   tiene efecto.
 
 ---
 
