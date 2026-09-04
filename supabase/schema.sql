@@ -255,26 +255,36 @@ create index if not exists qr_codes_design_idx on public.qr_codes (design_id);
 --     Si ya habias cargado un fondo, se convierte en el primer diseno.
 -- ------------------------------------------------------------
 
-create table if not exists public.placa_settings (
-  id             int primary key default 1 check (id = 1),
-  background_pdf text,
-  background_name text,
-  layout         jsonb,
-  updated_at     timestamptz not null default now()
-);
-
+-- Se consulta si la tabla vieja existe en vez de crearla como andamio: crear
+-- una tabla sin RLS, aunque se borre tres lineas despues, dispara la alerta
+-- del editor SQL de Supabase y asusta sin motivo.
+-- Todo lo que toca la tabla vieja va por SQL dinamico: Postgres analiza la
+-- condicion completa de una sola vez, asi que una referencia directa a una
+-- tabla inexistente falla aunque el to_regclass diga que no esta.
 do $$
+declare
+  v_hay_fondo boolean := false;
 begin
-  if exists (select 1 from public.placa_settings where background_pdf is not null)
-     and not exists (select 1 from public.placa_designs) then
+  if to_regclass('public.placa_settings') is null then
+    return;
+  end if;
+
+  execute 'select exists (select 1 from public.placa_settings where background_pdf is not null)'
+    into v_hay_fondo;
+
+  if not v_hay_fondo or exists (select 1 from public.placa_designs) then
+    return;
+  end if;
+
+  execute $mig$
     insert into public.placa_designs (name, background_pdf, background_name, layout)
     select coalesce(nullif(background_name, ''), 'Diseño principal'),
            background_pdf,
            background_name,
            coalesce(layout, '{}'::jsonb)
     from public.placa_settings
-    where id = 1;
-  end if;
+    where id = 1
+  $mig$;
 end;
 $$;
 
