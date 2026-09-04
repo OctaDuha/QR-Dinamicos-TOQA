@@ -3,11 +3,16 @@ import { formatQrCode, qrTargetUrl } from "./qr";
 import type { QrCode } from "./types";
 
 /**
- * Mismo formato de columnas que usaba la Creacion masiva de Canva:
+ * Planilla de inventario de los QR:
  *   numero        -> 0001
- *   qr_code       -> URL publica del PNG (es el campo imagen de la plantilla)
+ *   qr_code       -> link directo al PNG, para descargarlo
  *   destino_actual-> a donde redirige hoy
  *   url_qr        -> la URL fija impresa en la placa
+ *
+ * OJO: esta columna NO sirve para poner el QR en un diseno con la Creacion
+ * masiva de Canva. Canva ignora las URLs de imagen: las toma como texto y solo
+ * acepta imagenes embebidas como valor de celda en un .xlsx. Las placas se
+ * generan desde /dashboard/placa.
  */
 export const EXPORT_HEADER = ["numero", "qr_code", "destino_actual", "url_qr"];
 

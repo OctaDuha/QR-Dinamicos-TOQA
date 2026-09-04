@@ -111,14 +111,19 @@ Desde el dashboard:
 - **Exportar ZIP** — un PNG por QR (1024 px, listo para Canva) más `qrs.csv`.
 - **Solo CSV** — el mismo CSV sin las imágenes.
 
-Columnas del CSV, iguales a las que ya usabas en Creación masiva de Canva:
+Columnas del CSV:
 
 | Columna | Contenido |
 |---|---|
 | `numero` | `0001` |
-| `qr_code` | URL pública del PNG (es el campo imagen de la plantilla) |
+| `qr_code` | Link directo al PNG, para descargarlo |
 | `destino_actual` | A dónde redirige hoy |
 | `url_qr` | La URL fija impresa en la placa |
+
+> El CSV sirve como inventario, **no para la Creación masiva de Canva**. Canva
+> ignora las URLs de imagen —las toma como texto plano— y sólo acepta imágenes
+> embebidas como *valor de celda* en un `.xlsx`, cosa que hay que hacer a mano.
+> Para las placas terminadas usá `/dashboard/placa`.
 
 Para lotes grandes: `/api/export/zip?from=1&to=1000` baja por tandas (el ZIP
 admite hasta 1000 PNG por vez).
@@ -167,8 +172,13 @@ preciso:
 | Brand templates (leer plantillas y su dataset) | Pro, Business, Enterprise |
 | **Autofill** (rellenar el campo y generar el diseño) | **Sólo Enterprise** |
 
-Con Business la API responde 403 al pedir el lote. La generación de placas vive
-entonces en `/dashboard/placa`, que no tiene ese límite.
+Con Business la API responde 403 al pedir el lote.
+
+La **Creación masiva** manual de Canva tampoco resuelve el QR: acepta hasta 300
+filas y rellena texto e imágenes, pero **ignora las URLs de imagen**. Las
+imágenes tienen que estar embebidas como valor de celda en un `.xlsx` (la
+función “Insertar imagen en celda” de Excel), lo que implica pegar cada QR a
+mano. Por eso la generación de placas vive en `/dashboard/placa`.
 
 Para configurarla si algún día corresponde: integración privada en
 [developers.canva.com](https://www.canva.com/developers/), URL de retorno
