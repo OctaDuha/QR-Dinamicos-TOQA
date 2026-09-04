@@ -46,8 +46,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
+        ...publicKeyHeaders(anonKey),
       },
       body: JSON.stringify({
         p_id: id,
@@ -74,6 +73,22 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     status: 302,
     headers: { "Cache-Control": "no-store, max-age=0" },
   });
+}
+
+/**
+ * Supabase tiene dos formatos de clave publica y se mandan distinto.
+ *
+ * La vieja es un JWT (empieza con "eyJ") y va en los dos headers. La nueva
+ * (sb_publishable_...) va SOLO en `apikey`: si va tambien como Bearer, la
+ * plataforma intenta leerla como JWT y rechaza la llamada. Distinguirlas por
+ * el prefijo evita depender de la compatibilidad hacia atras.
+ */
+function publicKeyHeaders(key: string): Record<string, string> {
+  const headers: Record<string, string> = { apikey: key };
+  if (key.startsWith("eyJ")) {
+    headers.Authorization = `Bearer ${key}`;
+  }
+  return headers;
 }
 
 function notFound() {

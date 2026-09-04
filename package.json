@@ -11,8 +11,8 @@
     "prebuild": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.47.10",
+    "@supabase/ssr": "^0.12.6",
+    "@supabase/supabase-js": "^2.115.0",
     "jsqr": "^1.4.0",
     "jszip": "^3.10.1",
     "next": "^15.5.25",
