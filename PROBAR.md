@@ -63,7 +63,7 @@ En Supabase: **Project Settings** → **API**. Anotá:
 ## 5. Publicar la web
 
 1. Entrá a [vercel.com](https://vercel.com) → **Add New** → **Project**.
-2. Elegí el repositorio `QR-Din-micos-TOQA`.
+2. Elegí el repositorio `QR-Dinamicos-TOQA`.
 3. Antes de publicar, abrí **Environment Variables** y cargá estas tres:
 
    | Nombre | Qué poner |
@@ -179,8 +179,8 @@ serio conviene el plan pago (unos 25 USD por mes) para que no se apague nunca.
 Requiere Node 20+ y git.
 
 ```bash
-git clone https://github.com/OctaDuha/QR-Din-micos-TOQA.git
-cd QR-Din-micos-TOQA
+git clone https://github.com/OctaDuha/QR-Dinamicos-TOQA.git
+cd QR-Dinamicos-TOQA
 npm install
 cp .env.example .env.local   # completá las tres variables
 npm run dev
