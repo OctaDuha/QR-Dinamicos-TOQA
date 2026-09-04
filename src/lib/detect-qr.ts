@@ -24,10 +24,7 @@ export type Detection = {
   content: string;
 };
 
-export async function detectQrInPdf(
-  data: ArrayBuffer,
-  quietModules: number,
-): Promise<Detection | null> {
+export async function detectQrInPdf(data: ArrayBuffer): Promise<Detection | null> {
   const [pdfjs, jsQrModule] = await Promise.all([
     import("pdfjs-dist"),
     import("jsqr"),
@@ -61,21 +58,15 @@ export async function detectQrInPdf(
       const unscaled = page.getViewport({ scale: 1 });
       const pxToMm = (unscaled.width * MM_PER_PT) / canvas.width;
 
-      const side =
-        Math.hypot(hit.tr.x - hit.tl.x, hit.tr.y - hit.tl.y) * pxToMm;
-
-      // jsQR marca el area de modulos; el lado que guardamos incluye el
-      // margen blanco, asi que hay que agrandarlo y correr el origen.
-      const modules = estimateModules(hit.content);
-      const total = modules + quietModules * 2;
-      const sizeMm = (side * total) / modules;
-      const margin = quietModules * (sizeMm / total);
+      // jsQR marca justo el area de modulos, que es exactamente lo que
+      // guardamos: no hay que convertir nada.
+      const side = Math.hypot(hit.tr.x - hit.tl.x, hit.tr.y - hit.tl.y) * pxToMm;
 
       return {
         page: pageNumber,
-        xMm: round(hit.tl.x * pxToMm - margin),
-        yMm: round(hit.tl.y * pxToMm - margin),
-        sizeMm: round(sizeMm),
+        xMm: round(hit.tl.x * pxToMm),
+        yMm: round(hit.tl.y * pxToMm),
+        sizeMm: round(side),
         pageWidthMm: round(unscaled.width * MM_PER_PT),
         pageHeightMm: round(unscaled.height * MM_PER_PT),
         content: hit.content,
@@ -88,7 +79,11 @@ export async function detectQrInPdf(
   return null;
 }
 
-type Hit = { tl: { x: number; y: number }; tr: { x: number; y: number }; content: string };
+type Hit = {
+  tl: { x: number; y: number };
+  tr: { x: number; y: number };
+  content: string;
+};
 
 /**
  * Primero prueba la pagina entera; si no aparece, la divide en regiones.
@@ -139,16 +134,6 @@ function scan(
   }
 
   return null;
-}
-
-/** Cuantos modulos de lado tiene un QR que codifique un texto de ese largo. */
-function estimateModules(content: string): number {
-  const length = content.length;
-  if (length <= 25) return 25; // version 2
-  if (length <= 47) return 29; // version 3
-  if (length <= 77) return 33; // version 4
-  if (length <= 114) return 37; // version 5
-  return 41;
 }
 
 const round = (value: number) => Math.round(value * 10) / 10;

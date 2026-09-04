@@ -150,6 +150,13 @@ el navegador. Como jsQR sólo acepta un QR real, no se confunde con logos ni con
 otras imágenes cuadradas del diseño. Ambas librerías se cargan bajo demanda: no
 pesan en ninguna otra pantalla.
 
+La posición se guarda como el **área de módulos**: la parte negra visible, lo
+que se mide con una regla sobre la placa impresa. A propósito no incluye el
+margen blanco, que se dibuja por fuera. Es lo que hace que el QR nuevo ocupe
+exactamente el mismo espacio que el del diseño aunque tenga distinta cantidad de
+módulos —el QR de Canva es versión 4 y el nuestro versión 3—, cosa que sí
+importaría si se guardara el recuadro completo.
+
 Si el diseño no trae QR, o si querés correrlo, los campos en milímetros están al
 lado con el preview del PDF real.
 

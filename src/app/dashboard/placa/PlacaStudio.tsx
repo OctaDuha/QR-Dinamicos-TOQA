@@ -137,7 +137,7 @@ function NewDesign({
 
       // Lo interesante: buscamos el QR de ejemplo dentro del diseño.
       setNote({ kind: "info", text: "Buscando el QR dentro del diseño…" });
-      const detection = await detectQrInPdf(await file.arrayBuffer(), design.layout.quietModules);
+      const detection = await detectQrInPdf(await file.arrayBuffer());
 
       if (!detection) {
         setNote({
@@ -278,7 +278,7 @@ function DesignEditor({
         setNote({ kind: "error", text: "Ese diseño no tiene el PDF guardado." });
         return;
       }
-      const detection = await detectQrInPdf(await response.arrayBuffer(), layout.quietModules);
+      const detection = await detectQrInPdf(await response.arrayBuffer());
       if (!detection) {
         setNote({
           kind: "error",
@@ -366,7 +366,7 @@ function DesignEditor({
 
           <Field label="Izquierda (X) mm" value={layout.xMm} onChange={(v) => set("xMm", v)} step={0.5} />
           <Field label="Arriba (Y) mm" value={layout.yMm} onChange={(v) => set("yMm", v)} step={0.5} />
-          <Field label="Lado del QR mm" value={layout.sizeMm} onChange={(v) => set("sizeMm", v)} step={0.5} min={5} />
+          <Field label="Lado del QR (parte negra) mm" value={layout.sizeMm} onChange={(v) => set("sizeMm", v)} step={0.5} min={5} />
           <Field label="Página del fondo" value={layout.qrPage} onChange={(v) => set("qrPage", Math.round(v))} step={1} min={1} />
           <Field label="Margen blanco (módulos)" value={layout.quietModules} onChange={(v) => set("quietModules", Math.round(v))} step={1} min={0} max={8} />
 

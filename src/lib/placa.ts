@@ -16,12 +16,19 @@ export const MM = 72 / 25.4; // milimetros -> puntos PDF
 export type PlacaLayout = {
   /** Pagina del fondo donde va el QR (1 = primera). */
   qrPage: number;
-  /** Posicion del borde del QR, en mm desde el borde superior izquierdo. */
+  /**
+   * Esquina superior izquierda del AREA DE MODULOS (la parte negra visible),
+   * en mm desde el borde superior izquierdo de la pagina.
+   */
   xMm: number;
   yMm: number;
-  /** Lado del QR en mm (incluye el margen blanco). */
+  /**
+   * Lado del area de modulos, en mm. Es lo que se mide con una regla sobre la
+   * placa impresa. A proposito NO incluye el margen blanco: asi dos QR de
+   * versiones distintas (mas o menos modulos) ocupan el mismo espacio visible.
+   */
   sizeMm: number;
-  /** Margen de silencio, en modulos. El estandar recomienda 4; 2 suele alcanzar. */
+  /** Margen de silencio, en modulos, dibujado POR FUERA del area de modulos. */
   quietModules: number;
   /** Recuadro blanco detras del QR, por si el fondo no es liso ahi. */
   whiteBackdrop: boolean;
@@ -63,26 +70,26 @@ function drawQr(page: PDFPage, text: string, layout: PlacaLayout, pageHeight: nu
   const modules = qr.modules.size;
   const data = qr.modules.data;
 
-  const totalModules = modules + layout.quietModules * 2;
-  const box = layout.sizeMm * MM;
-  const moduleSize = box / totalModules;
+  // El lado guardado es el area de modulos, asi que el modulo sale de ahi
+  // directo y el QR ocupa siempre el mismo espacio visible.
+  const side = layout.sizeMm * MM;
+  const moduleSize = side / modules;
+  const margin = layout.quietModules * moduleSize;
 
-  const left = layout.xMm * MM;
+  const originX = layout.xMm * MM;
   // El usuario piensa desde arriba; el PDF mide desde abajo.
-  const top = pageHeight - layout.yMm * MM;
+  const originY = pageHeight - layout.yMm * MM;
 
   if (layout.whiteBackdrop) {
+    const box = side + margin * 2;
     page.drawRectangle({
-      x: left,
-      y: top - box,
+      x: originX - margin,
+      y: originY - side - margin,
       width: box,
       height: box,
       color: rgb(1, 1, 1),
     });
   }
-
-  const originX = left + layout.quietModules * moduleSize;
-  const originY = top - layout.quietModules * moduleSize;
 
   for (let row = 0; row < modules; row++) {
     let runStart = -1;
