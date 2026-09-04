@@ -70,7 +70,7 @@ En Supabase: **Project Settings** → **API**. Anotá:
    |---|---|
    | `NEXT_PUBLIC_SUPABASE_URL` | el `Project URL` del paso 4 |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | la clave `anon public` del paso 4 |
-   | `NEXT_PUBLIC_SITE_URL` | por ahora dejalo vacío |
+   | `NEXT_PUBLIC_SITE_URL` | **no la crees todavía** (se agrega en el paso 6) |
 
 4. **Deploy**. En un minuto te da una dirección tipo `algo.vercel.app`.
 

@@ -9,12 +9,16 @@ export function formatQrCode(id: number | string): string {
 
 /** Base publica del sitio; es la que queda impresa para siempre en las placas. */
 export function siteUrl(): string {
-  const raw =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : "http://localhost:3000");
-  return raw.replace(/\/+$/, "");
+  // Una variable creada pero vacia cuenta como no configurada: si no, los QR
+  // saldrian sin dominio y las placas impresas no llevarian a ningun lado.
+  const configurada = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configurada) return configurada.replace(/\/+$/, "");
+
+  // En Vercel, mientras no haya dominio propio, sirve el del proyecto.
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (vercel) return `https://${vercel}`.replace(/\/+$/, "");
+
+  return "http://localhost:3000";
 }
 
 /** URL que apunta el QR fisico. Nunca cambia. */
