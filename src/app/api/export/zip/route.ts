@@ -10,8 +10,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** Tope por ZIP: mas que esto conviene bajarlo por tandas con ?from=&to=. */
-const MAX_PNGS = 1000;
+/**
+ * Tope por ZIP, medido y no estimado: generar un PNG tarda ~30 ms a 600 px,
+ * asi que 500 son unos 15 s y entran holgados en los 60 s de la funcion.
+ * A 1024 px eran 85 ms cada uno y 1000 se pasaban de largo.
+ */
+const MAX_PNGS = 500;
+
+/**
+ * 600 px alcanza y sobra: un QR impreso a 40 mm necesita ~470 px para 300 dpi.
+ * El PNG suelto de /api/qr/[id]/png sigue saliendo a 1024 px.
+ */
+const ZIP_PNG_WIDTH = 600;
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -35,8 +45,9 @@ export async function GET(request: Request) {
 
   if (codes.length > MAX_PNGS) {
     return new NextResponse(
-      `Son ${codes.length} QR y el ZIP admite hasta ${MAX_PNGS} por tanda. ` +
-        `Bajalos por rango, por ejemplo /api/export/zip?from=1&to=${MAX_PNGS}`,
+      `Son ${codes.length} QR y el ZIP admite hasta ${MAX_PNGS} por tanda ` +
+        `(más que eso, la generación de imágenes se pasa del tiempo máximo). ` +
+        `Bajalos por rango: /api/export/zip?from=1&to=${MAX_PNGS}`,
       { status: 413 },
     );
   }
@@ -46,7 +57,7 @@ export async function GET(request: Request) {
   const folder = zip.folder("png")!;
 
   for (const code of codes) {
-    folder.file(pngFileName(code.id), await qrPngBuffer(code.id, base, 1024));
+    folder.file(pngFileName(code.id), await qrPngBuffer(code.id, base, ZIP_PNG_WIDTH));
   }
 
   zip.file("qrs.csv", exportCsv(codes, base));
@@ -55,7 +66,7 @@ export async function GET(request: Request) {
     [
       "QR dinámicos TOQA",
       "",
-      "png/       una imagen por QR, lista para subir a Canva.",
+      `png/       una imagen por QR (${ZIP_PNG_WIDTH} px), lista para subir a Canva.`,
       "qrs.csv    columnas numero, qr_code, destino_actual, url_qr",
       "",
       "El QR impreso apunta siempre a la misma URL (url_qr).",
