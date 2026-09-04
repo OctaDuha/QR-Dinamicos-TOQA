@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 import { listDesigns } from "@/lib/placa-designs";
-import { formatQrCode, qrTargetUrl, siteUrl } from "@/lib/qr";
+import { siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
 import type { QrCodeWithStats } from "@/lib/types";
 
-import { CopyButton } from "./_components/CopyButton";
+import { QrTable } from "./QrTable";
 import { Toolbar } from "./_components/Toolbar";
 
 const PAGE_SIZE = 50;
@@ -102,71 +102,11 @@ export default async function DashboardPage({
           </p>
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-sm">
-              <thead>
-                <tr
-                  className="text-left text-xs tracking-wide text-ink-2 uppercase"
-                  style={{ background: "var(--surface-2)" }}
-                >
-                  <Th className="w-24">Número</Th>
-                  <Th>Etiqueta</Th>
-                  <Th>Destino actual</Th>
-                  <Th className="w-36">Diseño</Th>
-                  <Th className="w-28 text-right">Escaneos</Th>
-                  <Th className="w-44 text-right">Acciones</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {codes.map((code) => (
-                  <tr key={code.id} className="border-t" style={{ borderColor: "var(--line)" }}>
-                    <Td>
-                      <Link
-                        href={`/dashboard/qr/${code.id}`}
-                        className="font-mono font-semibold no-underline"
-                        style={{ color: "var(--accent)" }}
-                      >
-                        {formatQrCode(code.id)}
-                      </Link>
-                    </Td>
-                    <Td>{code.label ?? <span className="text-ink-3">—</span>}</Td>
-                    <Td>
-                      <a
-                        href={code.destination_url}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="block max-w-[34ch] truncate text-ink-2 hover:underline"
-                        title={code.destination_url}
-                      >
-                        {code.destination_url}
-                      </a>
-                    </Td>
-                    <Td>
-                      {code.design_name ? (
-                        <span className="chip">{code.design_name}</span>
-                      ) : (
-                        <span className="text-ink-3">—</span>
-                      )}
-                    </Td>
-                    <Td className="text-right font-mono tabular-nums">{code.total_scans}</Td>
-                    <Td className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <CopyButton
-                          value={qrTargetUrl(code.id, base)}
-                          title="Copiar la URL que apunta el QR"
-                        />
-                        <Link href={`/dashboard/qr/${code.id}`} className="btn btn-secondary text-xs">
-                          Editar
-                        </Link>
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <QrTable
+          codes={codes}
+          base={base}
+          designs={designs.map((d) => ({ id: d.id, name: d.name }))}
+        />
       )}
 
       {lastPage > 1 ? (
@@ -195,14 +135,6 @@ function Stat({ label, value }: { label: string; value: number }) {
       <p className="font-mono text-2xl font-semibold tabular-nums">{value.toLocaleString("es-AR")}</p>
     </div>
   );
-}
-
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <th className={`px-4 py-2.5 font-semibold ${className}`}>{children}</th>;
-}
-
-function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-4 py-3 ${className}`}>{children}</td>;
 }
 
 function PageLink({

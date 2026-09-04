@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { listDesigns } from "@/lib/placa-designs";
 import { formatQrCode, parseQrId, qrPngDataUrl, qrTargetUrl, siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
 import type { QrCode, ScanBucket, ScanSeriesPoint } from "@/lib/types";
@@ -8,6 +9,7 @@ import type { QrCode, ScanBucket, ScanSeriesPoint } from "@/lib/types";
 import { CopyButton } from "../../_components/CopyButton";
 import { DeleteQrForm } from "./DeleteQrForm";
 import { EditQrForm } from "./EditQrForm";
+import { PlacaCard } from "./PlacaCard";
 import { ScanChart } from "./ScanChart";
 
 export const dynamic = "force-dynamic";
@@ -38,13 +40,13 @@ export default async function QrDetailPage({
 
   const { data: code } = await supabase
     .from("qr_codes")
-    .select("id, label, destination_url, created_at")
+    .select("id, label, destination_url, created_at, design_id")
     .eq("id", id)
     .maybeSingle<QrCode>();
 
   if (!code) notFound();
 
-  const [seriesResult, totalResult, recentResult, pngDataUrl] = await Promise.all([
+  const [seriesResult, totalResult, recentResult, pngDataUrl, designs] = await Promise.all([
     supabase.rpc("qr_scan_series", {
       p_qr_id: id,
       p_bucket: bucket,
@@ -57,6 +59,7 @@ export default async function QrDetailPage({
       .eq("qr_id", id)
       .gte("scanned_at", daysAgo(30).toISOString()),
     qrPngDataUrl(id, siteUrl(), 420),
+    listDesigns(supabase),
   ]);
 
   const series = (seriesResult.data ?? []) as ScanSeriesPoint[];
@@ -167,6 +170,16 @@ export default async function QrDetailPage({
               <ScanChart data={series} bucket={bucket} />
             )}
           </div>
+
+          <PlacaCard
+            qrId={code.id}
+            designs={designs.map((design) => ({
+              id: design.id,
+              name: design.name,
+              qrPage: design.layout.qrPage,
+            }))}
+            initialDesignId={code.design_id}
+          />
 
           <div className="card p-5">
             <p className="label">Zona peligrosa</p>

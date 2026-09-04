@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import JSZip from "jszip";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -6,6 +7,7 @@ import { fetchQrCodes, readRange } from "@/lib/export-query";
 import { placaFileName, renderPlacas, type PlacaItem } from "@/lib/placa";
 import { loadDesign, loadDesigns } from "@/lib/placa-designs";
 import { formatQrCode, siteUrl } from "@/lib/qr";
+import type { QrCode } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,17 +22,74 @@ const MAX_PLACAS = 1000;
  *   ?zip=1     -> un PDF por placa dentro de un ZIP
  */
 export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  return generar({
+    forcedId: Number(url.searchParams.get("design")),
+    zip: url.searchParams.get("zip") === "1",
+    leerCodigos: async (supabase) => fetchQrCodes(supabase, readRange(url), MAX_PLACAS + 1),
+  });
+}
+
+/**
+ * Mismo lote, pero para una seleccion suelta de QR marcados a mano en el
+ * listado. Va por POST y no por querystring porque cien numeros no entran
+ * comodos en una URL.
+ */
+export async function POST(request: NextRequest) {
+  const body = (await request.json().catch(() => ({}))) as {
+    ids?: unknown;
+    design?: number;
+    zip?: boolean;
+  };
+
+  const ids = Array.isArray(body.ids)
+    ? [...new Set(body.ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))].sort(
+        (a, b) => a - b,
+      )
+    : [];
+
+  if (ids.length === 0) {
+    return new NextResponse("No marcaste ningún QR.", { status: 400 });
+  }
+  if (ids.length > MAX_PLACAS) {
+    return new NextResponse(
+      `Marcaste ${ids.length} QR y el máximo por tanda es ${MAX_PLACAS}.`,
+      { status: 413 },
+    );
+  }
+
+  return generar({
+    forcedId: Number(body.design),
+    zip: body.zip === true,
+    leerCodigos: async (supabase) => {
+      const { data, error } = await supabase
+        .from("qr_codes")
+        .select("id, label, destination_url, created_at, design_id")
+        .in("id", ids)
+        .order("id", { ascending: true });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as QrCode[];
+    },
+  });
+}
+
+async function generar({
+  forcedId,
+  zip: comoZip,
+  leerCodigos,
+}: {
+  forcedId: number;
+  zip: boolean;
+  leerCodigos: (supabase: SupabaseClient) => Promise<QrCode[]>;
+}) {
   const { supabase, denied } = await requireAdmin();
   if (denied) return denied;
 
-  const url = new URL(request.url);
-  const range = readRange(url);
-  const forcedId = Number(url.searchParams.get("design"));
   const hasForced = Number.isInteger(forcedId) && forcedId > 0;
 
-  let codes;
+  let codes: QrCode[];
   try {
-    codes = await fetchQrCodes(supabase, range, MAX_PLACAS + 1);
+    codes = await leerCodigos(supabase);
   } catch (error) {
     return new NextResponse(`Error al leer los QR: ${(error as Error).message}`, { status: 500 });
   }
@@ -94,7 +153,7 @@ export async function GET(request: NextRequest) {
   const stamp = new Date().toISOString().slice(0, 10);
   const designName = forced?.name ?? (byId.size === 1 ? [...byId.values()][0].name : undefined);
 
-  if (url.searchParams.get("zip") === "1") {
+  if (comoZip) {
     const zip = new JSZip();
 
     for (const item of items) {
