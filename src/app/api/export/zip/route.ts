@@ -11,17 +11,15 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Tope por ZIP, medido y no estimado: generar un PNG tarda ~30 ms a 600 px,
- * asi que 500 son unos 15 s y entran holgados en los 60 s de la funcion.
- * A 1024 px eran 85 ms cada uno y 1000 se pasaban de largo.
+ * Tope por ZIP, medido y no estimado: a 1024 px cada PNG tarda ~85 ms, asi que
+ * 250 son unos 25 s y entran en los 60 s de la funcion aun si el servidor
+ * resulta la mitad de rapido. Los lotes reales son de ~100 (unos 10 s).
+ * 1000 de una eran 85 s: se cortaba justo en el lote grande.
  */
-const MAX_PNGS = 500;
+const MAX_PNGS = 250;
 
-/**
- * 600 px alcanza y sobra: un QR impreso a 40 mm necesita ~470 px para 300 dpi.
- * El PNG suelto de /api/qr/[id]/png sigue saliendo a 1024 px.
- */
-const ZIP_PNG_WIDTH = 600;
+/** Resolucion completa: el lote tipico entra sobrado y no se pierde calidad. */
+const ZIP_PNG_WIDTH = 1024;
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -47,7 +45,7 @@ export async function GET(request: Request) {
     return new NextResponse(
       `Son ${codes.length} QR y el ZIP admite hasta ${MAX_PNGS} por tanda ` +
         `(más que eso, la generación de imágenes se pasa del tiempo máximo). ` +
-        `Bajalos por rango: /api/export/zip?from=1&to=${MAX_PNGS}`,
+        `Bajalos por rango, por ejemplo /api/export/zip?from=1&to=${MAX_PNGS}`,
       { status: 413 },
     );
   }

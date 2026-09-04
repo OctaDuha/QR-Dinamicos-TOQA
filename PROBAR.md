@@ -97,7 +97,7 @@ Entrá a tu dirección e iniciá sesión con el usuario del paso 3. Después:
 | Volvé al panel y refrescá | La columna **Escaneos** de `0001` ahora dice `1` |
 | Entrá a `0001`, cambiá el destino a otra página y guardá. Volvé a abrir **la misma dirección de antes** | Ahora te lleva al destino nuevo. **Esto es lo importante: el QR no cambió, sólo a dónde apunta.** |
 | Escaneá el QR de `0001` con el celular | Te abre el destino |
-| **Exportar ZIP** | Se baja un archivo con las imágenes de los QR y una planilla. Si tenés más de 500 QR, te va a pedir que los bajes por tandas. |
+| **Exportar ZIP** | Se baja un archivo con las imágenes de los QR y una planilla. Si tenés más de 250 QR, te va a pedir que los bajes por tandas. |
 
 Si todo eso funciona, la web está lista.
 
