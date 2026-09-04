@@ -230,3 +230,36 @@ grant select on public.qr_codes_with_stats to authenticated;
 -- Las columnas identity no necesitan grant de secuencia, pero si alguien
 -- migra a serial esto evita un "permission denied for sequence".
 grant usage, select on all sequences in schema public to authenticated;
+
+-- ------------------------------------------------------------
+-- 9. Placas para imprenta.
+--    Guarda el fondo exportado de Canva (PDF vectorial, en base64) y
+--    la posicion del QR sobre el. Asi el diseno se cambia desde el panel
+--    y nunca hace falta tocar codigo ni volver a desplegar.
+-- ------------------------------------------------------------
+
+create table if not exists public.placa_settings (
+  id             int primary key default 1 check (id = 1),
+  background_pdf text,           -- PDF de fondo, base64
+  background_name text,
+  layout         jsonb not null default '{
+    "qrPage": 1,
+    "xMm": 30,
+    "yMm": 120,
+    "sizeMm": 40,
+    "quietModules": 2,
+    "whiteBackdrop": true
+  }'::jsonb,
+  updated_at     timestamptz not null default now()
+);
+
+insert into public.placa_settings (id) values (1) on conflict (id) do nothing;
+
+alter table public.placa_settings enable row level security;
+
+drop policy if exists placa_settings_admin_all on public.placa_settings;
+create policy placa_settings_admin_all on public.placa_settings
+  for all to authenticated using (true) with check (true);
+
+revoke all on public.placa_settings from anon;
+grant select, insert, update, delete on public.placa_settings to authenticated;

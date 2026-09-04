@@ -16,7 +16,9 @@ redirige esa URL.
   export ZIP/CSV.
 - **`/dashboard/qr/[id]`** — detalle: editar destino, descargar el PNG y gráfico
   de escaneos por día / semana / mes.
-- **`/dashboard/canva`** — generación masiva de diseños con la Canva Connect API.
+- **`/dashboard/placa`** — placas listas para imprenta: tu diseño de Canva de
+  fondo y el QR estampado por código, en lote.
+- **`/dashboard/canva`** — generación vía Canva Connect API (requiere Enterprise).
 
 ## Stack
 
@@ -118,45 +120,57 @@ admite hasta 1000 PNG por vez).
 
 ---
 
-## Generación masiva de diseños en Canva
+## Placas para imprenta
 
-Implementada la **Opción A** del brief: la Canva Connect API, controlada por
-código. Por cada QR el sitio sube el PNG como asset, hace el *autofill* de la
-plantilla usando el campo `qr_code` y exporta el diseño a PDF de impresión.
+`/dashboard/placa` genera los diseños finales sin depender del plan de Canva:
+tu diseño exportado de Canva va de **fondo vectorial** y el QR se **dibuja
+encima como vectores** (rectángulos, no una imagen), así que imprime nítido a
+cualquier tamaño y un lote de 1000 placas pesa poco más de un megabyte.
 
-### Configurar la integración
+### Cómo se usa
 
-1. Entrá a [developers.canva.com](https://www.canva.com/developers/) y creá una
-   integración privada. Es distinta de la conexión personal de Canva: esta la
-   usa el sitio.
-2. **Authentication** → URL de retorno: `https://tu-dominio/api/canva/callback`.
-3. **Scopes**: `asset:read`, `asset:write`, `brandtemplate:meta:read`,
-   `brandtemplate:content:read`, `design:content:read`, `design:content:write`,
-   `design:meta:read`.
-4. Cargá `CANVA_CLIENT_ID` y `CANVA_CLIENT_SECRET` y redesplegá.
-5. En `/dashboard/canva` → **Conectar con Canva** (una sola vez), elegí la
-   plantilla y el rango de QRs, y **Generar lote**.
+1. **El fondo.** En Canva, abrí “NFC y QR”, dejá vacío el marco del QR y
+   descargá *PDF para imprimir* (con marcas de recorte y sangrado si la
+   imprenta lo pide). Subilo en la pantalla de Placas: queda guardado en la base
+   de datos, no hace falta redesplegar.
+2. **La posición.** Ajustás X, Y y tamaño en milímetros y el panel te muestra el
+   **PDF real** al lado, no una aproximación. Guardás una vez y queda fijo.
+3. **El lote.** Elegís el rango de números y bajás un PDF único multipágina (lo
+   que suele pedir la imprenta) o un ZIP con un PDF por placa.
 
-El lote se procesa por tandas: el navegador va pidiendo tandas hasta terminar,
-así 1000 diseños no dependen de un único request. Si se corta, el botón
-**Continuar** retoma donde quedó.
+Si el fondo tiene varias páginas (frente y dorso), cada placa las emite todas y
+el QR va sólo en la que indiques en *Página del fondo*.
 
-### Límite conocido de Canva
+> Si exportás con marcas de recorte, la página del PDF es más grande que la
+> placa terminada y los milímetros se miden desde el borde del archivo, no desde
+> el corte. Por eso conviene posicionar mirando el preview en vez de calcular.
 
-El **autofill de brand templates es una función de Canva Enterprise**. Si la
-cuenta no lo tiene, la API devuelve 403 al listar plantillas y el lote no puede
-generarse. En ese caso quedan dos caminos, sin perder nada del diseño ya armado:
+Para rediseñar la placa: la cambiás en Canva, exportás de nuevo y subís el
+fondo. Ni una línea de código.
 
-- Seguir usando **Creación masiva** dentro de Canva: bajá el ZIP y subí
-  `qrs.csv`, que ya trae la columna `qr_code` con la URL pública de cada PNG.
-- **Opción B**: generar el PDF vectorial desde el código replicando el diseño de
-  la placa. Más rápido y sin límites de plataforma, pero cada rediseño pasa a
-  ser un cambio de código.
+## Canva Connect API (sólo Enterprise)
 
-Los links de exportación de Canva caducan a las pocas horas: bajá el ZIP de PDFs
-el mismo día que generás el lote.
+`/dashboard/canva` implementa la Opción A del brief —subir el QR como asset,
+autofill del campo `qr_code` y export a PDF— y queda lista por si alguna vez
+pasás a Enterprise.
 
----
+**No funciona con Canva Business (Canva Negocios).** El gate está en un punto
+preciso:
+
+| API | Planes |
+|---|---|
+| Brand templates (leer plantillas y su dataset) | Pro, Business, Enterprise |
+| **Autofill** (rellenar el campo y generar el diseño) | **Sólo Enterprise** |
+
+Con Business la API responde 403 al pedir el lote. La generación de placas vive
+entonces en `/dashboard/placa`, que no tiene ese límite.
+
+Para configurarla si algún día corresponde: integración privada en
+[developers.canva.com](https://www.canva.com/developers/), URL de retorno
+`https://tu-dominio/api/canva/callback`, scopes `asset:read`, `asset:write`,
+`brandtemplate:meta:read`, `brandtemplate:content:read`, `design:content:read`,
+`design:content:write`, `design:meta:read`, y las variables `CANVA_CLIENT_ID` /
+`CANVA_CLIENT_SECRET`.
 
 ## Seguridad
 
@@ -175,10 +189,11 @@ src/
   app/
     r/[id]/route.ts            redirect público + registro del escaneo
     login/                     login con Supabase Auth
-    dashboard/                 listado, detalle, gráfico, Canva
+    dashboard/                 listado, detalle, gráfico, placas, Canva
     api/
       qr/[id]/png/             PNG del QR (público)
       export/{csv,zip}/        export para imprenta
+      placa/                   fondo, posición del QR, preview y lotes PDF
       canva/                   OAuth, lotes, procesamiento, PDFs
   lib/                         QR, CSV, Supabase, Canva
 supabase/

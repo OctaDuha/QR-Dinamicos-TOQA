@@ -19,8 +19,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link href="/dashboard" className="btn btn-ghost">
               QRs
             </Link>
+            <Link href="/dashboard/placa" className="btn btn-ghost">
+              Placas
+            </Link>
             <Link href="/dashboard/canva" className="btn btn-ghost">
-              Diseños Canva
+              Canva
             </Link>
           </nav>
 

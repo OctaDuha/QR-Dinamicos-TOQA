@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { createClient } from "@/lib/supabase/server";
 
 import { CanvaPanel } from "./CanvaPanel";
@@ -24,10 +26,27 @@ export default async function CanvaPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Diseños Canva</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Canva</h1>
         <p className="mt-1 text-sm text-ink-2">
-          Genera en lote las placas listas para imprenta reutilizando la plantilla “NFC y QR”, sin
-          tocar nada a mano.
+          Generación de diseños con la Canva Connect API. Requiere un plan Enterprise.
+        </p>
+      </div>
+
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold">Con plan Business esto no está disponible</h2>
+        <p className="mt-2 text-sm text-ink-2">
+          La API de <em>brand templates</em> funciona en Pro y Business, pero el{" "}
+          <strong>autofill</strong> —el paso que rellena el campo <code>qr_code</code> y genera el
+          diseño— es exclusivo de <strong>Canva Enterprise</strong>. Con Canva Negocios la API
+          responde 403 al intentar el lote.
+        </p>
+        <p className="mt-2 text-sm text-ink-2">
+          Por eso la generación de placas vive en{" "}
+          <Link href="/dashboard/placa" className="underline" style={{ color: "var(--accent)" }}>
+            Placas para imprenta
+          </Link>
+          : usa tu mismo diseño de Canva como fondo y estampa el QR por código, sin límite de plan.
+          Esta pantalla queda lista por si algún día pasás a Enterprise.
         </p>
       </div>
 
@@ -112,25 +131,6 @@ export default async function CanvaPage({
         </>
       )}
 
-      <div className="card p-5">
-        <h2 className="text-sm font-semibold">Si Canva no alcanza (Opción B)</h2>
-        <p className="mt-2 text-sm text-ink-2">
-          El autofill de plantillas de la Connect API sólo está disponible en cuentas{" "}
-          <strong>Canva Enterprise</strong>. Si tu cuenta no lo tiene, quedan dos caminos sin tocar
-          nada de lo ya hecho:
-        </p>
-        <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 text-sm text-ink-2">
-          <li>
-            Seguir usando <strong>Creación masiva</strong> dentro de Canva: bajá el ZIP desde la
-            pantalla de QRs y subí <code>qrs.csv</code>, que ya trae la columna{" "}
-            <code>qr_code</code> con la URL pública de cada PNG.
-          </li>
-          <li>
-            Generar el PDF vectorial desde el código, replicando el diseño de la placa. Más rápido y
-            sin límites de plataforma, pero cada rediseño pasa a ser un cambio de código.
-          </li>
-        </ul>
-      </div>
     </div>
   );
 }
