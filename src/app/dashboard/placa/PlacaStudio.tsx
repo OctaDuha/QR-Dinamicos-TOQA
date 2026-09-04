@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { detectQrInPdf } from "@/lib/detect-qr";
-import type { PlacaLayout } from "@/lib/placa";
+import { suggestedSizeMm } from "@/lib/page-size";
+import { numberDefaults, type PlacaLayout } from "@/lib/placa";
 
 import { PdfPreview } from "./PdfPreview";
 
@@ -114,7 +115,43 @@ function NewDesign({
   onDetected: (id: number, patch: Partial<Design>) => void;
 }) {
   const [name, setName] = useState("");
+  const [medida, setMedida] = useState<{ w: number; h: number } | null>(null);
+  const [objetivo, setObjetivo] = useState<{ w: string; h: string }>({ w: "", h: "" });
+  const [aviso, setAviso] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /** Al elegir el archivo miramos cuánto mide, antes de subir nada. */
+  const inspeccionar = async () => {
+    const file = fileRef.current?.files?.[0];
+    setMedida(null);
+    setAviso(null);
+    setObjetivo({ w: "", h: "" });
+    if (!file) return;
+
+    try {
+      const pdfjs = await import("pdfjs-dist");
+      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+      const view = (await doc.getPage(1)).getViewport({ scale: 1 });
+      await doc.destroy();
+
+      const w = Math.round((view.width * 25.4) / 72 * 10) / 10;
+      const h = Math.round((view.height * 25.4) / 72 * 10) / 10;
+      setMedida({ w, h });
+
+      const sug = suggestedSizeMm(w, h);
+      if (sug) {
+        setObjetivo({ w: String(sug.widthMm), h: String(sug.heightMm) });
+        setAviso(
+          `Ojo: el archivo dice medir ${w} × ${h} mm, o sea que impreso saldría enorme. ` +
+            `Parece un diseño de ${sug.widthMm} × ${sug.heightMm} mm exportado en píxeles (a ${sug.dpi} dpi). ` +
+            `Lo ajusto a esa medida al subirlo; cambiá los números si no es la correcta.`,
+        );
+      }
+    } catch {
+      // Si no se puede leer, el servidor igual valida el PDF al subirlo.
+    }
+  };
 
   const submit = async () => {
     const file = fileRef.current?.files?.[0];
@@ -130,6 +167,10 @@ function NewDesign({
       const body = new FormData();
       body.append("name", name.trim());
       body.append("file", file);
+      if (objetivo.w && objetivo.h) {
+        body.append("width_mm", objetivo.w);
+        body.append("height_mm", objetivo.h);
+      }
 
       const response = await fetch("/api/placa/designs", { method: "POST", body });
       const payload = await response.json();
@@ -141,16 +182,26 @@ function NewDesign({
       const design: Design = payload.design;
       onCreated(design);
       setName("");
+      setMedida(null);
+      setAviso(null);
+      setObjetivo({ w: "", h: "" });
       if (fileRef.current) fileRef.current.value = "";
 
-      // Lo interesante: buscamos el QR de ejemplo dentro del diseño.
+      const ajuste = payload.normalizado
+        ? ` Ajusté la página de ${payload.normalizado.from} a ${payload.normalizado.to}.`
+        : "";
+
+      // Buscamos el QR sobre el archivo YA GUARDADO, no sobre el que eligió el
+      // usuario: si hubo que ajustar el tamaño de la página, las coordenadas
+      // tienen que salir de la versión ajustada.
       setNote({ kind: "info", text: "Buscando el QR dentro del diseño…" });
-      const detection = await detectQrInPdf(await file.arrayBuffer());
+      const guardado = await fetch(`/api/placa/designs/${design.id}/file`);
+      const detection = guardado.ok ? await detectQrInPdf(await guardado.arrayBuffer()) : null;
 
       if (!detection) {
         setNote({
           kind: "info",
-          text: `“${design.name}” quedó cargado, pero no encontré un QR adentro. Ubicalo a mano abajo, o volvé a exportar el diseño con el QR de ejemplo puesto y usá “Detectar de nuevo”.`,
+          text: `“${design.name}” quedó cargado.${ajuste} No encontré un QR adentro: ubicalo a mano abajo, o volvé a exportar el diseño con el QR de ejemplo puesto y usá “Detectar el QR automáticamente”.`,
         });
         return;
       }
@@ -161,6 +212,8 @@ function NewDesign({
         xMm: detection.xMm,
         yMm: detection.yMm,
         sizeMm: detection.sizeMm,
+        // El número acompaña el tamaño del QR de cada diseño.
+        ...numberDefaults(detection.xMm, detection.yMm, detection.sizeMm, detection.freeBandYMm, detection.sampleNumber),
       };
 
       await fetch(`/api/placa/designs/${design.id}`, {
@@ -172,7 +225,9 @@ function NewDesign({
       onDetected(design.id, { layout });
       setNote({
         kind: "ok",
-        text: `Listo: encontré el QR en la página ${detection.page}, a ${detection.xMm} mm del borde izquierdo y ${detection.yMm} mm del superior, de ${detection.sizeMm} mm de lado. Ya quedó guardado.`,
+        text:
+          `Listo: encontré el QR en la página ${detection.page}, a ${detection.xMm} mm del borde izquierdo ` +
+          `y ${detection.yMm} mm del superior, de ${detection.sizeMm} mm de lado.${ajuste} Ya quedó guardado.`,
       });
     } catch (error) {
       setNote({ kind: "error", text: `Algo falló: ${(error as Error).message}` });
@@ -185,8 +240,9 @@ function NewDesign({
     <div className="card p-5">
       <h2 className="text-sm font-semibold">Agregar un diseño</h2>
       <p className="mt-1 text-sm text-ink-2">
-        Exportá el diseño de Canva en PDF <strong>con el QR de ejemplo puesto</strong>: lo uso para
-        saber exactamente dónde va el QR, y después lo tapo con el dinámico.
+        Exportá el diseño de Canva en PDF <strong>con el QR y el número de ejemplo puestos</strong>:
+        los uso para saber exactamente dónde van, y después los reemplazo por los reales de cada
+        placa.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1.2fr_auto] sm:items-end">
@@ -211,6 +267,7 @@ function NewDesign({
             ref={fileRef}
             type="file"
             accept="application/pdf,.pdf"
+            onChange={() => void inspeccionar()}
             className="input file:mr-3 file:rounded-md file:border-0 file:bg-[var(--surface-2)] file:px-3 file:py-1 file:text-sm file:text-[var(--ink-1)]"
           />
         </div>
@@ -218,6 +275,54 @@ function NewDesign({
           {busy ? "Procesando…" : "Agregar"}
         </button>
       </div>
+
+      {medida ? (
+        <p className="mt-3 text-sm text-ink-2">
+          El archivo mide <strong>{medida.w} × {medida.h} mm</strong>.
+        </p>
+      ) : null}
+
+      {aviso ? (
+        <div
+          className="mt-2 rounded-lg px-3 py-2 text-sm"
+          style={{ background: "var(--danger-soft)", color: "var(--danger)" }}
+        >
+          <p>{aviso}</p>
+          <div className="mt-2 flex items-end gap-2">
+            <div className="w-24">
+              <label className="label" htmlFor="obj-w">
+                Ancho mm
+              </label>
+              <input
+                id="obj-w"
+                className="input"
+                value={objetivo.w}
+                onChange={(e) => setObjetivo((o) => ({ ...o, w: e.target.value.replace(/[^\d.]/g, "") }))}
+                inputMode="decimal"
+              />
+            </div>
+            <div className="w-24">
+              <label className="label" htmlFor="obj-h">
+                Alto mm
+              </label>
+              <input
+                id="obj-h"
+                className="input"
+                value={objetivo.h}
+                onChange={(e) => setObjetivo((o) => ({ ...o, h: e.target.value.replace(/[^\d.]/g, "") }))}
+                inputMode="decimal"
+              />
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost text-xs"
+              onClick={() => { setObjetivo({ w: "", h: "" }); setAviso(null); }}
+            >
+              Dejarlo como está
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -269,6 +374,11 @@ function DesignEditor({
       sizeMm: String(debounced.sizeMm),
       quietModules: String(debounced.quietModules),
       whiteBackdrop: String(debounced.whiteBackdrop),
+      showNumber: String(debounced.showNumber),
+      numberSizeMm: String(debounced.numberSizeMm),
+      numberXMm: String(debounced.numberXMm),
+      numberYMm: String(debounced.numberYMm),
+      numberBackdrop: String(debounced.numberBackdrop),
       v: String(nonce),
     });
     return `/api/placa/preview?${params}`;
@@ -300,6 +410,7 @@ function DesignEditor({
         xMm: detection.xMm,
         yMm: detection.yMm,
         sizeMm: detection.sizeMm,
+        ...numberDefaults(detection.xMm, detection.yMm, detection.sizeMm, detection.freeBandYMm, detection.sampleNumber),
       };
       setLayout(next);
       setNote({
@@ -389,6 +500,59 @@ function DesignEditor({
           <p className="-mt-1 text-xs text-ink-3">
             Dejalo tildado: es lo que tapa el QR viejo del diseño.
           </p>
+
+          <div
+            className="mt-1 flex flex-col gap-3 rounded-lg p-3"
+            style={{ background: "var(--surface-2)" }}
+          >
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={layout.showNumber}
+                onChange={(event) => set("showNumber", event.target.checked)}
+              />
+              Imprimir el número debajo
+            </label>
+            <p className="-mt-2 text-xs text-ink-3">
+              El número de la placa (0001, 0002…) para poder identificarla después.
+            </p>
+
+            {layout.showNumber ? (
+              <>
+                <Field
+                  label="Altura del número mm"
+                  value={layout.numberSizeMm}
+                  onChange={(v) => set("numberSizeMm", v)}
+                  step={0.5}
+                  min={1}
+                />
+                <Field
+                  label="Número · izquierda (X) mm"
+                  value={layout.numberXMm}
+                  onChange={(v) => set("numberXMm", v)}
+                  step={0.5}
+                />
+                <Field
+                  label="Número · arriba (Y) mm"
+                  value={layout.numberYMm}
+                  onChange={(v) => set("numberYMm", v)}
+                  step={0.5}
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={layout.numberBackdrop}
+                    onChange={(event) => set("numberBackdrop", event.target.checked)}
+                  />
+                  Recuadro blanco detrás del número
+                </label>
+                <p className="-mt-1 text-xs text-ink-3">
+                  X es el <em>centro</em> del número. Arranca debajo del QR; movelo si ahí el
+                  diseño ya tiene texto.
+                </p>
+              </>
+            ) : null}
+          </div>
 
           <div className="flex items-end gap-2">
             <div className="flex-1">

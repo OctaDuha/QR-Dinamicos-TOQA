@@ -232,7 +232,12 @@ create table if not exists public.placa_designs (
     "yMm": 120,
     "sizeMm": 40,
     "quietModules": 2,
-    "whiteBackdrop": true
+    "whiteBackdrop": true,
+    "showNumber": true,
+    "numberSizeMm": 5,
+    "numberXMm": 50,
+    "numberYMm": 165,
+    "numberBackdrop": true
   }'::jsonb,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()

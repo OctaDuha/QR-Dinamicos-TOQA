@@ -22,6 +22,19 @@ export type Detection = {
   pageWidthMm: number;
   pageHeightMm: number;
   content: string;
+  /**
+   * Primera franja libre debajo del QR, en mm desde arriba. Es donde conviene
+   * poner el numero: en varias placas el espacio inmediatamente bajo el QR ya
+   * lo ocupa un texto del diseno ("Escaneá"), y el numero quedaria encima.
+   * null si no hay ninguna franja lo bastante alta.
+   */
+  freeBandYMm: number | null;
+  /**
+   * Numero de ejemplo ya dibujado en el diseno, si lo hay: varias placas
+   * traen uno puesto a mano en Canva. Se reemplaza igual que el QR, asi el
+   * numero real queda exactamente donde el diseno lo previo.
+   */
+  sampleNumber: { xMm: number; yMm: number; sizeMm: number } | null;
 };
 
 export async function detectQrInPdf(data: ArrayBuffer): Promise<Detection | null> {
@@ -62,6 +75,31 @@ export async function detectQrInPdf(data: ArrayBuffer): Promise<Detection | null
       // guardamos: no hay que convertir nada.
       const side = Math.hypot(hit.tr.x - hit.tl.x, hit.tr.y - hit.tl.y) * pxToMm;
 
+      const qrBottomPx = hit.tl.y + side / pxToMm;
+      const qrWidthPx = side / pxToMm;
+
+      const sample = findSampleNumber(
+        context,
+        canvas.width,
+        canvas.height,
+        hit.tl.x,
+        hit.tr.x,
+        qrBottomPx,
+        qrWidthPx,
+      );
+
+      // Alto que necesita el numero, en pixeles del render.
+      const numberHeightPx = (side * 0.13 * 1.6) / pxToMm;
+      const freeBandPx = findFreeBandBelow(
+        context,
+        canvas.width,
+        canvas.height,
+        hit.tl.x,
+        hit.tr.x,
+        hit.tl.y + side / pxToMm,
+        numberHeightPx,
+      );
+
       return {
         page: pageNumber,
         xMm: round(hit.tl.x * pxToMm),
@@ -70,10 +108,143 @@ export async function detectQrInPdf(data: ArrayBuffer): Promise<Detection | null
         pageWidthMm: round(unscaled.width * MM_PER_PT),
         pageHeightMm: round(unscaled.height * MM_PER_PT),
         content: hit.content,
+        freeBandYMm: freeBandPx === null ? null : round(freeBandPx * pxToMm),
+        sampleNumber: sample
+          ? {
+              xMm: round(sample.centerX * pxToMm),
+              yMm: round(sample.top * pxToMm),
+              // La altura de una cifra es ~0,72 del cuerpo de la fuente.
+              sizeMm: round((sample.height * pxToMm) / 0.72),
+            }
+          : null,
       };
     }
   } finally {
     await doc.destroy();
+  }
+
+  return null;
+}
+
+/**
+ * Busca el numero de ejemplo que el diseno ya trae debajo del QR.
+ *
+ * Toma la primera mancha de tinta que aparece bajo el QR y la acepta solo si
+ * tiene forma de numerito: angosta y baja respecto del QR. Asi no confunde un
+ * texto del diseno como "Escaneá", que ocupa casi todo el ancho.
+ */
+function findSampleNumber(
+  context: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  qrLeft: number,
+  qrRight: number,
+  qrBottom: number,
+  qrWidth: number,
+): { centerX: number; top: number; height: number } | null {
+  // Miramos un poco mas ancho que el QR: el numero puede sobresalir.
+  const left = Math.max(0, Math.floor(qrLeft - qrWidth * 0.2));
+  const right = Math.min(canvasWidth, Math.ceil(qrRight + qrWidth * 0.2));
+  const width = right - left;
+  const start = Math.min(canvasHeight - 1, Math.ceil(qrBottom) + 2);
+  const height = Math.min(canvasHeight - start, Math.ceil(qrWidth * 0.6));
+  if (width <= 0 || height <= 4) return null;
+
+  const strip = context.getImageData(left, start, width, height).data;
+  const conTinta = (row: number) => {
+    for (let col = 0; col < width; col++) {
+      const i = (row * width + col) * 4;
+      if (strip[i] < 128 && strip[i + 1] < 128 && strip[i + 2] < 128) return true;
+    }
+    return false;
+  };
+
+  let top = -1;
+  let bottom = -1;
+  for (let row = 0; row < height; row++) {
+    if (conTinta(row)) {
+      if (top === -1) top = row;
+      bottom = row;
+    } else if (top !== -1) {
+      break; // termino la primera mancha
+    }
+  }
+
+  if (top === -1) return null;
+
+  const alto = bottom - top + 1;
+  if (alto > qrWidth * 0.3) return null; // demasiado alto para ser un numero
+
+  let minX = width;
+  let maxX = -1;
+  for (let row = top; row <= bottom; row++) {
+    for (let col = 0; col < width; col++) {
+      const i = (row * width + col) * 4;
+      if (strip[i] < 128 && strip[i + 1] < 128 && strip[i + 2] < 128) {
+        if (col < minX) minX = col;
+        if (col > maxX) maxX = col;
+      }
+    }
+  }
+
+  const ancho = maxX - minX + 1;
+  if (ancho <= 0 || ancho > qrWidth * 0.6) return null; // una palabra, no un numero
+
+  return {
+    centerX: left + (minX + maxX) / 2,
+    top: start + top,
+    height: alto,
+  };
+}
+
+/**
+ * Busca hacia abajo la primera franja de filas completamente blancas, en el
+ * ancho del QR. Devuelve la fila donde empieza, o null si no hay lugar.
+ */
+function findFreeBandBelow(
+  context: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  qrLeft: number,
+  qrRight: number,
+  qrBottom: number,
+  neededHeight: number,
+): number | null {
+  const left = Math.max(0, Math.floor(qrLeft));
+  const right = Math.min(canvasWidth, Math.ceil(qrRight));
+  const width = right - left;
+  if (width <= 0) return null;
+
+  const start = Math.min(canvasHeight - 1, Math.ceil(qrBottom) + 2);
+  const height = canvasHeight - start;
+  if (height <= neededHeight) return null;
+
+  const strip = context.getImageData(left, start, width, height).data;
+  const needed = Math.ceil(neededHeight) + 4;
+
+  let run = 0;
+  for (let row = 0; row < height; row++) {
+    let libre = true;
+    for (let col = 0; col < width; col++) {
+      const i = (row * width + col) * 4;
+      // Casi blanco: dejamos pasar el ruido del antialiasing.
+      if (strip[i] < 245 || strip[i + 1] < 245 || strip[i + 2] < 245) {
+        libre = false;
+        break;
+      }
+    }
+
+    if (!libre) {
+      run = 0;
+      continue;
+    }
+
+    run++;
+    if (run >= needed) {
+      // Centramos el numero dentro de la franja encontrada.
+      const bandStart = start + row - run + 1;
+      return bandStart + (run - neededHeight) / 2;
+    }
   }
 
   return null;

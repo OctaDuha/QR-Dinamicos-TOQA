@@ -24,10 +24,17 @@ export async function GET(request: NextRequest) {
 
   const layout = normalizeLayout({
     ...base.layout,
-    ...numeric(url, ["qrPage", "xMm", "yMm", "sizeMm", "quietModules"]),
-    ...(url.searchParams.has("whiteBackdrop")
-      ? { whiteBackdrop: url.searchParams.get("whiteBackdrop") === "true" }
-      : {}),
+    ...numeric(url, [
+      "qrPage",
+      "xMm",
+      "yMm",
+      "sizeMm",
+      "quietModules",
+      "numberSizeMm",
+      "numberXMm",
+      "numberYMm",
+    ]),
+    ...booleans(url, ["whiteBackdrop", "showNumber", "numberBackdrop"]),
   });
 
   const qrId = parseQrId(url.searchParams.get("id") ?? "1") ?? 1;
@@ -44,6 +51,14 @@ export async function GET(request: NextRequest) {
       "Cache-Control": "no-store",
     },
   });
+}
+
+function booleans(url: URL, keys: string[]): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const key of keys) {
+    if (url.searchParams.has(key)) out[key] = url.searchParams.get(key) === "true";
+  }
+  return out;
 }
 
 function numeric(url: URL, keys: string[]): Record<string, number> {

@@ -145,6 +145,12 @@ solo su posición y su tamaño. No hay que medir nada: se exporta el diseño de
 Canva *con el QR puesto*, y el QR dinámico se estampa exactamente ahí encima
 (el recuadro blanco tapa el viejo).
 
+Lo mismo con el **número de placa** (0001, 0002…), que sirve para identificarla
+si después hay que cambiarle el destino. Si el diseño ya trae un número de
+ejemplo, el real va exactamente ahí. Si no, se busca la primera franja blanca
+debajo del QR, porque el espacio inmediatamente pegado suele estar ocupado por
+un texto del diseño.
+
 Funciona rasterizando la página con pdf.js y localizando el código con jsQR, en
 el navegador. Como jsQR sólo acepta un QR real, no se confunde con logos ni con
 otras imágenes cuadradas del diseño. Ambas librerías se cargan bajo demanda: no
@@ -181,6 +187,17 @@ el QR va sólo en la que indique *Página del fondo*.
 > Si exportás con marcas de recorte, la página del PDF es más grande que la
 > placa terminada. La detección automática lo maneja igual, porque mide sobre el
 > archivo real.
+
+### Dos trampas de los PDF de Canva, ya contempladas
+
+**Página definida en píxeles.** Un diseño de 10 cm pensado a 300 dpi se exporta
+como una página de 416,7 mm y, mandado así a imprenta, saldría cuatro veces más
+grande. Al subirlo se detecta y se ofrece normalizarlo al tamaño real.
+
+**Origen de página desplazado.** Algunos export traen el `MediaBox` con un
+offset (por ejemplo `y = 8,67 pt`). Si se incrusta sin declarar el bounding box,
+el fondo queda corrido esos milímetros respecto del QR y del número. Por eso las
+páginas se incrustan con su caja explícita.
 
 ## Canva Connect API (sólo Enterprise)
 
