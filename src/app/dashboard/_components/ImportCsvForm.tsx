@@ -2,7 +2,9 @@
 
 import { useActionState } from "react";
 
-import { IDLE, importQrCsv } from "../actions";
+import { IDLE } from "@/lib/action-state";
+
+import { importQrCsv } from "../actions";
 import { Feedback } from "./Feedback";
 import { SubmitButton } from "./SubmitButton";
 

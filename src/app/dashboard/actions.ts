@@ -5,11 +5,8 @@ import { redirect } from "next/navigation";
 
 import { parseCsv } from "@/lib/csv";
 import { formatQrCode, normalizeDestination, parseQrId } from "@/lib/qr";
+import type { ActionState } from "@/lib/action-state";
 import { createClient } from "@/lib/supabase/server";
-
-export type ActionState = { ok: boolean; message: string | null };
-
-export const IDLE: ActionState = { ok: false, message: null };
 
 const MAX_BATCH = 2000;
 

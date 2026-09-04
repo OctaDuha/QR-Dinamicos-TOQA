@@ -2,7 +2,9 @@
 
 import { useActionState } from "react";
 
-import { IDLE, updateQrCode } from "../../actions";
+import { IDLE } from "@/lib/action-state";
+
+import { updateQrCode } from "../../actions";
 import { Feedback } from "../../_components/Feedback";
 import { SubmitButton } from "../../_components/SubmitButton";
 

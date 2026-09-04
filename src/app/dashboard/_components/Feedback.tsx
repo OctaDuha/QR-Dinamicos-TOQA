@@ -1,6 +1,6 @@
 "use client";
 
-import type { ActionState } from "../actions";
+import type { ActionState } from "@/lib/action-state";
 
 export function Feedback({ state }: { state: ActionState }) {
   if (!state.message) return null;
