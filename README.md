@@ -65,6 +65,9 @@ npm install
 npm run dev
 ```
 
+Para levantarlo y verificarlo paso a paso, con checklist de prueba y los
+errores típicos, mirá **[PROBAR.md](PROBAR.md)**.
+
 ### 4. Deploy en Vercel
 
 1. Importá el repo desde GitHub en [vercel.com](https://vercel.com).
