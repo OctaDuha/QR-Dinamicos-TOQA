@@ -21,9 +21,15 @@ export function siteUrl(): string {
   return "http://localhost:3000";
 }
 
-/** URL que apunta el QR fisico. Nunca cambia. */
+/**
+ * URL que apunta el QR fisico. Nunca cambia.
+ *
+ * Va sin "/r/" a proposito: cada caracter de menos acerca la direccion al
+ * escalon de 25x25 modulos en vez de 29x29, y con dominio propio lo cruza.
+ * El camino largo /r/0001 sigue funcionando para placas viejas.
+ */
 export function qrTargetUrl(id: number | string, base = siteUrl()): string {
-  return `${base}/r/${formatQrCode(id)}`;
+  return `${base}/${formatQrCode(id)}`;
 }
 
 /** PNG del QR listo para Canva/imprenta. */

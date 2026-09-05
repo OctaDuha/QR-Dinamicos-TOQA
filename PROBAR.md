@@ -151,7 +151,7 @@ volvés a agregar. No hay que tocar nada más.
 ## Dos cosas para tener en cuenta
 
 **La dirección de los QR es para siempre.** El QR impreso apunta a
-`https://tu-dominio/r/0001`. Si mañana cambiás de dominio, todas las placas
+`https://tu-dominio/0001`. Si mañana cambiás de dominio, todas las placas
 impresas dejan de funcionar. Por eso conviene definirlo antes de imprimir.
 
 **Supabase gratis se pausa.** Si pasa una semana sin actividad, el plan gratuito

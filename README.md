@@ -3,12 +3,12 @@
 Panel propio para generar y administrar QR dinámicos con estadísticas de escaneo.
 
 El QR impreso en la placa NFC **nunca cambia**: siempre apunta a
-`https://tu-dominio/r/0001`. Lo único que se edita desde el panel es a dónde
+`https://tu-dominio/0001`. Lo único que se edita desde el panel es a dónde
 redirige esa URL.
 
 ## Qué hace
 
-- **`/r/[id]`** — ruta pública que apuntan las placas. Registra el escaneo y
+- **`/[codigo]`** — ruta pública que apuntan las placas. Registra el escaneo y
   redirige al destino actual. Corre en Edge y resuelve todo en una sola consulta.
 - **`/login`** — usuario y contraseña (Supabase Auth).
 - **`/dashboard`** — listado de QRs con etiqueta, destino, total de escaneos,
@@ -81,6 +81,35 @@ checklist de prueba y errores típicos: **[PROBAR.md](PROBAR.md)**.
 
 ---
 
+## Por qué las placas dicen `/0001` y no `/r/0001`
+
+El QR no crece de a un caracter: salta por escalones. Con corrección de
+errores M, `https://toqaqr.com.ar/r/0001` (28 caracteres) cae en 29x29
+módulos, y `https://toqaqr.com.ar/0001` (26) baja a 25x25. En un QR impreso
+de 26 mm eso es un cuadradito de 1,04 mm en vez de 0,90 mm: **16% más
+grande**, que se escanea mejor de lejos y aguanta mejor una placa rayada o
+sobre una superficie curva.
+
+El salto sólo se consigue con dominio propio *y* sin `/r/`. Medido:
+
+| dominio | `/r/0001` | `/0001` |
+|---|---|---|
+| `qr-dinamicos-toqa.vercel.app` | 29x29 | 29x29 |
+| `toqa.vercel.app` | 29x29 | 29x29 |
+| `qr.toqa.com.ar` | 29x29 | **25x25** |
+| `toqaqr.com.ar` | 29x29 | **25x25** |
+
+`/r/[id]` sigue funcionando y no se saca nunca: puede haber placas impresas
+con esa forma, y una placa impresa no se corrige. Las dos rutas comparten el
+mismo código (`src/lib/redirect-qr.ts`).
+
+Las rutas estáticas (`/login`, `/dashboard`, `/api/...`) tienen prioridad
+sobre el segmento dinámico de primer nivel, así que no se pisan. Lo que no
+es un número de placa devuelve un 404 de verdad, no el destino de respaldo:
+la red de seguridad es para placas impresas, no para errores de tipeo.
+
+---
+
 ## Que ninguna placa impresa quede muerta
 
 Una placa impresa no se puede corregir. Todo lo que sigue existe para que,
@@ -88,7 +117,7 @@ pase lo que pase del lado del servicio, quien escanea nunca vea un error.
 
 ### Destino de respaldo
 
-`QR_FALLBACK_URL` es la red de seguridad. Si está definida, `/r/[id]` redirige
+`QR_FALLBACK_URL` es la red de seguridad. Si está definida, la ruta pública redirige
 ahí en vez de mostrar una página de error cuando:
 
 - Supabase no contesta (caída, pausa por inactividad, corte de red).
@@ -101,7 +130,7 @@ callejón sin salida para el que escaneó.
 
 ### Reintento y tiempo de espera
 
-`/r/[id]` corta la consulta a Supabase a los 2,5 s. Si falla por error o por
+La ruta pública corta la consulta a Supabase a los 2,5 s. Si falla por error o por
 corte de red reintenta una vez; si fue por timeout **no** reintenta, porque una
 base colgada se vuelve a colgar y del otro lado hay alguien esperando. Peor
 caso medido: 2,5 s hasta el respaldo.
@@ -291,7 +320,7 @@ Para configurarla si algún día corresponde: integración privada en
 - El visitante del QR entra por una única función `resolve_qr()` que registra el
   escaneo y devuelve el destino, sin exponer el listado de QRs ni las estadísticas.
 - El PNG del QR (`/api/qr/[id]/png`) es público a propósito: sólo codifica la URL
-  `/r/[id]`, que ya es pública, y así Canva puede descargarlo.
+  la ruta pública del QR, y así Canva puede descargarlo.
 - Los exports y todo `/dashboard` requieren sesión.
 
 ## Estructura
