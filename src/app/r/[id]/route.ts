@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { parseQrId } from "@/lib/qr";
+import { publicConfig, resolveQr } from "@/lib/supabase/public-key";
 
 // Ruta caliente: la persona esta parada con el celular esperando.
 // Sin sesion, sin SDK, una sola llamada a Postgres que registra el scan
@@ -8,7 +9,7 @@ import { parseQrId } from "@/lib/qr";
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
-const NOT_FOUND_HTML = `<!doctype html>
+const SIN_DESTINO_HTML = `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QR sin destino</title>
@@ -24,51 +25,60 @@ const NOT_FOUND_HTML = `<!doctype html>
 <body><div><h1>Este QR todavía no tiene destino</h1>
 <p>Si sos el dueño de la placa, configuralo desde el panel.</p></div></body></html>`;
 
+/**
+ * A donde mandar a la persona cuando no pudimos resolver el QR: la base no
+ * contesta, o el numero no existe. Es la red de seguridad de toda placa ya
+ * impresa, asi que si esta configurada gana siempre por sobre la pagina de
+ * error: mas vale caer en el Instagram de TOQA que en un error del navegador.
+ */
+function fallbackUrl(): string | null {
+  const raw = process.env.QR_FALLBACK_URL?.trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: rawId } = await context.params;
   const id = parseQrId(rawId);
+  const config = publicConfig();
 
-  if (id === null) {
-    return notFound();
+  if (id === null || !config) {
+    return sinDestino();
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const userAgent = request.headers.get("user-agent") ?? null;
 
-  if (!supabaseUrl || !anonKey) {
-    return new NextResponse("Servicio no configurado", { status: 503 });
-  }
-
-  let destination: string | null = null;
-
-  try {
-    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/resolve_qr`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...publicKeyHeaders(anonKey),
-      },
-      body: JSON.stringify({
-        p_id: id,
-        p_user_agent: request.headers.get("user-agent") ?? null,
-      }),
-      cache: "no-store",
-    });
-
-    if (response.ok) {
-      const value: unknown = await response.json();
-      if (typeof value === "string" && value.length > 0) {
-        destination = value;
-      }
+  // Dos intentos: un corte de red o un 5xx pasajero de Supabase no puede
+  // costarnos un escaneo. El segundo intento no reintenta un "no existe":
+  // resolveQr solo lanza cuando la base no contesta.
+  //
+  // La excepcion es el timeout: si la base ya se colgo una vez, reintentar
+  // solo suma otra espera igual de larga, y del otro lado hay alguien parado
+  // con el celular. Ahi vamos derecho al respaldo.
+  for (let intento = 0; intento < 2; intento += 1) {
+    try {
+      const destination = await resolveQr(config, id, userAgent);
+      return destination ? redirigir(destination) : sinDestino();
+    } catch (error) {
+      if (intento === 0 && !esTimeout(error)) continue;
+      break;
     }
-  } catch {
-    // Se cae al 404 amable de abajo en vez de romper con un 500.
   }
 
-  if (!destination) {
-    return notFound();
-  }
+  return sinDestino();
+}
 
+function esTimeout(error: unknown): boolean {
+  const nombre = (error as { name?: string } | null)?.name;
+  return nombre === "TimeoutError" || nombre === "AbortError";
+}
+
+function redirigir(destination: string) {
   return NextResponse.redirect(destination, {
     status: 302,
     headers: { "Cache-Control": "no-store, max-age=0" },
@@ -76,23 +86,16 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 }
 
 /**
- * Supabase tiene dos formatos de clave publica y se mandan distinto.
- *
- * La vieja es un JWT (empieza con "eyJ") y va en los dos headers. La nueva
- * (sb_publishable_...) va SOLO en `apikey`: si va tambien como Bearer, la
- * plataforma intenta leerla como JWT y rechaza la llamada. Distinguirlas por
- * el prefijo evita depender de la compatibilidad hacia atras.
+ * Nunca devolvemos un error de navegador a alguien que escaneo una placa:
+ * o lo mandamos al destino de respaldo, o le mostramos una pagina explicando
+ * que pasa. El 404 sin respaldo se mantiene para que un monitor externo lo
+ * pueda detectar.
  */
-function publicKeyHeaders(key: string): Record<string, string> {
-  const headers: Record<string, string> = { apikey: key };
-  if (key.startsWith("eyJ")) {
-    headers.Authorization = `Bearer ${key}`;
-  }
-  return headers;
-}
+function sinDestino() {
+  const respaldo = fallbackUrl();
+  if (respaldo) return redirigir(respaldo);
 
-function notFound() {
-  return new NextResponse(NOT_FOUND_HTML, {
+  return new NextResponse(SIN_DESTINO_HTML, {
     status: 404,
     headers: {
       "Content-Type": "text/html; charset=utf-8",

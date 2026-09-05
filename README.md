@@ -51,6 +51,8 @@ Copiá `.env.example` a `.env.local` (local) o cargalas en Vercel
 | `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto de Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave pública `anon` |
 | `NEXT_PUBLIC_SITE_URL` | **El dominio final.** Es lo que queda impreso en las placas |
+| `QR_FALLBACK_URL` | Destino de respaldo cuando no se puede resolver un QR. Muy recomendada |
+| `CRON_SECRET` | Opcional. Si está, sólo Vercel puede disparar el keepalive |
 | `CANVA_CLIENT_ID` / `CANVA_CLIENT_SECRET` | Opcionales, sólo para la generación en Canva |
 | `CANVA_BRAND_TEMPLATE_ID` | Opcional, plantilla por defecto |
 
@@ -76,6 +78,60 @@ checklist de prueba y errores típicos: **[PROBAR.md](PROBAR.md)**.
    `NEXT_PUBLIC_SITE_URL` y **redesplegá**: las variables `NEXT_PUBLIC_*` se
    incrustan durante el build, así que cambiarlas sin volver a desplegar no
    tiene efecto.
+
+---
+
+## Que ninguna placa impresa quede muerta
+
+Una placa impresa no se puede corregir. Todo lo que sigue existe para que,
+pase lo que pase del lado del servicio, quien escanea nunca vea un error.
+
+### Destino de respaldo
+
+`QR_FALLBACK_URL` es la red de seguridad. Si está definida, `/r/[id]` redirige
+ahí en vez de mostrar una página de error cuando:
+
+- Supabase no contesta (caída, pausa por inactividad, corte de red).
+- El número escaneado no existe en la base.
+
+Poné algo siempre útil: el Instagram de TOQA, o una página propia que explique
+que la placa está en mantenimiento. Sin esta variable el comportamiento es el
+de antes: una página en castellano con un 404, que es prolija pero es un
+callejón sin salida para el que escaneó.
+
+### Reintento y tiempo de espera
+
+`/r/[id]` corta la consulta a Supabase a los 2,5 s. Si falla por error o por
+corte de red reintenta una vez; si fue por timeout **no** reintenta, porque una
+base colgada se vuelve a colgar y del otro lado hay alguien esperando. Peor
+caso medido: 2,5 s hasta el respaldo.
+
+### Keepalive diario
+
+El plan gratuito de Supabase pausa los proyectos que pasan varios días sin
+consultas, y una base pausada deja muertas todas las placas impresas hasta que
+alguien la despierta a mano.
+
+`vercel.json` programa `/api/cron/keepalive` una vez por día. Llama a
+`resolve_qr` con el id `0`, que no existe: la consulta corre de verdad contra
+Postgres (Supabase la cuenta como actividad) pero devuelve `null` y **no
+registra ningún escaneo**, así que no ensucia las estadísticas.
+
+Si definís `CRON_SECRET` en Vercel, la ruta exige
+`Authorization: Bearer <CRON_SECRET>`, que es lo que manda Vercel solo.
+
+### Chequeo de salud
+
+`GET /api/health` recorre el mismo camino que un escaneo real y devuelve `200`
+si la base responde o `503` si no. No expone claves, destinos ni números de QR.
+Apuntá ahí un monitor gratuito (UptimeRobot y similares) para enterarte por
+mail antes de que se queje un cliente.
+
+### Lo que sigue dependiendo de vos
+
+Ninguna de estas defensas cubre cambiar el nombre del proyecto en Vercel,
+borrarlo, o perder la cuenta: eso cambia la dirección impresa y no tiene
+arreglo. Ver la advertencia de `NEXT_PUBLIC_SITE_URL` más arriba.
 
 ---
 
