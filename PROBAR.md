@@ -92,7 +92,7 @@ Entrá a tu dirección e iniciá sesión con el usuario del paso 3. Después:
 
 | Qué hacer | Qué tiene que pasar |
 |---|---|
-| **Nuevo QR / lote** → cantidad 5, etiqueta `Mesa`, destino `https://instagram.com/tucuenta` | Aparecen los números `0001` a `0005` |
+| **Nuevo QR / lote** → cantidad 5, etiqueta `Mesa`, destino `https://www.instagram.com/toqa.nfc/` | Aparecen los números `0001` a `0005` |
 | En la fila `0001`, tocá **Copiar** y pegá esa dirección en otra pestaña | Te lleva a Instagram |
 | Volvé al panel y refrescá | La columna **Escaneos** de `0001` ahora dice `1` |
 | Entrá a `0001`, cambiá el destino a otra página y guardá. Volvé a abrir **la misma dirección de antes** | Ahora te lleva al destino nuevo. **Esto es lo importante: el QR no cambió, sólo a dónde apunta.** |
@@ -115,7 +115,7 @@ mantenerse **idénticos**.
 
    | numero | destino_actual | label |
    |---|---|---|
-   | 0001 | https://instagram.com/toqa | Mesa 1 |
+   | 0001 | https://www.instagram.com/toqa.nfc/ | Mesa 1 |
 
 3. En el panel: **Importar CSV** → subila.
 4. Verificá que los números quedaron **exactamente iguales** a los de las placas.

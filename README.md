@@ -146,7 +146,7 @@ URLs con números concretos, así que los IDs se tienen que conservar.**
 
    ```csv
    numero,destino_actual,label
-   0001,https://instagram.com/toqa,Mesa 1
+   0001,https://www.instagram.com/toqa.nfc/,Mesa 1
    ```
 
    También se aceptan `id` / `qr_code` para el número y
