@@ -1,8 +1,10 @@
+import { chequeosPreImprenta, urlDeMuestra } from "@/lib/pre-imprenta";
 import { listDesigns } from "@/lib/placa-designs";
 import { siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
 
 import { PlacaStudio, type Design } from "./PlacaStudio";
+import { PreImprenta } from "./PreImprenta";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,11 @@ export default async function PlacaPage() {
           va el QR. Después pedís 100 placas y salen con un QR dinámico distinto cada una.
         </p>
       </div>
+
+      <PreImprenta
+        chequeos={chequeosPreImprenta({ cantidadDisenos: designs.length })}
+        urlMuestra={urlDeMuestra()}
+      />
 
       <PlacaStudio initialDesigns={designs} defaultDestination={`${siteUrl()}/`} />
     </div>
