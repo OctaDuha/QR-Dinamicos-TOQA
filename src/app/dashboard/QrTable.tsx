@@ -213,8 +213,7 @@ export function QrTable({
                   <Td>
                     <Link
                       href={`/dashboard/qr/${code.id}`}
-                      className="font-mono font-semibold no-underline"
-                      style={{ color: "var(--accent)" }}
+                      className="numero-placa font-mono font-semibold no-underline hover:underline"
                     >
                       {formatQrCode(code.id)}
                     </Link>

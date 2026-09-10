@@ -1,56 +1,81 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------
-   Tokens. Los valores dark son un juego elegido para la superficie
-   oscura, no una inversion automatica.
+   Tokens de marca TOQA.
+   Azul #223f84 (principal) y naranja #fa8632 (secundario). Los grises
+   estan teñidos con el azul en vez de ser neutros puros, para que el
+   panel no se lea como una hoja en blanco. Los valores dark son un juego
+   elegido para la superficie oscura, no una inversion automatica.
    --------------------------------------------------------------- */
 :root {
   color-scheme: light;
 
-  --surface-0: #f4f3f0;
-  --surface-1: #fcfcfb;
-  --surface-2: #f0efec;
-  --line: #e2e0da;
-  --line-strong: #cfccc3;
+  --surface-0: #e9ecf4;
+  --surface-1: #fafbfe;
+  --surface-2: #dfe4f0;
+  --line: #ccd4e6;
+  --line-strong: #aab7d3;
 
-  --ink-1: #0b0b0b;
-  --ink-2: #52514e;
-  --ink-3: #7d7b75;
+  --ink-1: #101728;
+  --ink-2: #465069;
+  --ink-3: #737d99;
 
-  --accent: #2a78d6;
+  --accent: #223f84;
   --accent-ink: #ffffff;
-  --accent-soft: #eaf2fd;
+  --accent-soft: #dde5f6;
 
-  --good: #1baf7a;
-  --danger: #e34948;
-  --danger-soft: #fdecec;
+  /* Secundario: se usa con cuentagotas, para lo que identifica una placa
+     (el numero) y el punto de la marca. No compite con el rojo de peligro. */
+  --brand-2: #fa8632;
+  --brand-2-soft: #ffe6d2;
+  --brand-2-ink: #8a4406;
 
-  --series-1: #2a78d6;
+  --header: #223f84;
+  --header-ink: #ffffff;
+  --header-ink-2: #b9c6e6;
+  --header-line: #35528f;
+
+  --good: #1a9c74;
+  --danger: #c8332b;
+  --danger-soft: #fbe4e2;
+
+  --series-1: #fa8632;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
 
-    --surface-0: #121211;
-    --surface-1: #1a1a19;
-    --surface-2: #232322;
-    --line: #33332f;
-    --line-strong: #4a4a45;
+    --surface-0: #0e1322;
+    --surface-1: #161d30;
+    --surface-2: #1f2840;
+    --line: #2c3653;
+    --line-strong: #3f4a6b;
 
-    --ink-1: #ffffff;
-    --ink-2: #c3c2b7;
-    --ink-3: #918f86;
+    --ink-1: #eef1f8;
+    --ink-2: #b0b9cf;
+    --ink-3: #7d879f;
 
-    --accent: #3987e5;
-    --accent-ink: #ffffff;
-    --accent-soft: #17253a;
+    /* Sobre fondo oscuro el azul de marca no contrasta: se aclara, y el
+       texto del boton pasa a ser oscuro. */
+    --accent: #7ea6ee;
+    --accent-ink: #0d1424;
+    --accent-soft: #1b2440;
 
-    --good: #199e70;
-    --danger: #e66767;
-    --danger-soft: #37201f;
+    --brand-2: #fb9a56;
+    --brand-2-soft: #3a2413;
+    --brand-2-ink: #ffcfa8;
 
-    --series-1: #3987e5;
+    --header: #16233f;
+    --header-ink: #ffffff;
+    --header-ink-2: #98a7c9;
+    --header-line: #27375c;
+
+    --good: #37b28c;
+    --danger: #ef7168;
+    --danger-soft: #3a201e;
+
+    --series-1: #fb9a56;
   }
 }
 
@@ -70,6 +95,9 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-series-1: var(--series-1);
+  --color-brand-2: var(--brand-2);
+  --color-brand-2-soft: var(--brand-2-soft);
+  --color-brand-2-ink: var(--brand-2-ink);
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
@@ -178,6 +206,90 @@ body {
   font-weight: 600;
   background: var(--surface-2);
   color: var(--ink-2);
+}
+
+/* Accion destructiva de la barra: discreta hasta que la vas a usar. */
+.btn-peligro-sutil {
+  background: transparent;
+  color: var(--ink-3);
+}
+.btn-peligro-sutil:hover:not(:disabled) {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ------------------------- barra de marca ------------------------- */
+
+.marca-barra {
+  background: var(--header);
+  border-bottom: 1px solid var(--header-line);
+}
+
+.marca-logo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+.marca-nombre {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--header-ink);
+}
+/* El punto naranja es la unica pieza de color de la barra: hace de firma
+   sin agregar ruido. */
+.marca-punto {
+  color: var(--brand-2);
+  font-weight: 700;
+}
+.marca-sub {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--header-ink-2);
+}
+
+.nav-link {
+  position: relative;
+  border-radius: 8px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.875rem;
+  font-weight: 550;
+  color: var(--header-ink-2);
+  text-decoration: none;
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+.nav-link:hover {
+  color: var(--header-ink);
+  background: rgb(255 255 255 / 0.08);
+}
+.nav-link[aria-current="page"] {
+  color: var(--header-ink);
+  background: rgb(255 255 255 / 0.1);
+}
+.nav-link[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: -0.62rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--brand-2);
+}
+.nav-link:focus-visible {
+  outline: 2px solid var(--brand-2);
+  outline-offset: 2px;
+}
+
+/* Numero de placa: es lo que identifica cada una, va en el secundario. */
+.numero-placa {
+  color: var(--brand-2);
+}
+
+.chip-marca {
+  background: var(--brand-2-soft);
+  color: var(--brand-2-ink);
 }
 
 a {

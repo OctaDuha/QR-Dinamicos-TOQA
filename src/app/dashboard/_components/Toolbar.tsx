@@ -46,10 +46,9 @@ export function Toolbar({
         </a>
         <button
           type="button"
-          className="btn btn-ghost text-xs"
+          className="btn btn-peligro-sutil text-xs"
           onClick={() => toggle("borrar")}
           aria-expanded={panel === "borrar"}
-          style={{ color: "var(--danger)" }}
         >
           Borrar por número
         </button>

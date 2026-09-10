@@ -74,7 +74,8 @@ export default async function QrDetailPage({
         </Link>
         <div className="mt-2 flex flex-wrap items-baseline gap-3">
           <h1 className="font-mono text-2xl font-semibold tracking-tight">
-            #{formatQrCode(code.id)}
+            <span className="text-ink-3">#</span>
+            <span className="numero-placa">{formatQrCode(code.id)}</span>
           </h1>
           {code.label ? <span className="chip">{code.label}</span> : null}
         </div>

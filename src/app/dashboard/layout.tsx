@@ -1,34 +1,24 @@
 import Link from "next/link";
 
 import { logout } from "../login/actions";
+import { NavLinks } from "./_components/NavLinks";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
-      <header
-        className="sticky top-0 z-10 border-b"
-        style={{ background: "var(--surface-1)", borderColor: "var(--line)" }}
-      >
+      <header className="marca-barra sticky top-0 z-10">
         <div className="mx-auto flex max-w-6xl items-center gap-5 px-5 py-3">
-          <Link href="/dashboard" className="flex items-baseline gap-2 no-underline">
-            <span className="text-xs font-bold tracking-[0.22em] text-ink-3 uppercase">TOQA</span>
-            <span className="text-sm font-semibold">QR dinámicos</span>
+          <Link href="/dashboard" className="marca-logo">
+            <span className="marca-nombre">
+              TOQA<span className="marca-punto">.</span>
+            </span>
+            <span className="marca-sub">QR dinámicos</span>
           </Link>
 
-          <nav className="flex items-center gap-1 text-sm">
-            <Link href="/dashboard" className="btn btn-ghost">
-              QRs
-            </Link>
-            <Link href="/dashboard/placa" className="btn btn-ghost">
-              Placas
-            </Link>
-            <Link href="/dashboard/canva" className="btn btn-ghost">
-              Canva
-            </Link>
-          </nav>
+          <NavLinks />
 
           <form action={logout} className="ml-auto">
-            <button type="submit" className="btn btn-ghost">
+            <button type="submit" className="nav-link" style={{ border: 0, background: "transparent", cursor: "pointer" }}>
               Salir
             </button>
           </form>
