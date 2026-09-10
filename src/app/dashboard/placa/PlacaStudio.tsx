@@ -557,7 +557,7 @@ function DesignEditor({
           <div className="flex items-end gap-2">
             <div className="flex-1">
               <label className="label" htmlFor="previewId">
-                Previsualizar el QR nº
+                Muestra con el nº
               </label>
               <input
                 id="previewId"
@@ -571,6 +571,12 @@ function DesignEditor({
               Refrescar
             </button>
           </div>
+
+          <p className="text-xs text-ink-3">
+            Esto es sólo una simulación para ver dónde cae el QR en el diseño, y por eso arranca
+            siempre en el mismo número. Las placas de verdad llevan cada una un número distinto, que
+            no se repite nunca ni entre diseños.
+          </p>
 
           <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>
             Guardar

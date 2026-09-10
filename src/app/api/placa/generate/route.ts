@@ -115,6 +115,52 @@ async function generar({
     );
   }
 
+  // Un numero de placa se imprime con UN diseno y con ninguno mas. Si ya
+  // salio impreso como Google, no puede volver a salir como Instagram: en la
+  // calle habria dos placas distintas con el mismo QR, apuntando las dos al
+  // mismo destino. Como el numero va impreso, eso no se arregla despues.
+  if (forced) {
+    const ajenos = codes.filter(
+      (code) => typeof code.design_id === "number" && code.design_id !== forced.id,
+    );
+
+    if (ajenos.length > 0) {
+      const nombres = await loadDesigns(
+        supabase,
+        ajenos.map((code) => code.design_id as number),
+      );
+      const detalle = ajenos
+        .slice(0, 10)
+        .map((code) => `${formatQrCode(code.id)} (${nombres.get(code.design_id as number)?.name ?? "otro diseño"})`)
+        .join(", ");
+
+      return new NextResponse(
+        `No puedo imprimir estos QR con el diseño “${forced.name}”: ya están asignados a otro diseño. ` +
+          `${detalle}${ajenos.length > 10 ? ` y ${ajenos.length - 10} más` : ""}. ` +
+          "Cada número se imprime con un solo diseño, para siempre. " +
+          "Si querés placas nuevas de este diseño, creá QR nuevos en vez de reusar estos.",
+        { status: 409 },
+      );
+    }
+
+    // Los que todavia no tenian diseno quedan atados a este, para que la
+    // proxima vez el control de arriba los proteja.
+    const libres = codes.filter((code) => code.design_id === null).map((code) => code.id);
+    if (libres.length > 0) {
+      const { error: errorAsignar } = await supabase
+        .from("qr_codes")
+        .update({ design_id: forced.id })
+        .in("id", libres);
+
+      if (errorAsignar) {
+        return new NextResponse(
+          `No pude reservar esos números para el diseño “${forced.name}”: ${errorAsignar.message}`,
+          { status: 500 },
+        );
+      }
+    }
+  }
+
   const byId = forced
     ? new Map()
     : await loadDesigns(

@@ -53,9 +53,10 @@ export function PlacaCard({
       });
       if (response.ok) {
         setAsignado(Number(designId));
-        setNota(`Listo: este QR queda guardado con el diseño “${design?.name ?? ""}”.`);
+        setNota(`Listo: este QR queda guardado con el diseño “${design?.name ?? ""}”, para siempre.`);
       } else {
-        setNota("No pude guardar el diseño.");
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        setNota(payload.error ?? "No pude guardar el diseño.");
       }
     } finally {
       setBusy(false);
@@ -98,8 +99,8 @@ export function PlacaCard({
           <h2 className="text-sm font-semibold">Placa para imprenta</h2>
           <p className="mt-1 text-xs text-ink-3">
             {guardado
-              ? "El diseño con este QR ya puesto, tal cual sale impreso."
-              : "Este QR todavía no tiene un diseño guardado: elegí uno y guardalo para que salga solo en los lotes."}
+              ? "El diseño con este QR ya puesto, tal cual sale impreso. Queda atado a este diseño: el mismo número no puede salir en dos placas distintas."
+              : "Este QR todavía no tiene diseño. Elegí uno y guardalo: una vez guardado no se cambia, porque el número va impreso."}
           </p>
         </div>
 
@@ -113,7 +114,7 @@ export function PlacaCard({
               className="input"
               value={designId}
               onChange={(event) => setDesignId(event.target.value)}
-              disabled={busy}
+              disabled={busy || asignado !== null}
             >
               {designs.map((d) => (
                 <option key={d.id} value={d.id}>
