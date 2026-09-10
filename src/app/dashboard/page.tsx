@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { QrCodeWithStats } from "@/lib/types";
 
 import { QrTable } from "./QrTable";
+import { EstadoRespaldo } from "./_components/EstadoRespaldo";
 import { Toolbar } from "./_components/Toolbar";
 
 const PAGE_SIZE = 50;
@@ -64,6 +65,8 @@ export default async function DashboardPage({
       </div>
 
       <Toolbar defaultDestination={`${base}/`} designs={designs.map((d) => ({ id: d.id, name: d.name }))} />
+
+      <EstadoRespaldo />
 
       <form className="flex gap-2" action="/dashboard">
         <input

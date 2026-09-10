@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
+import { respaldarDespues } from "@/lib/respaldo-auto";
 import { parseQrId } from "@/lib/qr";
 
 export const runtime = "nodejs";
@@ -45,6 +46,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  respaldarDespues(supabase);
 
   return NextResponse.json({ ok: true });
 }

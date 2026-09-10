@@ -3,6 +3,7 @@ import JSZip from "jszip";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
+import { respaldarDespues } from "@/lib/respaldo-auto";
 import { fetchQrCodes, readRange } from "@/lib/export-query";
 import { placaFileName, renderPlacas, type PlacaItem } from "@/lib/placa";
 import { loadDesign, loadDesigns } from "@/lib/placa-designs";
@@ -158,6 +159,10 @@ async function generar({
           { status: 500 },
         );
       }
+
+      // Quedaron atados a un diseño: eso es parte de lo que hay que poder
+      // reconstruir si se pierde la base.
+      respaldarDespues(supabase);
     }
   }
 

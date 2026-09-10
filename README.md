@@ -129,6 +129,27 @@ para que una placa funcione.
 Bajalo cada vez que crees un lote o cambies destinos, y guardalo fuera de la
 computadora (mail, Drive, lo que sea).
 
+### Copia automática
+
+Con `BLOB_READ_WRITE_TOKEN` configurada, el mismo CSV se guarda solo en el
+almacén de archivos de Vercel **cada vez que la lista cambia**: crear QR o un
+lote, editar un destino, importar, borrar, o atar un QR a un diseño. Corre
+después de contestarle a la persona (`after()` de Next), así que no demora
+ninguna operación, y si falla no rompe la operación que la disparó.
+
+El panel muestra cuándo fue la última copia, con un botón para forzar una.
+Eso es lo que evita el peor defecto de un respaldo automático: fallar en
+silencio durante meses mientras creés que estás cubierto. Si la copia tiene
+más de 30 días, la fecha aparece en rojo.
+
+Sin la variable todo esto queda inerte y el panel dice que el respaldo
+automático no está configurado.
+
+**Lo que cubre y lo que no:** vive en la cuenta de Vercel, así que te protege
+del escenario probable —perder la base de Supabase— pero no de perder la
+cuenta de Vercel. Para eso sigue haciendo falta bajar el CSV a mano cada
+tanto y guardarlo en otro lado.
+
 ---
 
 ## Que ninguna placa impresa quede muerta

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { parseCsv } from "@/lib/csv";
 import { formatQrCode, normalizeDestination, parseQrId } from "@/lib/qr";
 import type { ActionState } from "@/lib/action-state";
+import { respaldarDespues } from "@/lib/respaldo-auto";
 import { createClient } from "@/lib/supabase/server";
 
 const MAX_BATCH = 2000;
@@ -57,6 +58,7 @@ export async function createQrCodes(_prev: ActionState, formData: FormData): Pro
     }
   }
 
+  respaldarDespues(supabase);
   revalidatePath("/dashboard");
 
   const range =
@@ -90,6 +92,7 @@ export async function updateQrCode(_prev: ActionState, formData: FormData): Prom
     return { ok: false, message: `No se pudo guardar: ${error.message}` };
   }
 
+  respaldarDespues(supabase);
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/qr/${id}`);
   return { ok: true, message: "Destino actualizado." };
@@ -109,6 +112,7 @@ export async function deleteQrCode(_prev: ActionState, formData: FormData): Prom
     return { ok: false, message: `No se pudo borrar: ${error.message}` };
   }
 
+  respaldarDespues(supabase);
   revalidatePath("/dashboard");
   redirect("/dashboard");
 }
@@ -230,6 +234,7 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
     };
   }
 
+  respaldarDespues(supabase);
   revalidatePath("/dashboard");
 
   const skipped = problems.length

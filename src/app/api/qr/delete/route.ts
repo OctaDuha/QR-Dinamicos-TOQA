@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
+import { respaldarDespues } from "@/lib/respaldo-auto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -96,6 +97,8 @@ export async function POST(request: NextRequest) {
   if (errorBorrar) {
     return NextResponse.json({ error: errorBorrar.message }, { status: 500 });
   }
+
+  respaldarDespues(supabase);
 
   return NextResponse.json({ ...resumen, borrados: encontrados.length });
 }

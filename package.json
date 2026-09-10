@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.6",
     "@supabase/supabase-js": "^2.115.0",
+    "@vercel/blob": "^2.8.0",
     "jsqr": "^1.4.0",
     "jszip": "^3.10.1",
     "next": "^15.5.25",

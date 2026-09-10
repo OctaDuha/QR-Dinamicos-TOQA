@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
+import { respaldarDespues } from "@/lib/respaldo-auto";
 import { placaFileName, renderPlacas, type PlacaItem } from "@/lib/placa";
 import { loadDesign } from "@/lib/placa-designs";
 import { formatQrCode, normalizeDestination, siteUrl } from "@/lib/qr";
@@ -89,6 +90,8 @@ export async function POST(request: NextRequest) {
       })),
     );
   }
+
+  respaldarDespues(supabase);
 
   // 2. Generar las placas de esos QR, con el diseño elegido.
   const base = siteUrl();
