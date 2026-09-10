@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { detectQrInPdf } from "@/lib/detect-qr";
@@ -27,6 +28,7 @@ export function PlacaStudio({
   initialDesigns: Design[];
   defaultDestination: string;
 }) {
+  const router = useRouter();
   const [designs, setDesigns] = useState(initialDesigns);
   const [selectedId, setSelectedId] = useState<number | null>(initialDesigns[0]?.id ?? null);
   const [note, setNote] = useState<Note>(null);
@@ -47,6 +49,9 @@ export function PlacaStudio({
         onCreated={(design) => {
           setDesigns((list) => [...list, design]);
           setSelectedId(design.id);
+          // El cartel de "antes de imprimir" lo arma el servidor: sin esto
+          // seguiria diciendo que no hay ningun diseño cargado.
+          router.refresh();
         }}
         onDetected={patchDesign}
       />
@@ -85,6 +90,7 @@ export function PlacaStudio({
           onRenamed={(name) => patchDesign(selected.id, { name })}
           onDeleted={() => {
             setDesigns((list) => list.filter((d) => d.id !== selected.id));
+            router.refresh();
             setSelectedId((current) =>
               current === selected.id ? (designs.find((d) => d.id !== selected.id)?.id ?? null) : current,
             );

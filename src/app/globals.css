@@ -2,81 +2,48 @@
 
 /* ---------------------------------------------------------------
    Tokens de marca TOQA.
-   Azul #223f84 (principal) y naranja #fa8632 (secundario). Los grises
-   estan teñidos con el azul en vez de ser neutros puros, para que el
-   panel no se lea como una hoja en blanco. Los valores dark son un juego
-   elegido para la superficie oscura, no una inversion automatica.
+   Azul #223f84 (principal) y naranja #fa8632 (secundario). El panel es
+   oscuro siempre, por decision de diseño y no por la preferencia del
+   sistema: es una herramienta de trabajo, y asi se ve igual en cualquier
+   maquina desde la que entres.
+
+   Sobre fondo oscuro el azul de marca no contrasta, asi que el acento es
+   una version aclarada de la misma familia y el texto de los botones va
+   oscuro. El azul original queda en la barra de marca, donde si funciona.
    --------------------------------------------------------------- */
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --surface-0: #e9ecf4;
-  --surface-1: #fafbfe;
-  --surface-2: #dfe4f0;
-  --line: #ccd4e6;
-  --line-strong: #aab7d3;
+  --surface-0: #0e1322;
+  --surface-1: #161d30;
+  --surface-2: #1f2840;
+  --line: #2c3653;
+  --line-strong: #3f4a6b;
 
-  --ink-1: #101728;
-  --ink-2: #465069;
-  --ink-3: #737d99;
+  --ink-1: #eef1f8;
+  --ink-2: #b0b9cf;
+  --ink-3: #7d879f;
 
-  --accent: #223f84;
-  --accent-ink: #ffffff;
-  --accent-soft: #dde5f6;
+  --accent: #7ea6ee;
+  --accent-ink: #0d1424;
+  --accent-soft: #1b2440;
 
   /* Secundario: se usa con cuentagotas, para lo que identifica una placa
      (el numero) y el punto de la marca. No compite con el rojo de peligro. */
-  --brand-2: #fa8632;
-  --brand-2-soft: #ffe6d2;
-  --brand-2-ink: #8a4406;
+  --brand-2: #fb9a56;
+  --brand-2-soft: #3a2413;
+  --brand-2-ink: #ffcfa8;
 
-  --header: #223f84;
+  --header: #16233f;
   --header-ink: #ffffff;
-  --header-ink-2: #b9c6e6;
-  --header-line: #35528f;
+  --header-ink-2: #98a7c9;
+  --header-line: #27375c;
 
-  --good: #1a9c74;
-  --danger: #c8332b;
-  --danger-soft: #fbe4e2;
+  --good: #37b28c;
+  --danger: #ef7168;
+  --danger-soft: #3a201e;
 
-  --series-1: #fa8632;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-
-    --surface-0: #0e1322;
-    --surface-1: #161d30;
-    --surface-2: #1f2840;
-    --line: #2c3653;
-    --line-strong: #3f4a6b;
-
-    --ink-1: #eef1f8;
-    --ink-2: #b0b9cf;
-    --ink-3: #7d879f;
-
-    /* Sobre fondo oscuro el azul de marca no contrasta: se aclara, y el
-       texto del boton pasa a ser oscuro. */
-    --accent: #7ea6ee;
-    --accent-ink: #0d1424;
-    --accent-soft: #1b2440;
-
-    --brand-2: #fb9a56;
-    --brand-2-soft: #3a2413;
-    --brand-2-ink: #ffcfa8;
-
-    --header: #16233f;
-    --header-ink: #ffffff;
-    --header-ink-2: #98a7c9;
-    --header-line: #27375c;
-
-    --good: #37b28c;
-    --danger: #ef7168;
-    --danger-soft: #3a201e;
-
-    --series-1: #fb9a56;
-  }
+  --series-1: #fb9a56;
 }
 
 @theme inline {

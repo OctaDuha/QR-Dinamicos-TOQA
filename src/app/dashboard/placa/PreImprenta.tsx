@@ -39,7 +39,7 @@ export function PreImprenta({ chequeos, urlMuestra }: { chequeos: Chequeo[]; url
               className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold"
               style={{
                 background: chequeo.ok ? "var(--accent)" : "var(--danger)",
-                color: "#fff",
+                color: "var(--surface-0)",
               }}
             >
               {chequeo.ok ? "✓" : "!"}
