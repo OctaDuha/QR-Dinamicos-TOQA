@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 
+import { BorrarRangoForm } from "./BorrarRangoForm";
 import { ImportCsvForm } from "./ImportCsvForm";
 import { NewQrForm, type DesignOption } from "./NewQrForm";
 
-type Panel = "new" | "import" | null;
+type Panel = "new" | "import" | "borrar" | null;
 
 export function Toolbar({
   defaultDestination,
@@ -43,6 +44,15 @@ export function Toolbar({
         <a className="btn btn-ghost" href="/api/export/csv">
           Solo CSV
         </a>
+        <button
+          type="button"
+          className="btn btn-ghost text-xs"
+          onClick={() => toggle("borrar")}
+          aria-expanded={panel === "borrar"}
+          style={{ color: "var(--danger)" }}
+        >
+          Borrar por número
+        </button>
       </div>
 
       {panel === "new" ? (
@@ -54,6 +64,12 @@ export function Toolbar({
       {panel === "import" ? (
         <div className="card p-5">
           <ImportCsvForm />
+        </div>
+      ) : null}
+
+      {panel === "borrar" ? (
+        <div className="card p-5">
+          <BorrarRangoForm />
         </div>
       ) : null}
     </div>

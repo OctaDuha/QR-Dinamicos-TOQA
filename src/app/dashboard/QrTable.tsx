@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { borrarConAviso } from "@/lib/borrar-qr";
 import { formatQrCode, qrTargetUrl } from "@/lib/qr";
 import type { QrCodeWithStats } from "@/lib/types";
 
@@ -24,6 +26,7 @@ export function QrTable({
   base: string;
   designs: DesignOption[];
 }) {
+  const router = useRouter();
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   const [design, setDesign] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,6 +52,23 @@ export function QrTable({
       }
       return new Set([...prev, ...codes.map((c) => c.id)]);
     });
+
+  const borrar = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const resultado = await borrarConAviso({ ids: seleccion }, formatQrCode);
+      if (!resultado) return;
+      if (resultado.error) {
+        setError(resultado.error);
+        return;
+      }
+      setMarcados(new Set());
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const descargar = async (zip: boolean) => {
     setBusy(true);
@@ -126,6 +146,14 @@ export function QrTable({
           </button>
           <button type="button" className="btn btn-ghost text-xs" onClick={() => setMarcados(new Set())}>
             Desmarcar todo
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger text-xs"
+            onClick={borrar}
+            disabled={busy}
+          >
+            Borrar los marcados
           </button>
         </div>
       ) : null}
