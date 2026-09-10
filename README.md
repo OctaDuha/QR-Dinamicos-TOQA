@@ -140,7 +140,11 @@ ninguna operación, y si falla no rompe la operación que la disparó.
 El panel muestra cuándo fue la última copia, con un botón para forzar una.
 Eso es lo que evita el peor defecto de un respaldo automático: fallar en
 silencio durante meses mientras creés que estás cubierto. Si la copia tiene
-más de 30 días, la fecha aparece en rojo.
+más de 7 días, la fecha aparece en rojo.
+
+Ojo con lo que significa ese rojo: como la copia se guarda cuando la lista
+cambia, "vieja" puede ser simplemente que no tocaste nada en una semana. Lo
+preocupante es que esté vieja **y** hayas cambiado algo después.
 
 Sin la variable todo esto queda inerte y el panel dice que el respaldo
 automático no está configurado.

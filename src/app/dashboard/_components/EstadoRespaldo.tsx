@@ -50,7 +50,11 @@ export function EstadoRespaldo() {
     );
   }
 
-  const vieja = estado.fecha ? diasDesde(estado.fecha) >= 30 : true;
+  // A los 7 dias la fecha se pone en rojo. Ojo con lo que significa: la copia
+  // se guarda cuando la lista cambia, asi que "vieja" puede ser simplemente
+  // que no tocaste nada en una semana. Lo que hay que mirar es si cambiaste
+  // algo despues de esa fecha.
+  const vieja = estado.fecha ? diasDesde(estado.fecha) >= 7 : true;
 
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs">
@@ -58,6 +62,7 @@ export function EstadoRespaldo() {
         {estado.fecha
           ? `Última copia de seguridad: ${describir(estado.fecha)}`
           : "Todavía no se guardó ninguna copia"}
+        {vieja && estado.fecha ? " · si cambiaste algo desde entonces, guardá una ahora" : ""}
       </span>
       <button
         type="button"
