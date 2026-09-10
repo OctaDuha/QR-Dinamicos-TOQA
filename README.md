@@ -110,6 +110,27 @@ la red de seguridad es para placas impresas, no para errores de tipeo.
 
 ---
 
+## Copia de respaldo
+
+El plan gratuito de Supabase no incluye copias automáticas. Si la base se
+pierde —borrado accidental, cuenta perdida— **todas las placas impresas quedan
+muertas aunque el dominio siga andando**: el número de la placa ya no tiene a
+dónde redirigir.
+
+El CSV que baja **Solo CSV** (o el que viene dentro del ZIP) es la copia:
+lleva número, etiqueta, destino y diseño, y se vuelve a importar desde
+*Importar CSV* reconstruyendo todo con los mismos números. Verificado el ciclo
+entero: exportar 17 QR, borrar la base, importar el CSV y recuperar los 17 con
+su etiqueta, su destino y su diseño.
+
+Lo único que no vuelve son las estadísticas de escaneos, que no hacen falta
+para que una placa funcione.
+
+Bajalo cada vez que crees un lote o cambies destinos, y guardalo fuera de la
+computadora (mail, Drive, lo que sea).
+
+---
+
 ## Que ninguna placa impresa quede muerta
 
 Una placa impresa no se puede corregir. Todo lo que sigue existe para que,

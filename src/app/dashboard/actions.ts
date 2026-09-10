@@ -144,6 +144,7 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
     "destination",
   ]);
   const labelCol = findColumn(header, ["label", "etiqueta", "nombre", "cliente"]);
+  const designCol = findColumn(header, ["diseno", "diseño", "design", "modelo"]);
 
   if (idCol === -1 || destCol === -1) {
     return {
@@ -153,7 +154,13 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
     };
   }
 
-  const records: { id: number; destination_url: string; label: string | null }[] = [];
+  const records: {
+    id: number;
+    destination_url: string;
+    label: string | null;
+    design_id?: number | null;
+  }[] = [];
+  const nombresDeDiseno = new Map<number, string>();
   const problems: string[] = [];
 
   for (let i = 1; i < rows.length; i++) {
@@ -175,6 +182,11 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
       destination_url: destination,
       label: labelCol === -1 ? null : (row[labelCol] ?? "").trim() || null,
     });
+
+    if (designCol !== -1) {
+      const nombre = (row[designCol] ?? "").trim().toLowerCase();
+      if (nombre) nombresDeDiseno.set(id, nombre);
+    }
   }
 
   if (records.length === 0) {
@@ -182,6 +194,23 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
   }
 
   const supabase = await createClient();
+
+  // El CSV trae el diseño por nombre, no por número: se resuelve contra los
+  // que existan hoy. Si el diseño ya no está, el QR se importa sin diseño en
+  // vez de fallar; lo importante es no perder el destino.
+  if (designCol !== -1) {
+    const { data: disenos } = await supabase.from("placa_designs").select("id, name");
+    const porNombre = new Map(
+      (disenos ?? []).map((row) => [
+        String((row as { name: string }).name).trim().toLowerCase(),
+        (row as { id: number }).id,
+      ]),
+    );
+    for (const registro of records) {
+      const nombre = nombresDeDiseno.get(registro.id);
+      registro.design_id = nombre ? (porNombre.get(nombre) ?? null) : null;
+    }
+  }
 
   for (let i = 0; i < records.length; i += 500) {
     const { error } = await supabase

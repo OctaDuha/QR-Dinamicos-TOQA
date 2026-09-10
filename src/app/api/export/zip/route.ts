@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import { NextResponse } from "next/server";
 
 import { exportCsv, pngFileName } from "@/lib/export";
+import { designNames } from "@/lib/placa-designs";
 import { fetchQrCodes, readRange } from "@/lib/export-query";
 import { qrPngBuffer, siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
     folder.file(pngFileName(code.id), await qrPngBuffer(code.id, base, ZIP_PNG_WIDTH));
   }
 
-  zip.file("qrs.csv", exportCsv(codes, base));
+  zip.file("qrs.csv", exportCsv(codes, base, await designNames(supabase)));
   zip.file(
     "LEEME.txt",
     [

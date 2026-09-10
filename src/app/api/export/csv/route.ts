@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { exportCsv } from "@/lib/export";
+import { designNames } from "@/lib/placa-designs";
 import { fetchQrCodes, readRange } from "@/lib/export-query";
 import { siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
     return new NextResponse(`Error al leer los QR: ${(error as Error).message}`, { status: 500 });
   }
 
-  const csv = exportCsv(codes, siteUrl());
+  const csv = exportCsv(codes, siteUrl(), await designNames(supabase));
   const stamp = new Date().toISOString().slice(0, 10);
 
   return new NextResponse(csv, {

@@ -82,3 +82,9 @@ export const FALLBACK_DESIGN: LoadedDesign = {
   layout: DEFAULT_LAYOUT,
   backgroundPdf: null,
 };
+
+/** Nombres de todos los diseños, para las planillas de exportacion. */
+export async function designNames(supabase: SupabaseClient): Promise<Map<number, string>> {
+  const { data } = await supabase.from("placa_designs").select("id, name");
+  return new Map((data ?? []).map((row) => [(row as { id: number }).id, (row as { name: string }).name]));
+}
