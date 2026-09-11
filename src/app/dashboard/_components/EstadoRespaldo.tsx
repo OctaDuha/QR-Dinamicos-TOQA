@@ -44,18 +44,6 @@ export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
 
   if (!estado) return null;
 
-  // Con la lista vacia no hay nada que guardar, y el respaldo no pisa la
-  // copia anterior con un archivo vacio. Sin esta aclaracion pareceria que
-  // el respaldo no funciona.
-  if (estado.configurado && !hayQrs && !estado.fecha) {
-    return (
-      <p className="text-xs text-ink-3">
-        Respaldo automático listo. Todavía no hay QR para guardar: la primera copia se hace sola
-        cuando crees el primer lote.
-      </p>
-    );
-  }
-
   if (!estado.configurado) {
     const claves = estado.clavesVisibles ?? [];
     return (
@@ -94,6 +82,21 @@ export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
       </div>
     );
   }
+
+  // Se comprueba DESPUES del error: si la clave del almacen estuviera mal,
+  // decir "listo" por tener la lista vacia taparia el problema.
+  // Con la lista vacia no hay nada que guardar, y el respaldo no pisa la
+  // copia anterior con un archivo vacio. Sin esta aclaracion pareceria que
+  // el respaldo no funciona.
+  if (estado.configurado && !hayQrs && !estado.fecha) {
+    return (
+      <p className="text-xs text-ink-3">
+        Respaldo automático listo. Todavía no hay QR para guardar: la primera copia se hace sola
+        cuando crees el primer lote.
+      </p>
+    );
+  }
+
 
   // A los 7 dias la fecha se pone en rojo. Ojo con lo que significa: la copia
   // se guarda cuando la lista cambia, asi que "vieja" puede ser simplemente
