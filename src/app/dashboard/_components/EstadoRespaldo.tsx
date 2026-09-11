@@ -18,7 +18,7 @@ type Estado = {
  * tener ninguno: seguirias tranquilo creyendo que estas cubierto. Si esto
  * dice "hace 3 meses", te enteras.
  */
-export function EstadoRespaldo() {
+export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
   const [estado, setEstado] = useState<Estado | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -43,6 +43,18 @@ export function EstadoRespaldo() {
   };
 
   if (!estado) return null;
+
+  // Con la lista vacia no hay nada que guardar, y el respaldo no pisa la
+  // copia anterior con un archivo vacio. Sin esta aclaracion pareceria que
+  // el respaldo no funciona.
+  if (estado.configurado && !hayQrs && !estado.fecha) {
+    return (
+      <p className="text-xs text-ink-3">
+        Respaldo automático listo. Todavía no hay QR para guardar: la primera copia se hace sola
+        cuando crees el primer lote.
+      </p>
+    );
+  }
 
   if (!estado.configurado) {
     const claves = estado.clavesVisibles ?? [];

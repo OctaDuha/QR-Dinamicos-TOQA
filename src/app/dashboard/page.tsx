@@ -66,7 +66,7 @@ export default async function DashboardPage({
 
       <Toolbar defaultDestination={`${base}/`} designs={designs.map((d) => ({ id: d.id, name: d.name }))} />
 
-      <EstadoRespaldo />
+      <EstadoRespaldo hayQrs={totalCodes > 0} />
 
       <form className="flex gap-2" action="/dashboard">
         <input
