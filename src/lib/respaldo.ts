@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { list, put } from "@vercel/blob";
+import { get, list, put } from "@vercel/blob";
 
 import { exportCsv } from "./export";
 import { fetchQrCodes } from "./export-query";
@@ -87,7 +87,7 @@ export async function estadoRespaldo(): Promise<EstadoRespaldo> {
       configurado: true,
       fecha: copia ? new Date(copia.uploadedAt).toISOString() : null,
       tamano: copia?.size ?? null,
-      url: copia?.downloadUrl ?? null,
+      url: copia ? "/api/respaldo/descargar" : null,
       clavesVisibles: clavesVisibles(),
       error: null,
     };
@@ -117,8 +117,10 @@ export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean
 
     const csv = exportCsv(codes, siteUrl(), await designNames(supabase));
 
+    // Privado a proposito: la planilla lleva los nombres de los clientes y
+    // a donde apunta cada placa. Se baja desde el panel, con sesion.
     await put(NOMBRE, csv, {
-      access: "public",
+      access: "private",
       contentType: "text/csv; charset=utf-8",
       addRandomSuffix: false,
       allowOverwrite: true,
@@ -128,5 +130,19 @@ export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean
     return { ok: true };
   } catch (error) {
     return { ok: false, error: (error as Error).message };
+  }
+}
+
+/** Contenido de la ultima copia, para poder bajarla desde el panel. */
+export async function leerRespaldo(): Promise<string | null> {
+  const token = tokenRespaldo();
+  if (!token) return null;
+
+  try {
+    const resultado = await get(NOMBRE, { access: "private", token });
+    if (!resultado || resultado.statusCode !== 200) return null;
+    return await new Response(resultado.stream).text();
+  } catch {
+    return null;
   }
 }
