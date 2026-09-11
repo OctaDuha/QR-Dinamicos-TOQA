@@ -66,18 +66,32 @@ export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
         </p>
         <p>
           {claves.length === 0
-            ? "No veo ninguna clave de almacén. Falta conectar el Blob store a este proyecto en Vercel, o volver a desplegar después de haberlo conectado."
-            : `Veo la clave ${claves.join(", ")}, pero su valor no tiene el formato esperado de una clave de Blob.`}
+            ? "No veo el almacén. Falta conectar el Blob store a este proyecto en Vercel, o volver a desplegar después de haberlo conectado."
+            : `Veo ${claves.join(", ")}, pero falta BLOB_STORE_ID, que es lo que identifica el almacén.`}
         </p>
       </div>
     );
   }
 
   if (estado.error) {
+    // El caso mas comun: el almacen esta conectado pero el sitio no tiene
+    // con que autenticarse contra el. Se arregla pegando la clave del store
+    // como variable, sin tocar codigo.
+    const faltaClave = /credential|token/i.test(estado.error);
     return (
-      <p className="text-xs" style={{ color: "var(--danger)" }}>
-        El almacén está configurado pero no responde: {estado.error}
-      </p>
+      <div className="flex flex-col gap-1 text-xs" style={{ color: "var(--danger)" }}>
+        <p>El almacén está conectado pero el sitio no puede escribir en él.</p>
+        {faltaClave ? (
+          <p>
+            Falta la clave: en Vercel entrá al Blob store <strong>CSV-Respaldo</strong>, buscá la
+            pestaña <strong>.env.local</strong>, copiá el valor de{" "}
+            <strong>BLOB_READ_WRITE_TOKEN</strong> y agregalo con ese mismo nombre en Environment
+            Variables. Después, Redeploy.
+          </p>
+        ) : (
+          <p>{estado.error}</p>
+        )}
+      </div>
     );
   }
 

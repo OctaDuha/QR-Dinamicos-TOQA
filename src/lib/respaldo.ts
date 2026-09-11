@@ -49,8 +49,18 @@ export function tokenRespaldo(): string | null {
   return null;
 }
 
+/**
+ * Vercel ya no inyecta una clave de lectura/escritura al conectar un Blob
+ * store: agrega BLOB_STORE_ID y el cliente se autentica solo contra la
+ * plataforma. Las claves sueltas siguen existiendo para usarlas desde
+ * afuera, asi que valen las dos formas.
+ */
+export function almacenDeclarado(): boolean {
+  return Boolean(process.env.BLOB_STORE_ID?.trim());
+}
+
 export function respaldoConfigurado(): boolean {
-  return tokenRespaldo() !== null;
+  return tokenRespaldo() !== null || almacenDeclarado();
 }
 
 export type EstadoRespaldo = {
@@ -74,6 +84,12 @@ function clavesVisibles(): string[] {
   );
 }
 
+/** Opciones de acceso al almacen: la clave solo si la hay. */
+function acceso(): { token?: string } {
+  const token = tokenRespaldo();
+  return token ? { token } : {};
+}
+
 /** Cuando se guardo la ultima copia, para poder mostrarlo y que no falle en silencio. */
 export async function estadoRespaldo(): Promise<EstadoRespaldo> {
   if (!respaldoConfigurado()) {
@@ -88,7 +104,7 @@ export async function estadoRespaldo(): Promise<EstadoRespaldo> {
   }
 
   try {
-    const { blobs } = await list({ prefix: NOMBRE, limit: 1, token: tokenRespaldo() ?? undefined });
+    const { blobs } = await list({ prefix: NOMBRE, limit: 1, ...acceso() });
     const copia = blobs[0];
     return {
       configurado: true,
@@ -118,6 +134,7 @@ export async function estadoRespaldo(): Promise<EstadoRespaldo> {
 export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean; error?: string }> {
   if (!respaldoConfigurado()) return { ok: false, error: "sin configurar" };
 
+
   try {
     const codes = await fetchQrCodes(supabase, { from: null, to: null }, MAX_FILAS);
     if (codes.length === 0) return { ok: true };
@@ -131,7 +148,7 @@ export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean
       contentType: "text/csv; charset=utf-8",
       addRandomSuffix: false,
       allowOverwrite: true,
-      token: tokenRespaldo() ?? undefined,
+      ...acceso(),
     });
 
     return { ok: true };
@@ -142,11 +159,10 @@ export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean
 
 /** Contenido de la ultima copia, para poder bajarla desde el panel. */
 export async function leerRespaldo(): Promise<string | null> {
-  const token = tokenRespaldo();
-  if (!token) return null;
+  if (!respaldoConfigurado()) return null;
 
   try {
-    const resultado = await get(NOMBRE, { access: "private", token });
+    const resultado = await get(NOMBRE, { access: "private", ...acceso() });
     if (!resultado || resultado.statusCode !== 200) return null;
     return await new Response(resultado.stream).text();
   } catch {
