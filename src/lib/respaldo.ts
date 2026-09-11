@@ -26,8 +26,30 @@ import { siteUrl } from "./qr";
 const NOMBRE = "respaldos/qrs.csv";
 const MAX_FILAS = 20000;
 
+/**
+ * La clave del almacen.
+ *
+ * Vercel la llama BLOB_READ_WRITE_TOKEN por defecto, pero al conectar el
+ * almacen deja elegir un prefijo, y ahi pasa a llamarse MIALMACEN_READ_
+ * WRITE_TOKEN o parecido. Buscamos la de siempre y, si no esta, cualquier
+ * otra que termine igual y tenga pinta de clave de Blob: asi funciona sin
+ * que haya que adivinar como quedo nombrada.
+ */
+export function tokenRespaldo(): string | null {
+  const directa = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+  if (directa) return directa;
+
+  for (const [nombre, valor] of Object.entries(process.env)) {
+    if (nombre.endsWith("_READ_WRITE_TOKEN") && valor?.trim().startsWith("vercel_blob_rw_")) {
+      return valor.trim();
+    }
+  }
+
+  return null;
+}
+
 export function respaldoConfigurado(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
+  return tokenRespaldo() !== null;
 }
 
 export type EstadoRespaldo = {
@@ -35,25 +57,49 @@ export type EstadoRespaldo = {
   fecha: string | null;
   tamano: number | null;
   url: string | null;
+  /** Nombres (no valores) de las claves de almacen que se ven, para diagnosticar. */
+  clavesVisibles: string[];
+  error: string | null;
 };
+
+/** Solo los nombres: sirve para saber si Vercel la nombro distinto. */
+function clavesVisibles(): string[] {
+  return Object.keys(process.env).filter((n) => n.endsWith("_READ_WRITE_TOKEN"));
+}
 
 /** Cuando se guardo la ultima copia, para poder mostrarlo y que no falle en silencio. */
 export async function estadoRespaldo(): Promise<EstadoRespaldo> {
   if (!respaldoConfigurado()) {
-    return { configurado: false, fecha: null, tamano: null, url: null };
+    return {
+      configurado: false,
+      fecha: null,
+      tamano: null,
+      url: null,
+      clavesVisibles: clavesVisibles(),
+      error: null,
+    };
   }
 
   try {
-    const { blobs } = await list({ prefix: NOMBRE, limit: 1 });
+    const { blobs } = await list({ prefix: NOMBRE, limit: 1, token: tokenRespaldo() ?? undefined });
     const copia = blobs[0];
     return {
       configurado: true,
       fecha: copia ? new Date(copia.uploadedAt).toISOString() : null,
       tamano: copia?.size ?? null,
       url: copia?.downloadUrl ?? null,
+      clavesVisibles: clavesVisibles(),
+      error: null,
     };
-  } catch {
-    return { configurado: true, fecha: null, tamano: null, url: null };
+  } catch (error) {
+    return {
+      configurado: true,
+      fecha: null,
+      tamano: null,
+      url: null,
+      clavesVisibles: clavesVisibles(),
+      error: (error as Error).message,
+    };
   }
 }
 
@@ -76,6 +122,7 @@ export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean
       contentType: "text/csv; charset=utf-8",
       addRandomSuffix: false,
       allowOverwrite: true,
+      token: tokenRespaldo() ?? undefined,
     });
 
     return { ok: true };

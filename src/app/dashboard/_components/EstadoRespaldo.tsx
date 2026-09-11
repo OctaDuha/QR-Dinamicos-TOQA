@@ -7,6 +7,8 @@ type Estado = {
   fecha: string | null;
   tamano: number | null;
   url: string | null;
+  clavesVisibles?: string[];
+  error?: string | null;
 };
 
 /**
@@ -43,9 +45,26 @@ export function EstadoRespaldo() {
   if (!estado) return null;
 
   if (!estado.configurado) {
+    const claves = estado.clavesVisibles ?? [];
     return (
-      <p className="text-xs text-ink-3">
-        Respaldo automático sin configurar. Por ahora, bajá el CSV a mano cada vez que cambies algo.
+      <div className="flex flex-col gap-1 text-xs text-ink-3">
+        <p>
+          Respaldo automático sin configurar. Por ahora, bajá el CSV a mano cada vez que cambies
+          algo.
+        </p>
+        <p>
+          {claves.length === 0
+            ? "No veo ninguna clave de almacén. Falta conectar el Blob store a este proyecto en Vercel, o volver a desplegar después de haberlo conectado."
+            : `Veo la clave ${claves.join(", ")}, pero su valor no tiene el formato esperado de una clave de Blob.`}
+        </p>
+      </div>
+    );
+  }
+
+  if (estado.error) {
+    return (
+      <p className="text-xs" style={{ color: "var(--danger)" }}>
+        El almacén está configurado pero no responde: {estado.error}
       </p>
     );
   }
