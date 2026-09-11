@@ -40,9 +40,10 @@ export function tokenRespaldo(): string | null {
   if (directa) return directa;
 
   for (const [nombre, valor] of Object.entries(process.env)) {
-    if (nombre.endsWith("_READ_WRITE_TOKEN") && valor?.trim().startsWith("vercel_blob_rw_")) {
-      return valor.trim();
-    }
+    const limpio = valor?.trim();
+    if (!limpio) continue;
+    const suenaAClave = nombre.endsWith("_READ_WRITE_TOKEN") || nombre.includes("BLOB");
+    if (suenaAClave && limpio.startsWith("vercel_blob_rw_")) return limpio;
   }
 
   return null;
@@ -62,9 +63,15 @@ export type EstadoRespaldo = {
   error: string | null;
 };
 
-/** Solo los nombres: sirve para saber si Vercel la nombro distinto. */
+/**
+ * Solo los nombres, nunca los valores: sirve para saber si Vercel la nombro
+ * distinto de lo esperado. Se mira cualquier cosa que suene a Blob, no solo
+ * el sufijo habitual, para que el diagnostico no se quede corto.
+ */
 function clavesVisibles(): string[] {
-  return Object.keys(process.env).filter((n) => n.endsWith("_READ_WRITE_TOKEN"));
+  return Object.keys(process.env).filter(
+    (n) => n.endsWith("_READ_WRITE_TOKEN") || n.includes("BLOB"),
+  );
 }
 
 /** Cuando se guardo la ultima copia, para poder mostrarlo y que no falle en silencio. */
