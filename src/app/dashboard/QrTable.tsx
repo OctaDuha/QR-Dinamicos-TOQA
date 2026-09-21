@@ -21,10 +21,12 @@ export function QrTable({
   codes,
   base,
   designs,
+  puedeBorrar,
 }: {
   codes: QrCodeWithStats[];
   base: string;
   designs: DesignOption[];
+  puedeBorrar: boolean;
 }) {
   const router = useRouter();
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
@@ -147,14 +149,16 @@ export function QrTable({
           <button type="button" className="btn btn-ghost text-xs" onClick={() => setMarcados(new Set())}>
             Desmarcar todo
           </button>
-          <button
-            type="button"
-            className="btn btn-danger text-xs"
-            onClick={borrar}
-            disabled={busy}
-          >
-            Borrar los marcados
-          </button>
+          {puedeBorrar ? (
+            <button
+              type="button"
+              className="btn btn-danger text-xs"
+              onClick={borrar}
+              disabled={busy}
+            >
+              Borrar los marcados
+            </button>
+          ) : null}
         </div>
       ) : null}
 

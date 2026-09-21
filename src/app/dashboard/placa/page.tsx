@@ -1,5 +1,6 @@
 import { chequeosPreImprenta, urlDeMuestra } from "@/lib/pre-imprenta";
 import { listDesigns } from "@/lib/placa-designs";
+import { sesionActual } from "@/lib/roles";
 import { siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function PlacaPage() {
   const supabase = await createClient();
   const designs = (await listDesigns(supabase)) as unknown as Design[];
+  const sesion = await sesionActual();
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,7 +29,11 @@ export default async function PlacaPage() {
         urlMuestra={urlDeMuestra()}
       />
 
-      <PlacaStudio initialDesigns={designs} defaultDestination={`${siteUrl()}/`} />
+      <PlacaStudio
+        initialDesigns={designs}
+        defaultDestination={`${siteUrl()}/`}
+        puedeBorrar={sesion?.rol === "dueno"}
+      />
     </div>
   );
 }

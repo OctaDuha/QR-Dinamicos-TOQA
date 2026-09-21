@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { listDesigns } from "@/lib/placa-designs";
+import { sesionActual } from "@/lib/roles";
 import { formatQrCode, nfcTargetUrl, parseQrId, qrPngDataUrl, qrTargetUrl, siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
 import type { QrCode, ScanBucket, ScanSeriesPoint } from "@/lib/types";
@@ -37,6 +38,7 @@ export default async function QrDetailPage({
     rawBucket === "week" || rawBucket === "month" ? rawBucket : "day";
 
   const supabase = await createClient();
+  const sesion = await sesionActual();
 
   const { data: code } = await supabase
     .from("qr_codes")
@@ -208,10 +210,12 @@ export default async function QrDetailPage({
             initialDesignId={code.design_id}
           />
 
-          <div className="card p-5">
-            <p className="label">Zona peligrosa</p>
-            <DeleteQrForm id={code.id} code={formatQrCode(code.id)} />
-          </div>
+          {sesion?.rol === "dueno" ? (
+            <div className="card p-5">
+              <p className="label">Zona peligrosa</p>
+              <DeleteQrForm id={code.id} code={formatQrCode(code.id)} />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

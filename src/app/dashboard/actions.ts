@@ -106,10 +106,21 @@ export async function deleteQrCode(_prev: ActionState, formData: FormData): Prom
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("qr_codes").delete().eq("id", id);
+
+  // Quien manda es la base: si el rol no alcanza, el borrado no toca nada y
+  // hay que decirlo en vez de festejar un exito que no ocurrio.
+  const { data: borradas, error } = await supabase
+    .from("qr_codes")
+    .delete()
+    .eq("id", id)
+    .select("id");
 
   if (error) {
     return { ok: false, message: `No se pudo borrar: ${error.message}` };
+  }
+
+  if ((borradas?.length ?? 0) === 0) {
+    return { ok: false, message: "No se borró: tu usuario no tiene permiso para borrar QRs." };
   }
 
   respaldarDespues(supabase);

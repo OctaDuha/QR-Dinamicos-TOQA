@@ -11,9 +11,11 @@ type Panel = "new" | "import" | "borrar" | null;
 export function Toolbar({
   defaultDestination,
   designs,
+  puedeBorrar,
 }: {
   defaultDestination: string;
   designs: DesignOption[];
+  puedeBorrar: boolean;
 }) {
   const [panel, setPanel] = useState<Panel>(null);
 
@@ -44,14 +46,16 @@ export function Toolbar({
         <a className="btn btn-ghost" href="/api/export/csv">
           Solo CSV
         </a>
-        <button
-          type="button"
-          className="btn btn-peligro-sutil text-xs"
-          onClick={() => toggle("borrar")}
-          aria-expanded={panel === "borrar"}
-        >
-          Borrar por número
-        </button>
+        {puedeBorrar ? (
+          <button
+            type="button"
+            className="btn btn-peligro-sutil text-xs"
+            onClick={() => toggle("borrar")}
+            aria-expanded={panel === "borrar"}
+          >
+            Borrar por número
+          </button>
+        ) : null}
       </div>
 
       {panel === "new" ? (
@@ -66,7 +70,7 @@ export function Toolbar({
         </div>
       ) : null}
 
-      {panel === "borrar" ? (
+      {panel === "borrar" && puedeBorrar ? (
         <div className="card p-5">
           <BorrarRangoForm />
         </div>

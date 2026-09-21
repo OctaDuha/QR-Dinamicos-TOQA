@@ -9,13 +9,16 @@ const SECCIONES = [
   { href: "/dashboard/canva", label: "Canva" },
 ];
 
+const SOLO_DUENO = { href: "/dashboard/usuarios", label: "Usuarios" };
+
 /** Navegacion de la barra de marca, con la seccion actual marcada. */
-export function NavLinks() {
+export function NavLinks({ esDueno }: { esDueno: boolean }) {
   const pathname = usePathname();
+  const secciones = esDueno ? [...SECCIONES, SOLO_DUENO] : SECCIONES;
 
   return (
     <nav className="flex items-center gap-1">
-      {SECCIONES.map((seccion) => {
+      {secciones.map((seccion) => {
         const activa =
           seccion.href === "/dashboard"
             ? pathname === "/dashboard" || pathname.startsWith("/dashboard/qr")

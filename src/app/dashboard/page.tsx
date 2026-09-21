@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { listDesigns } from "@/lib/placa-designs";
+import { sesionActual } from "@/lib/roles";
 import { siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
 import type { QrCodeWithStats } from "@/lib/types";
@@ -25,6 +26,8 @@ export default async function DashboardPage({
 
   const supabase = await createClient();
   const base = siteUrl();
+  const sesion = await sesionActual();
+  const puedeBorrar = sesion?.rol === "dueno";
 
   let listQuery = supabase
     .from("qr_codes_with_stats")
@@ -64,7 +67,11 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <Toolbar defaultDestination={`${base}/`} designs={designs.map((d) => ({ id: d.id, name: d.name }))} />
+      <Toolbar
+        defaultDestination={`${base}/`}
+        designs={designs.map((d) => ({ id: d.id, name: d.name }))}
+        puedeBorrar={puedeBorrar}
+      />
 
       <EstadoRespaldo hayQrs={totalCodes > 0} />
 
@@ -109,6 +116,7 @@ export default async function DashboardPage({
           codes={codes}
           base={base}
           designs={designs.map((d) => ({ id: d.id, name: d.name }))}
+          puedeBorrar={puedeBorrar}
         />
       )}
 

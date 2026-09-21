@@ -1,9 +1,12 @@
 import Link from "next/link";
 
+import { sesionActual } from "@/lib/roles";
+
 import { logout } from "../login/actions";
 import { NavLinks } from "./_components/NavLinks";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const sesion = await sesionActual();
   return (
     <div className="min-h-screen">
       <header className="marca-barra sticky top-0 z-10">
@@ -15,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="marca-sub">QR dinámicos</span>
           </Link>
 
-          <NavLinks />
+          <NavLinks esDueno={sesion?.rol === "dueno"} />
 
           <form action={logout} className="ml-auto">
             <button type="submit" className="nav-link" style={{ border: 0, background: "transparent", cursor: "pointer" }}>

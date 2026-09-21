@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { requireAdmin } from "@/lib/canva-guard";
+import { requireDueno } from "@/lib/roles";
 import { respaldarDespues } from "@/lib/respaldo-auto";
 
 export const runtime = "nodejs";
@@ -24,8 +24,9 @@ type Cuerpo = {
  * ya estan en la calle), y recien despues se borra.
  */
 export async function POST(request: NextRequest) {
-  const { supabase, denied } = await requireAdmin();
+  const { sesion, denied } = await requireDueno();
   if (denied) return denied;
+  const { supabase } = sesion;
 
   const body = (await request.json().catch(() => ({}))) as Cuerpo;
 

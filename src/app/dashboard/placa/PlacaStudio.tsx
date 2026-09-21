@@ -24,9 +24,11 @@ type Note = { kind: "ok" | "error" | "info"; text: string } | null;
 export function PlacaStudio({
   initialDesigns,
   defaultDestination,
+  puedeBorrar,
 }: {
   initialDesigns: Design[];
   defaultDestination: string;
+  puedeBorrar: boolean;
 }) {
   const router = useRouter();
   const [designs, setDesigns] = useState(initialDesigns);
@@ -88,6 +90,7 @@ export function PlacaStudio({
           setNote={setNote}
           onChange={(layout) => patchDesign(selected.id, { layout })}
           onRenamed={(name) => patchDesign(selected.id, { name })}
+          puedeBorrar={puedeBorrar}
           onDeleted={() => {
             setDesigns((list) => list.filter((d) => d.id !== selected.id));
             router.refresh();
@@ -343,6 +346,7 @@ function DesignEditor({
   onChange,
   onRenamed,
   onDeleted,
+  puedeBorrar,
 }: {
   design: Design;
   busy: boolean;
@@ -351,6 +355,7 @@ function DesignEditor({
   onChange: (layout: PlacaLayout) => void;
   onRenamed: (name: string) => void;
   onDeleted: () => void;
+  puedeBorrar: boolean;
 }) {
   const [layout, setLayout] = useState<PlacaLayout>(design.layout);
   const [previewId, setPreviewId] = useState("1");
@@ -587,9 +592,11 @@ function DesignEditor({
           <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>
             Guardar
           </button>
-          <button type="button" className="btn btn-danger text-xs" onClick={remove} disabled={busy}>
-            Borrar diseño
-          </button>
+          {puedeBorrar ? (
+            <button type="button" className="btn btn-danger text-xs" onClick={remove} disabled={busy}>
+              Borrar diseño
+            </button>
+          ) : null}
         </div>
 
         <PdfPreview url={previewUrl} page={debounced.qrPage} />

@@ -110,6 +110,36 @@ la red de seguridad es para placas impresas, no para errores de tipeo.
 
 ---
 
+## Roles: dueño y empleado
+
+| | Dueño | Empleado |
+|---|:---:|:---:|
+| Ver QRs y estadísticas | ✅ | ✅ |
+| Crear QRs y lotes | ✅ | ✅ |
+| Editar destino y etiqueta | ✅ | ✅ |
+| Subir y editar diseños | ✅ | ✅ |
+| Generar placas y exportar | ✅ | ✅ |
+| **Borrar QRs y diseños** | ✅ | ❌ |
+| **Asignar roles** | ✅ | ❌ |
+
+El borrado es lo único irreversible del sistema, así que queda en una sola
+mano. Todo lo demás se puede deshacer.
+
+**Quien manda es la base, no la pantalla.** Las políticas de Postgres sólo
+permiten `delete` cuando `public.es_dueno()` da verdadero, así que aunque
+alguien saltee el panel y llame a la API directamente, el borrado no ocurre.
+Esconder los botones es sólo para no ofrecer lo que no va a funcionar.
+
+Las cuentas se siguen creando en Supabase · Authentication · Users; el rol se
+asigna desde *Usuarios* en el panel, que sólo ve el dueño. Un usuario nuevo
+entra como empleado salvo que sea el primero de la cuenta.
+
+Para habilitarlo hay que correr `supabase/migraciones/2026-09-roles.sql`.
+Mientras no se corra, todos quedan como empleados: el panel sigue funcionando
+y sólo desaparecen los botones de borrar.
+
+---
+
 ## QR y chip NFC: dos puertas, una placa
 
 La placa lleva el QR impreso y un chip NFC. Los dos apuntan al mismo número,
