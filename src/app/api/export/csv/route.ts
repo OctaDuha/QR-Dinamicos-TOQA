@@ -4,6 +4,7 @@ import { exportCsv } from "@/lib/export";
 import { designNames } from "@/lib/placa-designs";
 import { fetchQrCodes, readRange } from "@/lib/export-query";
 import { siteUrl } from "@/lib/qr";
+import { anotarDescarga } from "@/lib/respaldo";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -31,6 +32,8 @@ export async function GET(request: Request) {
   }
 
   const csv = exportCsv(codes, siteUrl(), await designNames(supabase));
+  anotarDescarga();
+
   const stamp = new Date().toISOString().slice(0, 10);
 
   return new NextResponse(csv, {

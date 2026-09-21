@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { get, list, put } from "@vercel/blob";
+import { after } from "next/server";
 
 import { exportCsv } from "./export";
 import { fetchQrCodes } from "./export-query";
@@ -25,6 +26,7 @@ import { siteUrl } from "./qr";
 
 const NOMBRE = "respaldos/qrs.csv";
 const CARPETA_DIARIA = "respaldos/dia/";
+const MARCA_DESCARGA = "respaldos/ultima-descarga.txt";
 const MAX_FILAS = 20000;
 
 const hoy = () => new Date().toISOString().slice(0, 10);
@@ -217,6 +219,50 @@ export async function leerFotoDiaria(fecha: string): Promise<string | null> {
     const resultado = await get(`${CARPETA_DIARIA}${fecha}.csv`, { access: "private", ...acceso() });
     if (!resultado || resultado.statusCode !== 200) return null;
     return await new Response(resultado.stream).text();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * La copia que vive afuera.
+ *
+ * Todo lo de arriba vive adentro de Vercel: cubre perder la base y cubre
+ * que alguien toque los destinos, pero no cubre perder la cuenta de Vercel,
+ * porque se va con ella. Lo unico que cubre eso es un CSV bajado a una
+ * computadora, y eso no se puede automatizar: nadie puede dejarte un
+ * archivo en el disco desde afuera.
+ *
+ * Asi que al menos se anota cuando fue la ultima vez, para que el panel
+ * pueda avisar cuando pasaron demasiados dias. Se guarda como un archivo
+ * vacio mas en el mismo almacen: no hace falta tocar la base de datos, y
+ * la fecha que interesa es la que el almacen ya registra sola.
+ */
+export function anotarDescarga(): void {
+  if (!respaldoConfigurado()) return;
+
+  after(async () => {
+    try {
+      await put(MARCA_DESCARGA, new Date().toISOString(), {
+        access: "private",
+        contentType: "text/plain; charset=utf-8",
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        ...acceso(),
+      });
+    } catch (error) {
+      console.error("[respaldo] no se pudo anotar la descarga:", (error as Error).message);
+    }
+  });
+}
+
+/** Cuando se bajo una copia por ultima vez, o null si nunca. */
+export async function ultimaDescarga(): Promise<string | null> {
+  if (!respaldoConfigurado()) return null;
+
+  try {
+    const { blobs } = await list({ prefix: MARCA_DESCARGA, limit: 1, ...acceso() });
+    return blobs[0] ? new Date(blobs[0].uploadedAt).toISOString() : null;
   } catch {
     return null;
   }

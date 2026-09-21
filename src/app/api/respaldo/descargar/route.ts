@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
-import { leerFotoDiaria, leerRespaldo } from "@/lib/respaldo";
+import { anotarDescarga, leerFotoDiaria, leerRespaldo } from "@/lib/respaldo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +25,10 @@ export async function GET(request: Request) {
       { status: 404 },
     );
   }
+
+  // Queda anotado que hay una copia afuera de Vercel, para que el panel
+  // pueda avisar cuando pase demasiado tiempo sin bajar ninguna.
+  anotarDescarga();
 
   const stamp = dia ?? new Date().toISOString().slice(0, 10);
   return new NextResponse(csv, {

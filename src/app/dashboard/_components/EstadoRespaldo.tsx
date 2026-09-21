@@ -10,7 +10,12 @@ type Estado = {
   clavesVisibles?: string[];
   error?: string | null;
   fotos?: { fecha: string; tamano: number }[];
+  /** Cuándo se bajó una copia a una computadora por última vez. */
+  descarga?: string | null;
 };
+
+/** A partir de acá el panel avisa que falta una copia afuera de Vercel. */
+const DIAS_SIN_BAJAR = 30;
 
 /**
  * Cuando fue la ultima copia de seguridad.
@@ -127,6 +132,8 @@ export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
         </a>
       ) : null}
 
+      <AvisoCopiaAfuera descarga={estado.descarga ?? null} />
+
       {(estado.fotos?.length ?? 0) > 0 ? (
         <details className="w-full">
           <summary className="cursor-pointer text-xs text-ink-3">
@@ -152,6 +159,47 @@ export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
           </div>
         </details>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * El respaldo automatico vive adentro de Vercel, asi que no cubre perder
+ * esa cuenta. Lo unico que cubre eso es un CSV bajado a una computadora, y
+ * eso no se puede hacer solo: nadie puede dejar un archivo en tu disco
+ * desde afuera. Lo que si se puede es no dejar que se olvide.
+ */
+function AvisoCopiaAfuera({ descarga }: { descarga: string | null }) {
+  const dias = descarga ? diasDesde(descarga) : null;
+
+  if (dias !== null && dias < DIAS_SIN_BAJAR) {
+    return (
+      <span className="w-full text-xs text-ink-3">
+        Copia guardada fuera de Vercel: {describir(descarga!)}.
+      </span>
+    );
+  }
+
+  return (
+    <div
+      className="flex w-full flex-col gap-1 rounded-md p-3 text-xs"
+      style={{ background: "color-mix(in srgb, var(--danger) 12%, transparent)" }}
+    >
+      <p style={{ color: "var(--danger)" }}>
+        <strong>
+          {dias === null
+            ? "Nunca bajaste una copia a tu computadora."
+            : `Hace ${Math.round(dias)} días que no bajás una copia a tu computadora.`}
+        </strong>
+      </p>
+      <p className="text-ink-2">
+        Todo lo de arriba vive adentro de Vercel: te cubre si se rompe la base o si alguien te
+        cambia los destinos, pero no si perdés la cuenta de Vercel, porque se va con ella. Bajá el
+        CSV y guardalo en tu compu o en tu Drive.
+      </p>
+      <a className="btn btn-secondary self-start text-xs" href="/api/respaldo/descargar">
+        Bajar el CSV ahora
+      </a>
     </div>
   );
 }

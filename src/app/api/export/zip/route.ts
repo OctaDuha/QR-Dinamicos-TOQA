@@ -5,6 +5,7 @@ import { exportCsv, pngFileName } from "@/lib/export";
 import { designNames } from "@/lib/placa-designs";
 import { fetchQrCodes, readRange } from "@/lib/export-query";
 import { qrPngBuffer, siteUrl } from "@/lib/qr";
+import { anotarDescarga } from "@/lib/respaldo";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -76,6 +77,8 @@ export async function GET(request: Request) {
   );
 
   const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+  anotarDescarga();
+
   const stamp = new Date().toISOString().slice(0, 10);
 
   return new NextResponse(new Uint8Array(buffer), {
