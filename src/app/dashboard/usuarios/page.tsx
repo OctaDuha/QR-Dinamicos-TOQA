@@ -2,6 +2,20 @@ import { redirect } from "next/navigation";
 
 import { sesionActual } from "@/lib/roles";
 
+/**
+ * Link al panel de usuarios de Supabase, sacado de la URL del proyecto.
+ *
+ * Crear cuentas se hace alla y no aca a proposito: requeriria la clave
+ * service_role, que saltea todas las protecciones —los roles incluidos— y
+ * tendria que vivir para siempre dentro del sitio. Para algo que se hace un
+ * puñado de veces en la vida, no compensa.
+ */
+function panelDeSupabase(): string | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const ref = url?.match(/https:\/\/([a-z0-9]+)\.supabase\.co/i)?.[1];
+  return ref ? `https://supabase.com/dashboard/project/${ref}/auth/users` : null;
+}
+
 import { ListaUsuarios, type Usuario } from "./ListaUsuarios";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +53,41 @@ export default async function UsuariosPage() {
       </div>
 
       <ListaUsuarios usuarios={(data ?? []) as Usuario[]} yo={sesion.userId} />
+
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold">Agregar a alguien</h2>
+        <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-sm text-ink-2">
+          <li>
+            Entrá a Supabase, a <strong className="text-ink-1">Authentication → Users</strong>
+            {panelDeSupabase() ? (
+              <>
+                {" "}
+                <a
+                  href={panelDeSupabase()!}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="underline"
+                  style={{ color: "var(--accent)" }}
+                >
+                  (abrir)
+                </a>
+              </>
+            ) : null}
+          </li>
+          <li>
+            <strong className="text-ink-1">Add user</strong> → <em>Create new user</em>: su mail y
+            una contraseña provisoria
+          </li>
+          <li>Pasale esos datos y que la cambie al entrar</li>
+          <li>Volvé acá: ya va a aparecer en la lista, como Empleado</li>
+        </ol>
+        <p className="mt-3 text-xs text-ink-3">
+          Las cuentas se crean allá y no acá a propósito. Hacerlo desde este panel exigiría guardar
+          dentro del sitio la clave maestra de Supabase, que saltea todas las protecciones,
+          incluidos estos roles. Para algo que vas a hacer un puñado de veces, no compensa el
+          riesgo.
+        </p>
+      </div>
 
       <div className="card p-5 text-sm text-ink-2">
         <h2 className="text-sm font-semibold text-ink-1">Qué puede hacer cada uno</h2>
