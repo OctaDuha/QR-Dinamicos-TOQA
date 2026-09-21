@@ -130,8 +130,13 @@ permiten `delete` cuando `public.es_dueno()` da verdadero, así que aunque
 alguien saltee el panel y llame a la API directamente, el borrado no ocurre.
 Esconder los botones es sólo para no ofrecer lo que no va a funcionar.
 
+La pantalla *Usuarios* es del dueño en cuatro capas: no aparece en el menú,
+entrar por la URL muestra un aviso, la API de cambio de rol responde 403, y
+la política de lectura de `perfiles` deja que cada uno vea sólo el suyo. Un
+empleado no puede ni listar los mails de los demás.
+
 Las cuentas se siguen creando en Supabase · Authentication · Users; el rol se
-asigna desde *Usuarios* en el panel, que sólo ve el dueño. Un usuario nuevo
+asigna desde *Usuarios* en el panel. Un usuario nuevo
 entra como empleado salvo que sea el primero de la cuenta.
 
 Para habilitarlo hay que correr `supabase/migraciones/2026-09-roles.sql`.

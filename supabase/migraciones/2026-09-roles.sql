@@ -78,12 +78,16 @@ $$;
 revoke all on function public.es_dueno() from public;
 grant execute on function public.es_dueno() to authenticated;
 
--- 5. Permisos sobre los perfiles: todos se ven, sólo el dueño reparte roles.
+-- 5. Permisos sobre los perfiles: cada uno ve el suyo, el dueño ve todos y
+--    es el único que reparte roles.
+--
+--    es_dueno() es security definer, así que la consulta de adentro no vuelve
+--    a pasar por esta política: no hay recursión.
 alter table public.perfiles enable row level security;
 
 drop policy if exists perfiles_leer on public.perfiles;
 create policy perfiles_leer on public.perfiles
-  for select to authenticated using (true);
+  for select to authenticated using (id = auth.uid() or public.es_dueno());
 
 drop policy if exists perfiles_escribir on public.perfiles;
 create policy perfiles_escribir on public.perfiles
