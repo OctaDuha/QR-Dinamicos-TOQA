@@ -9,6 +9,7 @@ type Estado = {
   url: string | null;
   clavesVisibles?: string[];
   error?: string | null;
+  fotos?: { fecha: string; tamano: number }[];
 };
 
 /**
@@ -124,6 +125,32 @@ export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
         <a className="btn btn-ghost text-xs" href={estado.url}>
           Descargarla
         </a>
+      ) : null}
+
+      {(estado.fotos?.length ?? 0) > 0 ? (
+        <details className="w-full">
+          <summary className="cursor-pointer text-xs text-ink-3">
+            Volver a un día anterior ({estado.fotos!.length}{" "}
+            {estado.fotos!.length === 1 ? "copia guardada" : "copias guardadas"})
+          </summary>
+          <div className="mt-2 flex flex-col gap-1">
+            <p className="text-xs text-ink-3">
+              Una foto por día que no se pisa. Si algún día los destinos aparecen cambiados sin
+              que hayas sido vos, bajá la del día anterior y subila con Importar CSV.
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {estado.fotos!.slice(0, 30).map((foto) => (
+                <a
+                  key={foto.fecha}
+                  className="btn btn-ghost font-mono text-xs"
+                  href={`/api/respaldo/descargar?dia=${foto.fecha}`}
+                >
+                  {foto.fecha}
+                </a>
+              ))}
+            </div>
+          </div>
+        </details>
       ) : null}
     </div>
   );

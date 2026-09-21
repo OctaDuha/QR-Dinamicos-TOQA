@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
-import { estadoRespaldo, respaldar } from "@/lib/respaldo";
+import { estadoRespaldo, fotosDiarias, respaldar } from "@/lib/respaldo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,9 +11,12 @@ export async function GET() {
   const { denied } = await requireAdmin();
   if (denied) return denied;
 
-  return NextResponse.json(await estadoRespaldo(), {
-    headers: { "Cache-Control": "no-store" },
-  });
+  const [estado, fotos] = await Promise.all([estadoRespaldo(), fotosDiarias()]);
+
+  return NextResponse.json(
+    { ...estado, fotos },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 /** Guardar una copia ahora, a mano. */

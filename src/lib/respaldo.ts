@@ -24,7 +24,10 @@ import { siteUrl } from "./qr";
  */
 
 const NOMBRE = "respaldos/qrs.csv";
+const CARPETA_DIARIA = "respaldos/dia/";
 const MAX_FILAS = 20000;
+
+const hoy = () => new Date().toISOString().slice(0, 10);
 
 /**
  * La clave del almacen.
@@ -140,6 +143,7 @@ export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean
     if (codes.length === 0) return { ok: true };
 
     const csv = exportCsv(codes, siteUrl(), await designNames(supabase));
+    const acceso_ = acceso();
 
     // Privado a proposito: la planilla lleva los nombres de los clientes y
     // a donde apunta cada placa. Se baja desde el panel, con sesion.
@@ -148,8 +152,26 @@ export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean
       contentType: "text/csv; charset=utf-8",
       addRandomSuffix: false,
       allowOverwrite: true,
-      ...acceso(),
+      ...acceso_,
     });
+
+    // Y una foto por dia, que no se pisa.
+    //
+    // La copia de arriba sola no alcanzaba: si alguien entrara al panel y
+    // cambiara todos los destinos, ese mismo cambio dispararia el respaldo y
+    // reemplazaria la copia buena por la envenenada. Guardando la primera
+    // foto de cada dia, siempre queda a que volver.
+    const delDia = `${CARPETA_DIARIA}${hoy()}.csv`;
+    const { blobs } = await list({ prefix: delDia, limit: 1, ...acceso_ });
+
+    if (blobs.length === 0) {
+      await put(delDia, csv, {
+        access: "private",
+        contentType: "text/csv; charset=utf-8",
+        addRandomSuffix: false,
+        ...acceso_,
+      });
+    }
 
     return { ok: true };
   } catch (error) {
@@ -163,6 +185,36 @@ export async function leerRespaldo(): Promise<string | null> {
 
   try {
     const resultado = await get(NOMBRE, { access: "private", ...acceso() });
+    if (!resultado || resultado.statusCode !== 200) return null;
+    return await new Response(resultado.stream).text();
+  } catch {
+    return null;
+  }
+}
+
+export type FotoDiaria = { fecha: string; tamano: number };
+
+/** Las fotos por dia que hay guardadas, de la mas nueva a la mas vieja. */
+export async function fotosDiarias(): Promise<FotoDiaria[]> {
+  if (!respaldoConfigurado()) return [];
+
+  try {
+    const { blobs } = await list({ prefix: CARPETA_DIARIA, limit: 400, ...acceso() });
+    return blobs
+      .map((b) => ({ fecha: b.pathname.slice(CARPETA_DIARIA.length, -4), tamano: b.size }))
+      .filter((f) => /^\d{4}-\d{2}-\d{2}$/.test(f.fecha))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  } catch {
+    return [];
+  }
+}
+
+/** Una foto puntual, para poder volver a un dia anterior. */
+export async function leerFotoDiaria(fecha: string): Promise<string | null> {
+  if (!respaldoConfigurado() || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return null;
+
+  try {
+    const resultado = await get(`${CARPETA_DIARIA}${fecha}.csv`, { access: "private", ...acceso() });
     if (!resultado || resultado.statusCode !== 200) return null;
     return await new Response(resultado.stream).text();
   } catch {
