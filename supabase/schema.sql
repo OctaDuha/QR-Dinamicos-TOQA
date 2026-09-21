@@ -21,6 +21,21 @@ create table if not exists public.scans (
   user_agent text
 );
 
+-- Por donde entro el escaneo. La placa lleva dos puertas a la misma direccion:
+-- el QR impreso y el chip NFC. Se distinguen porque en el chip se graba la
+-- direccion con una marca ("?n") que el QR no tiene. Lo anterior a esta
+-- columna, y todo lo que llegue sin marca, cuenta como qr.
+alter table public.scans
+  add column if not exists via text not null default 'qr';
+
+do $$
+begin
+  alter table public.scans add constraint scans_via_check check (via in ('qr', 'nfc'));
+exception
+  when duplicate_object then null;
+end;
+$$;
+
 create index if not exists scans_qr_id_scanned_at_idx
   on public.scans (qr_id, scanned_at desc);
 
@@ -86,8 +101,40 @@ begin
 end;
 $$;
 
+-- Version con canal. No lleva valores por defecto a proposito: si los
+-- llevara, una llamada de dos argumentos encajaria en las dos funciones y
+-- Postgres no sabria cual elegir. La de dos argumentos queda intacta, y su
+-- insert toma el valor por defecto de la columna, que es 'qr'.
+create or replace function public.resolve_qr(
+  p_id         bigint,
+  p_user_agent text,
+  p_via        text
+)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_url text;
+begin
+  select destination_url into v_url from public.qr_codes where id = p_id;
+
+  if v_url is null then
+    return null;
+  end if;
+
+  insert into public.scans (qr_id, user_agent, via)
+  values (p_id, left(p_user_agent, 500), case when p_via = 'nfc' then 'nfc' else 'qr' end);
+
+  return v_url;
+end;
+$$;
+
 revoke all on function public.resolve_qr(bigint, text) from public;
 grant execute on function public.resolve_qr(bigint, text) to anon, authenticated;
+revoke all on function public.resolve_qr(bigint, text, text) from public;
+grant execute on function public.resolve_qr(bigint, text, text) to anon, authenticated;
 
 -- ------------------------------------------------------------
 -- 5. Serie temporal de escaneos (dia / semana / mes) sin huecos

@@ -29,24 +29,52 @@ export function publicConfig(): { url: string; key: string } | null {
  * Devuelve el destino, null si el QR no existe, o lanza si la base no
  * contesta (para poder distinguir "no hay destino" de "no hay base").
  */
+export type CanalEscaneo = "qr" | "nfc";
+
 export async function resolveQr(
-  { url, key }: { url: string; key: string },
+  config: { url: string; key: string },
   id: number,
   userAgent: string | null,
+  via: CanalEscaneo = "qr",
   timeoutMs = 2500,
 ): Promise<string | null> {
+  const conCanal = await llamar(config, { p_id: id, p_user_agent: userAgent, p_via: via }, timeoutMs);
+
+  // 404 significa que la base todavia no tiene la version de tres argumentos
+  // (falta correr la migracion). En ese caso se usa la de siempre: el escaneo
+  // se cuenta igual, como qr. Vale la pena: perder un escaneo es peor que
+  // perder el dato de por donde entro.
+  if (conCanal.estado === 404) {
+    const clasica = await llamar(config, { p_id: id, p_user_agent: userAgent }, timeoutMs);
+    if (!clasica.ok) throw new Error(`supabase ${clasica.estado}`);
+    return clasica.destino;
+  }
+
+  if (!conCanal.ok) throw new Error(`supabase ${conCanal.estado}`);
+  return conCanal.destino;
+}
+
+async function llamar(
+  { url, key }: { url: string; key: string },
+  cuerpo: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<{ ok: boolean; estado: number; destino: string | null }> {
   const response = await fetch(`${url}/rest/v1/rpc/resolve_qr`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...publicKeyHeaders(key) },
-    body: JSON.stringify({ p_id: id, p_user_agent: userAgent }),
+    body: JSON.stringify(cuerpo),
     cache: "no-store",
     signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!response.ok) {
-    throw new Error(`supabase ${response.status}`);
+    return { ok: false, estado: response.status, destino: null };
   }
 
   const value: unknown = await response.json();
-  return typeof value === "string" && value.length > 0 ? value : null;
+  return {
+    ok: true,
+    estado: response.status,
+    destino: typeof value === "string" && value.length > 0 ? value : null,
+  };
 }

@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 
-import { redirigirQr } from "@/lib/redirect-qr";
+import { canalDe, redirigirQr } from "@/lib/redirect-qr";
 
 // Camino corto: es el que va impreso en las placas. Sacarle el "/r/" del
 // medio deja la direccion en 26 caracteres, y eso baja el QR de 29x29 a
@@ -15,5 +15,5 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ code: string }> }) {
   const { code } = await context.params;
-  return redirigirQr(code, request.headers.get("user-agent"));
+  return redirigirQr(code, request.headers.get("user-agent"), canalDe(new URL(request.url)));
 }

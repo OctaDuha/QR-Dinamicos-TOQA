@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   const desde = Date.now();
   try {
-    await resolveQr(config, 0, "toqa-keepalive", 8000);
+    await resolveQr(config, 0, "toqa-keepalive", "qr", 8000);
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: (error as Error).message, ms: Date.now() - desde },

@@ -110,6 +110,36 @@ la red de seguridad es para placas impresas, no para errores de tipeo.
 
 ---
 
+## QR y chip NFC: dos puertas, una placa
+
+La placa lleva el QR impreso y un chip NFC. Los dos apuntan al mismo número,
+así que cambiar el destino desde el panel afecta a los dos por igual y el
+cliente no configura nada: la placa llega funcionando.
+
+| | Qué lleva |
+|---|---|
+| QR impreso | `https://toqaqr.com.ar/0042` |
+| Chip NFC | `https://toqaqr.com.ar/0042?n` |
+
+Esa marca `?n` es lo único que los distingue, y es lo que permite contarlos
+por separado: la ficha de cada QR muestra el total y el reparto entre los dos.
+Sin marca, o desde antes de esta versión, la visita cuenta como QR.
+
+La dirección para grabar en el chip está en la ficha de cada QR, con botón de
+copiar, y en la columna `url_nfc` del CSV exportado.
+
+**Nunca grabar en el chip la dirección del cliente.** Quedaría congelada: el
+QR obedecería los cambios de destino y el chip no, con la misma placa
+llevando a dos lugares distintos. Y conviene bloquear el chip después de
+grabarlo, o cualquiera con un celular puede reescribirlo.
+
+Para habilitarlo hay que correr `supabase/migraciones/2026-09-nfc.sql` en el
+SQL Editor de Supabase. Mientras no se corra, el sitio sigue funcionando: si
+la función de tres argumentos no existe, se usa la de siempre y el escaneo se
+cuenta como QR en vez de perderse.
+
+---
+
 ## Copia de respaldo
 
 El plan gratuito de Supabase no incluye copias automáticas. Si la base se

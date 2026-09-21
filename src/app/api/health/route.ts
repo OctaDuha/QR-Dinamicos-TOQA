@@ -21,7 +21,7 @@ export async function GET() {
 
   const desde = Date.now();
   try {
-    await resolveQr(config, 0, "toqa-health", 5000);
+    await resolveQr(config, 0, "toqa-health", "qr", 5000);
     return estado({ ok: true, base: "ok", ms: Date.now() - desde }, 200);
   } catch (error) {
     return estado(

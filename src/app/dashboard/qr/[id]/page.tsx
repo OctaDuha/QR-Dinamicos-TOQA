@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { listDesigns } from "@/lib/placa-designs";
-import { formatQrCode, parseQrId, qrPngDataUrl, qrTargetUrl, siteUrl } from "@/lib/qr";
+import { formatQrCode, nfcTargetUrl, parseQrId, qrPngDataUrl, qrTargetUrl, siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
 import type { QrCode, ScanBucket, ScanSeriesPoint } from "@/lib/types";
 
@@ -46,13 +46,18 @@ export default async function QrDetailPage({
 
   if (!code) notFound();
 
-  const [seriesResult, totalResult, recentResult, pngDataUrl, designs] = await Promise.all([
+  const [seriesResult, totalResult, nfcResult, recentResult, pngDataUrl, designs] = await Promise.all([
     supabase.rpc("qr_scan_series", {
       p_qr_id: id,
       p_bucket: bucket,
       p_from: rangeStart(bucket).toISOString(),
     }),
     supabase.from("scans").select("id", { count: "exact", head: true }).eq("qr_id", id),
+    supabase
+      .from("scans")
+      .select("id", { count: "exact", head: true })
+      .eq("qr_id", id)
+      .eq("via", "nfc"),
     supabase
       .from("scans")
       .select("id", { count: "exact", head: true })
@@ -64,6 +69,12 @@ export default async function QrDetailPage({
 
   const series = (seriesResult.data ?? []) as ScanSeriesPoint[];
   const target = qrTargetUrl(id, siteUrl());
+  const targetNfc = nfcTargetUrl(id, siteUrl());
+
+  // Si la columna todavia no existe (falta correr la migracion) la consulta
+  // falla: ahi no se muestra el desglose en vez de romper la pagina.
+  const total = totalResult.count ?? 0;
+  const porNfc = nfcResult.error ? null : (nfcResult.count ?? 0);
   const activeWindow = BUCKETS.find((b) => b.value === bucket)!.window;
 
   return (
@@ -114,14 +125,29 @@ export default async function QrDetailPage({
             <p className="mt-3 text-xs text-ink-3">
               Esta URL es la que va impresa. Nunca cambia, ni siquiera si cambiás el destino.
             </p>
+
+            <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--line)" }}>
+              <p className="label">Para grabar en el chip NFC</p>
+              <p className="font-mono text-xs break-all text-ink-2">{targetNfc}</p>
+              <div className="mt-2">
+                <CopyButton value={targetNfc} />
+              </div>
+              <p className="mt-2 text-xs text-ink-3">
+                Es la misma dirección con una marca al final: así los toques del chip se cuentan
+                aparte de los escaneos del QR. Grabala con NFC Tools y bloqueá el chip.
+              </p>
+            </div>
           </div>
 
           <div className="card grid grid-cols-2 gap-4 p-5">
             <div>
               <p className="text-xs tracking-wide text-ink-3 uppercase">Total</p>
-              <p className="font-mono text-2xl font-semibold tabular-nums">
-                {totalResult.count ?? 0}
-              </p>
+              <p className="font-mono text-2xl font-semibold tabular-nums">{total}</p>
+              {porNfc !== null && total > 0 ? (
+                <p className="mt-1 text-xs text-ink-3">
+                  {total - porNfc} por QR · {porNfc} por NFC
+                </p>
+              ) : null}
             </div>
             <div>
               <p className="text-xs tracking-wide text-ink-3 uppercase">30 días</p>

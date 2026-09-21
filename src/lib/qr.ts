@@ -32,6 +32,15 @@ export function qrTargetUrl(id: number | string, base = siteUrl()): string {
   return `${base}/${formatQrCode(id)}`;
 }
 
+/**
+ * La misma direccion, con la marca que se graba en el chip NFC. Es lo unico
+ * que distingue un toque de un escaneo: el destino y el numero son los
+ * mismos, cambiar el destino desde el panel afecta a los dos por igual.
+ */
+export function nfcTargetUrl(id: number | string, base = siteUrl()): string {
+  return `${qrTargetUrl(id, base)}?n`;
+}
+
 /** PNG del QR listo para Canva/imprenta. */
 export function qrPngBuffer(id: number | string, base?: string, width = 1024): Promise<Buffer> {
   return QRCode.toBuffer(qrTargetUrl(id, base), {

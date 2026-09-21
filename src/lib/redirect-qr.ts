@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { parseQrId } from "./qr";
-import { publicConfig, resolveQr } from "./supabase/public-key";
+import { publicConfig, resolveQr, type CanalEscaneo } from "./supabase/public-key";
 
 /**
  * Resolucion de un QR escaneado. Vive aca y no en la ruta porque hay dos
@@ -43,7 +43,20 @@ function fallbackUrl(): string | null {
   }
 }
 
-export async function redirigirQr(rawId: string, userAgent: string | null) {
+/**
+ * La placa tiene dos puertas a la misma direccion: el QR impreso y el chip
+ * NFC. En el chip se graba la misma direccion con "?n" al final, y esa marca
+ * es lo unico que permite contarlos por separado.
+ */
+export function canalDe(url: URL): CanalEscaneo {
+  return url.searchParams.has("n") ? "nfc" : "qr";
+}
+
+export async function redirigirQr(
+  rawId: string,
+  userAgent: string | null,
+  via: CanalEscaneo = "qr",
+) {
   const id = parseQrId(rawId);
 
   // Lo que no es un numero de placa nunca salio de un QR nuestro: es un
@@ -67,7 +80,7 @@ export async function redirigirQr(rawId: string, userAgent: string | null) {
   // con el celular. Ahi vamos derecho al respaldo.
   for (let intento = 0; intento < 2; intento += 1) {
     try {
-      const destination = await resolveQr(config, id, userAgent);
+      const destination = await resolveQr(config, id, userAgent, via);
       return destination ? redirigir(destination) : sinDestino();
     } catch (error) {
       if (intento === 0 && !esTimeout(error)) continue;
