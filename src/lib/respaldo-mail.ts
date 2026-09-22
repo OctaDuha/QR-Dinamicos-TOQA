@@ -19,7 +19,21 @@ import { leerRespaldo, respaldoConfigurado } from "./respaldo";
  */
 
 const MARCA_MAIL = "respaldos/ultimo-mail.txt";
-const DIAS_ENTRE_MAILS = 28;
+
+/**
+ * Uno por dia. Resend regala 3.000 mails por mes, asi que 30 es el 1%: no
+ * hay razon para espaciarlos, y uno por dia deja en la casilla el historial
+ * completo, dia por dia, afuera de Vercel. Se puede cambiar con
+ * RESPALDO_MAIL_DIAS si alguna vez molesta.
+ */
+const DIAS_ENTRE_MAILS = Number(process.env.RESPALDO_MAIL_DIAS) || 1;
+
+/**
+ * Margen para el reloj. La tarea corre una vez por dia, pero no al segundo
+ * exacto: si un dia sale 10:00:05 y al siguiente 09:59:58, pasaron 23,99
+ * horas y no 24. Sin esta tolerancia el mail diario saldria dia por medio.
+ */
+const TOLERANCIA_DIAS = 0.25;
 const REMITENTE_POR_DEFECTO = "TOQA <onboarding@resend.dev>";
 
 function claveMail(): string | null {
@@ -70,8 +84,12 @@ export async function enviarRespaldoPorMail(forzar = false): Promise<ResultadoMa
     const ultimo = await ultimoMail();
     if (ultimo) {
       const dias = (Date.now() - new Date(ultimo).getTime()) / 86_400_000;
-      if (dias < DIAS_ENTRE_MAILS) {
-        return { ok: true, enviado: false, motivo: `el ultimo fue hace ${Math.round(dias)} dias` };
+      if (dias < DIAS_ENTRE_MAILS - TOLERANCIA_DIAS) {
+        return {
+          ok: true,
+          enviado: false,
+          motivo: `el ultimo salio hace ${Math.round(dias * 24)} h`,
+        };
       }
     }
   }
@@ -90,9 +108,12 @@ export async function enviarRespaldoPorMail(forzar = false): Promise<ResultadoMa
     body: JSON.stringify({
       from: process.env.RESPALDO_EMAIL_FROM?.trim() || REMITENTE_POR_DEFECTO,
       to: [para],
-      subject: `Copia de seguridad TOQA · ${fecha}`,
+      subject: `Copia de seguridad TOQA · ${fecha} · ${filas} QR`,
       text: [
         `Copia de tus ${filas} QR al ${fecha}.`,
+        "",
+        "Te llega todos los días. Si un día el número de QR del asunto baja de",
+        "golpe, o si dejan de llegar, algo pasó: entrá al panel a mirar.",
         "",
         "Guardá este mail. Si algún día perdieras la cuenta de Vercel o la base",
         "de datos, este CSV es lo que permite reconstruir todo: tiene el número",

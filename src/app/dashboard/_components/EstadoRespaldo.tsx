@@ -222,7 +222,7 @@ function AvisoCopiaAfuera({
 
   const porMail = mailConfigurado ? (
     <span className="text-ink-3">
-      {mail ? ` · último mail con la copia: ${describir(mail)}` : " · el mail mensual todavía no salió"}
+      {mail ? ` · último mail con la copia: ${describir(mail)}` : " · el mail diario todavía no salió"}
       {" · "}
       <button type="button" className="underline" onClick={onMail}>
         mandármelo ahora
