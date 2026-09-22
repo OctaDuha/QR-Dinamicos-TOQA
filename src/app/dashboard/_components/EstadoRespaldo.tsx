@@ -19,8 +19,17 @@ type Estado = {
   errorFoto?: string | null;
 };
 
-/** A partir de acá el panel avisa que falta una copia afuera de Vercel. */
-const DIAS_SIN_BAJAR = 30;
+/**
+ * A partir de acá el panel avisa que falta una copia afuera de Vercel.
+ *
+ * Con el mail andando llega una copia por día, así que una semana de
+ * silencio ya es raro y hay que enterarse. Sin el mail, la copia depende de
+ * que alguien se acuerde de bajarla: pedirla cada 7 días sería un cartel
+ * encendido casi siempre, y un cartel que está siempre encendido se deja de
+ * mirar.
+ */
+const DIAS_CON_MAIL = 7;
+const DIAS_A_MANO = 30;
 
 /**
  * Cuando fue la ultima copia de seguridad.
@@ -231,13 +240,19 @@ function AvisoCopiaAfuera({
     </span>
   ) : null;
 
-  if (dias !== null && dias < DIAS_SIN_BAJAR) {
+  const limite = mailConfigurado ? DIAS_CON_MAIL : DIAS_A_MANO;
+
+  if (dias !== null && dias < limite) {
     return (
       <span className="w-full text-xs text-ink-3">
         Copia guardada fuera de Vercel: {describir(masReciente!)}.{porMail}
       </span>
     );
   }
+
+  // Si el mail estaba configurado y aun asi pasaron los dias, lo que fallo es
+  // el mail, no el olvido de nadie. Decirlo cambia que hay que ir a mirar.
+  const dejoDeLlegar = mailConfigurado && mail !== null;
 
   return (
     <div
@@ -246,15 +261,17 @@ function AvisoCopiaAfuera({
     >
       <p style={{ color: "var(--danger)" }}>
         <strong>
-          {dias === null
-            ? "Nunca bajaste una copia a tu computadora."
-            : `Hace ${Math.round(dias)} días que no bajás una copia a tu computadora.`}
+          {dejoDeLlegar
+            ? `Hace ${Math.round(dias!)} días que no llega el mail con la copia.`
+            : dias === null
+              ? "Nunca bajaste una copia a tu computadora."
+              : `Hace ${Math.round(dias)} días que no bajás una copia a tu computadora.`}
         </strong>
       </p>
       <p className="text-ink-2">
-        Todo lo de arriba vive adentro de Vercel: te cubre si se rompe la base o si alguien te
-        cambia los destinos, pero no si perdés la cuenta de Vercel, porque se va con ella. Bajá el
-        CSV y guardalo en tu compu o en tu Drive.
+        {dejoDeLlegar
+          ? "Tendría que llegarte uno por día. Si dejó de llegar, algo se rompió: fijate que la clave de Resend siga siendo válida. Mientras tanto, bajá el CSV a mano."
+          : "Todo lo de arriba vive adentro de Vercel: te cubre si se rompe la base o si alguien te cambia los destinos, pero no si perdés la cuenta de Vercel, porque se va con ella. Bajá el CSV y guardalo en tu compu o en tu Drive."}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <a className="btn btn-secondary text-xs" href="/api/respaldo/descargar">
