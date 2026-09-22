@@ -136,7 +136,9 @@ export async function estadoRespaldo(): Promise<EstadoRespaldo> {
  * problema guardando el respaldo no puede romper la operacion que lo
  * disparo (crear un lote, cambiar un destino).
  */
-export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean; error?: string }> {
+export async function respaldar(
+  supabase: SupabaseClient,
+): Promise<{ ok: boolean; error?: string; errorFoto?: string }> {
   if (!respaldoConfigurado()) return { ok: false, error: "sin configurar" };
 
 
@@ -163,16 +165,25 @@ export async function respaldar(supabase: SupabaseClient): Promise<{ ok: boolean
     // cambiara todos los destinos, ese mismo cambio dispararia el respaldo y
     // reemplazaria la copia buena por la envenenada. Guardando la primera
     // foto de cada dia, siempre queda a que volver.
+    // En su propio try: la copia principal ya esta guardada, y si la foto
+    // fallara (dos cambios a la vez, por ejemplo) no tiene por que hacer
+    // parecer que fallo todo el respaldo.
     const delDia = `${CARPETA_DIARIA}${hoy()}.csv`;
-    const { blobs } = await list({ prefix: delDia, limit: 1, ...acceso_ });
+    try {
+      const { blobs } = await list({ prefix: delDia, limit: 1, ...acceso_ });
 
-    if (blobs.length === 0) {
-      await put(delDia, csv, {
-        access: "private",
-        contentType: "text/csv; charset=utf-8",
-        addRandomSuffix: false,
-        ...acceso_,
-      });
+      if (blobs.length === 0) {
+        await put(delDia, csv, {
+          access: "private",
+          contentType: "text/csv; charset=utf-8",
+          addRandomSuffix: false,
+          allowOverwrite: true,
+          ...acceso_,
+        });
+      }
+    } catch (error) {
+      console.error("[respaldo] no se pudo guardar la foto del dia:", (error as Error).message);
+      return { ok: true, errorFoto: (error as Error).message };
     }
 
     return { ok: true };

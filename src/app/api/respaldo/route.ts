@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
 import { estadoRespaldo, fotosDiarias, respaldar, ultimaDescarga } from "@/lib/respaldo";
+import { mailConfigurado, ultimoMail } from "@/lib/respaldo-mail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,14 +12,15 @@ export async function GET() {
   const { denied } = await requireAdmin();
   if (denied) return denied;
 
-  const [estado, fotos, descarga] = await Promise.all([
+  const [estado, fotos, descarga, mail] = await Promise.all([
     estadoRespaldo(),
     fotosDiarias(),
     ultimaDescarga(),
+    ultimoMail(),
   ]);
 
   return NextResponse.json(
-    { ...estado, fotos, descarga },
+    { ...estado, fotos, descarga, mail, mailConfigurado: mailConfigurado() },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
@@ -47,5 +49,13 @@ export async function POST() {
     ultimaDescarga(),
   ]);
 
-  return NextResponse.json({ ...estado, fotos, descarga });
+  // Si la copia principal salio bien pero la foto del dia no, hay que poder
+  // verlo: de otro modo el panel diria "listo" y la carpeta por dia no
+  // aparece nunca, sin explicacion.
+  return NextResponse.json({
+    ...estado,
+    fotos,
+    descarga,
+    errorFoto: resultado.errorFoto ?? null,
+  });
 }

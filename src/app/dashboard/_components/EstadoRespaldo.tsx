@@ -12,6 +12,11 @@ type Estado = {
   fotos?: { fecha: string; tamano: number }[];
   /** Cuándo se bajó una copia a una computadora por última vez. */
   descarga?: string | null;
+  /** Cuándo salió el último mail con la copia adjunta. */
+  mail?: string | null;
+  mailConfigurado?: boolean;
+  /** La copia se guardó pero la foto del día no. */
+  errorFoto?: string | null;
 };
 
 /** A partir de acá el panel avisa que falta una copia afuera de Vercel. */
@@ -27,6 +32,7 @@ const DIAS_SIN_BAJAR = 30;
 export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
   const [estado, setEstado] = useState<Estado | null>(null);
   const [busy, setBusy] = useState(false);
+  const [enviando, setEnviando] = useState<string | null>(null);
 
   const leer = () =>
     fetch("/api/respaldo")
@@ -45,6 +51,18 @@ export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
       if (response.ok) setEstado(await response.json());
     } finally {
       setBusy(false);
+    }
+  };
+
+  const mandarMail = async () => {
+    setEnviando("Enviando…");
+    try {
+      const response = await fetch("/api/respaldo/mail", { method: "POST" });
+      const cuerpo = await response.json().catch(() => ({}));
+      setEnviando(response.ok ? "Enviado. Revisá tu correo." : (cuerpo.error ?? "No se pudo enviar."));
+      if (response.ok) void leer();
+    } catch {
+      setEnviando("No se pudo enviar.");
     }
   };
 
@@ -132,7 +150,19 @@ export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
         </a>
       ) : null}
 
-      <AvisoCopiaAfuera descarga={estado.descarga ?? null} />
+      {estado.errorFoto ? (
+        <p className="w-full text-xs" style={{ color: "var(--danger)" }}>
+          La copia se guardó, pero no se pudo guardar la foto del día: {estado.errorFoto}
+        </p>
+      ) : null}
+
+      <AvisoCopiaAfuera
+        descarga={estado.descarga ?? null}
+        mail={estado.mail ?? null}
+        mailConfigurado={estado.mailConfigurado ?? false}
+        onMail={mandarMail}
+        enviando={enviando}
+      />
 
       {(estado.fotos?.length ?? 0) > 0 ? (
         <details className="w-full">
@@ -169,13 +199,42 @@ export function EstadoRespaldo({ hayQrs }: { hayQrs: boolean }) {
  * eso no se puede hacer solo: nadie puede dejar un archivo en tu disco
  * desde afuera. Lo que si se puede es no dejar que se olvide.
  */
-function AvisoCopiaAfuera({ descarga }: { descarga: string | null }) {
-  const dias = descarga ? diasDesde(descarga) : null;
+function AvisoCopiaAfuera({
+  descarga,
+  mail,
+  mailConfigurado,
+  onMail,
+  enviando,
+}: {
+  descarga: string | null;
+  mail: string | null;
+  mailConfigurado: boolean;
+  onMail: () => void;
+  enviando: string | null;
+}) {
+  // El mail mensual tambien es una copia afuera, y no depende de que te
+  // acuerdes: si esta saliendo, el aviso no tiene razon de ser.
+  const masReciente = [descarga, mail]
+    .filter((f): f is string => Boolean(f))
+    .sort()
+    .pop() ?? null;
+  const dias = masReciente ? diasDesde(masReciente) : null;
+
+  const porMail = mailConfigurado ? (
+    <span className="text-ink-3">
+      {mail ? ` · último mail con la copia: ${describir(mail)}` : " · el mail mensual todavía no salió"}
+      {" · "}
+      <button type="button" className="underline" onClick={onMail}>
+        mandármelo ahora
+      </button>
+      {enviando ? ` · ${enviando}` : ""}
+    </span>
+  ) : null;
 
   if (dias !== null && dias < DIAS_SIN_BAJAR) {
     return (
       <span className="w-full text-xs text-ink-3">
-        Copia guardada fuera de Vercel: {describir(descarga!)}.
+        Copia guardada fuera de Vercel: {describir(masReciente!)}.{porMail}
       </span>
     );
   }
@@ -197,9 +256,16 @@ function AvisoCopiaAfuera({ descarga }: { descarga: string | null }) {
         cambia los destinos, pero no si perdés la cuenta de Vercel, porque se va con ella. Bajá el
         CSV y guardalo en tu compu o en tu Drive.
       </p>
-      <a className="btn btn-secondary self-start text-xs" href="/api/respaldo/descargar">
-        Bajar el CSV ahora
-      </a>
+      <div className="flex flex-wrap items-center gap-2">
+        <a className="btn btn-secondary text-xs" href="/api/respaldo/descargar">
+          Bajar el CSV ahora
+        </a>
+        {mailConfigurado ? (
+          <button type="button" className="btn btn-ghost text-xs" onClick={onMail}>
+            {enviando ?? "Mandármelo por mail"}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
