@@ -2,14 +2,13 @@ import { type NextRequest } from "next/server";
 
 import { canalDe, redirigirQr } from "@/lib/redirect-qr";
 
-// Camino corto: es el que va impreso en las placas. Sacarle el "/r/" del
-// medio deja la direccion en 26 caracteres, y eso baja el QR de 29x29 a
-// 25x25 modulos: cuadraditos 16% mas grandes, que se escanean mejor de
-// lejos y aguantan mejor una placa rayada o curva.
+// Camino corto de antes: /0001 en el QR y /0001?n en el chip. Las placas
+// nuevas llevan /qr/0001 y /nfc/0001, pero este se mantiene para siempre
+// por si quedo alguna impresa o grabada con esta forma.
 //
-// Las rutas estaticas (/login, /dashboard, /api) tienen prioridad sobre
-// este segmento dinamico, asi que no les pisa nada. Cualquier cosa que no
-// sea un numero cae en la pagina de siempre.
+// Las rutas estaticas (/login, /dashboard, /api, /qr, /nfc) tienen
+// prioridad sobre este segmento dinamico, asi que no les pisa nada.
+// Cualquier cosa que no sea un numero cae en la pagina de siempre.
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 

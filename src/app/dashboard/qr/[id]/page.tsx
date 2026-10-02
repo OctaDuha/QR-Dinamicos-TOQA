@@ -135,8 +135,9 @@ export default async function QrDetailPage({
                 <CopyButton value={targetNfc} />
               </div>
               <p className="mt-2 text-xs text-ink-3">
-                Es la misma dirección con una marca al final: así los toques del chip se cuentan
-                aparte de los escaneos del QR. Grabala con NFC Tools y bloqueá el chip.
+                Mismo número y mismo destino que el QR, por otro camino: así los toques del chip
+                se cuentan aparte de los escaneos. Grabala con NFC Tools, tocá el chip con el
+                celular para comprobar que abre bien, y recién ahí bloquealo.
               </p>
             </div>
           </div>

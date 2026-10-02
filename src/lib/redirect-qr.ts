@@ -4,10 +4,16 @@ import { parseQrId } from "./qr";
 import { publicConfig, resolveQr, type CanalEscaneo } from "./supabase/public-key";
 
 /**
- * Resolucion de un QR escaneado. Vive aca y no en la ruta porque hay dos
- * caminos que llegan al mismo lugar: el corto `/0001`, que es el que se
- * imprime, y el viejo `/r/0001`, que se mantiene para siempre porque puede
- * haber placas impresas con esa forma.
+ * Resolucion de un QR escaneado o un chip tocado. Vive aca y no en la ruta
+ * porque hay varios caminos que llegan al mismo lugar:
+ *
+ *   /qr/0001   el que va impreso en el QR
+ *   /nfc/0001  el que va grabado en el chip
+ *   /0001      el corto de antes; con ?n al final era el del chip
+ *   /r/0001    el primero de todos
+ *
+ * Los de antes se mantienen para siempre: una placa impresa o un chip
+ * bloqueado no se pueden corregir.
  */
 
 const SIN_DESTINO_HTML = `<!doctype html>
@@ -44,9 +50,9 @@ function fallbackUrl(): string | null {
 }
 
 /**
- * La placa tiene dos puertas a la misma direccion: el QR impreso y el chip
- * NFC. En el chip se graba la misma direccion con "?n" al final, y esa marca
- * es lo unico que permite contarlos por separado.
+ * Para los caminos de antes (/0001 y /r/0001), que no dicen de que puerta
+ * vienen: los chips de esa epoca llevaban "?n" al final. Los caminos nuevos
+ * (/qr/ y /nfc/) ya lo dicen solos y no pasan por aca.
  */
 export function canalDe(url: URL): CanalEscaneo {
   return url.searchParams.has("n") ? "nfc" : "qr";

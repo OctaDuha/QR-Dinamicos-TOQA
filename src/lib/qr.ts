@@ -22,23 +22,31 @@ export function siteUrl(): string {
 }
 
 /**
- * URL que apunta el QR fisico. Nunca cambia.
+ * URL que apunta el QR fisico. Nunca cambia una vez impresa.
  *
- * Va sin "/r/" a proposito: cada caracter de menos acerca la direccion al
- * escalon de 25x25 modulos en vez de 29x29, y con dominio propio lo cruza.
- * El camino largo /r/0001 sigue funcionando para placas viejas.
+ * Lleva "/qr/" para que el QR y el chip tengan cada uno su camino y se
+ * distingan por la direccion misma, no por un parametro. Cuesta tamaño: con
+ * dominio propio la direccion pasa de 26 a 29 caracteres y el QR sube de
+ * 25x25 a 29x29 modulos. Fue una decision tomada sabiendolo.
+ *
+ * Las formas anteriores (/0001 y /r/0001) siguen funcionando para siempre.
  */
 export function qrTargetUrl(id: number | string, base = siteUrl()): string {
-  return `${base}/${formatQrCode(id)}`;
+  return `${base}/qr/${formatQrCode(id)}`;
 }
 
 /**
- * La misma direccion, con la marca que se graba en el chip NFC. Es lo unico
- * que distingue un toque de un escaneo: el destino y el numero son los
- * mismos, cambiar el destino desde el panel afecta a los dos por igual.
+ * La direccion que se graba en el chip NFC. El numero y el destino son los
+ * mismos que los del QR de la misma placa: cambiar el destino desde el panel
+ * afecta a los dos por igual. Solo cambia el camino, que es lo que permite
+ * contar los toques aparte.
+ *
+ * Va en el camino y no como parametro (?n) porque un parametro lo puede
+ * borrar un navegador o una app que limpie las direcciones; el camino no.
+ * Los chips grabados con ?n siguen contando como NFC igual.
  */
 export function nfcTargetUrl(id: number | string, base = siteUrl()): string {
-  return `${qrTargetUrl(id, base)}?n`;
+  return `${base}/nfc/${formatQrCode(id)}`;
 }
 
 /** PNG del QR listo para Canva/imprenta. */
@@ -61,7 +69,7 @@ export function qrPngDataUrl(id: number | string, base?: string, width = 512): P
 }
 
 /**
- * Acepta 0001, 1, /r/0001 y devuelve el id numerico. null si no es valido.
+ * Acepta 0001 o 1 y devuelve el id numerico. null si no es valido.
  */
 export function parseQrId(raw: string): number | null {
   const cleaned = raw.trim();

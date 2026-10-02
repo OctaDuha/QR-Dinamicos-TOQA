@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server";
 
 import { canalDe, redirigirQr } from "@/lib/redirect-qr";
 
-// Camino viejo. Las placas nuevas se imprimen con el corto (/0001), pero
+// Camino viejo. Las placas nuevas se imprimen con /qr/0001, pero
 // esta ruta se mantiene para siempre: puede haber placas impresas con esta
 // forma, y una placa impresa no se corrige.
 export const runtime = "edge";
