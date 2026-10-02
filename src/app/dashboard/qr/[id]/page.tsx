@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 
 import { listDesigns } from "@/lib/placa-designs";
@@ -49,11 +50,7 @@ export default async function QrDetailPage({
   if (!code) notFound();
 
   const [seriesResult, totalResult, nfcResult, recentResult, pngDataUrl, designs] = await Promise.all([
-    supabase.rpc("qr_scan_series", {
-      p_qr_id: id,
-      p_bucket: bucket,
-      p_from: rangeStart(bucket).toISOString(),
-    }),
+    leerSerie(supabase, id, bucket),
     supabase.from("scans").select("id", { count: "exact", head: true }).eq("qr_id", id),
     supabase
       .from("scans")
@@ -69,7 +66,7 @@ export default async function QrDetailPage({
     listDesigns(supabase),
   ]);
 
-  const series = (seriesResult.data ?? []) as ScanSeriesPoint[];
+  const series = seriesResult.data;
   const target = qrTargetUrl(id, siteUrl());
   const targetNfc = nfcTargetUrl(id, siteUrl());
 
@@ -221,6 +218,37 @@ export default async function QrDetailPage({
       </div>
     </div>
   );
+}
+
+/**
+ * La serie del grafico, separada en QR y NFC.
+ *
+ * Si la base todavia no tiene la funcion separada (falta correr la
+ * migracion), se usa la de siempre y el grafico muestra solo el total: la
+ * pagina nunca se rompe por una migracion pendiente.
+ */
+async function leerSerie(
+  supabase: SupabaseClient,
+  id: number,
+  bucket: ScanBucket,
+): Promise<{ data: ScanSeriesPoint[]; error: { message: string } | null }> {
+  const args = { p_qr_id: id, p_bucket: bucket, p_from: rangeStart(bucket).toISOString() };
+
+  const separada = await supabase.rpc("qr_scan_series_via", args);
+  if (!separada.error) {
+    const filas = (separada.data ?? []) as { bucket_start: string; qr: number; nfc: number }[];
+    return {
+      data: filas.map((fila) => {
+        const qr = Number(fila.qr);
+        const nfc = Number(fila.nfc);
+        return { bucket_start: fila.bucket_start, scans: qr + nfc, qr, nfc };
+      }),
+      error: null,
+    };
+  }
+
+  const total = await supabase.rpc("qr_scan_series", args);
+  return { data: (total.data ?? []) as ScanSeriesPoint[], error: total.error };
 }
 
 function daysAgo(days: number): Date {

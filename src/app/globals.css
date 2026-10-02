@@ -44,6 +44,11 @@
   --danger-soft: #3a201e;
 
   --series-1: #fb9a56;
+
+  /* Grafico de escaneos: una puerta por color. Validados contra la tarjeta
+     (#161d30): banda de luminosidad, separacion para daltonismo y contraste. */
+  --series-qr: #e0721f;
+  --series-nfc: #5e8de0;
 }
 
 @theme inline {

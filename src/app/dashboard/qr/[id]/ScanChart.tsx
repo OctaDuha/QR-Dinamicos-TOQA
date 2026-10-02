@@ -7,6 +7,7 @@ import type { ScanBucket, ScanSeriesPoint } from "@/lib/types";
 const HEIGHT = 220;
 const PAD = { top: 18, right: 12, bottom: 30, left: 42 };
 const BAR_GAP = 2; // separacion de superficie entre barras contiguas
+const STACK_GAP = 2; // la misma separacion, entre el tramo QR y el NFC de una barra
 const RADIUS = 4; // punta redondeada, anclada a la linea de base
 
 type Props = {
@@ -30,9 +31,18 @@ export function ScanChart({ data, bucket }: Props) {
     return () => observer.disconnect();
   }, []);
 
+  // Si la base todavia no separa por puerta, cada barra es el total y el
+  // grafico se ve como siempre: una sola serie, sin leyenda.
+  const separado = data.length > 0 && data.every((p) => p.qr !== undefined && p.nfc !== undefined);
+
   const points = useMemo(
-    () => data.map((point) => ({ date: parseBucket(point.bucket_start), value: Number(point.scans) })),
-    [data],
+    () =>
+      data.map((point) => {
+        const value = Number(point.scans);
+        const nfc = separado ? Number(point.nfc) : 0;
+        return { date: parseBucket(point.bucket_start), value, qr: value - nfc, nfc };
+      }),
+    [data, separado],
   );
 
   const maxValue = Math.max(1, ...points.map((p) => p.value));
@@ -43,6 +53,8 @@ export function ScanChart({ data, bucket }: Props) {
   const barWidth = Math.max(2, Math.min(28, slot - BAR_GAP));
 
   const total = points.reduce((sum, p) => sum + p.value, 0);
+  const totalQr = points.reduce((sum, p) => sum + p.qr, 0);
+  const totalNfc = points.reduce((sum, p) => sum + p.nfc, 0);
   const peakIndex = points.reduce(
     (best, p, i) => (p.value > points[best]!.value ? i : best),
     0,
@@ -53,11 +65,19 @@ export function ScanChart({ data, bucket }: Props) {
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="mb-1 flex items-baseline justify-between gap-3">
-        <p className="text-sm text-ink-2">
-          <span className="font-mono font-semibold text-ink-1 tabular-nums">{total}</span> escaneos en
-          el período
-        </p>
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <p className="text-sm text-ink-2">
+            <span className="font-mono font-semibold text-ink-1 tabular-nums">{total}</span> escaneos
+            en el período
+          </p>
+          {separado ? (
+            <p className="flex items-center gap-3 text-xs text-ink-2" aria-label="Referencias">
+              <Referencia color="var(--series-qr)" texto="QR" valor={totalQr} />
+              <Referencia color="var(--series-nfc)" texto="NFC" valor={totalNfc} />
+            </p>
+          ) : null}
+        </div>
         <button
           type="button"
           className="btn btn-ghost text-xs"
@@ -74,13 +94,27 @@ export function ScanChart({ data, bucket }: Props) {
             <thead>
               <tr className="text-left text-xs text-ink-3 uppercase">
                 <th className="py-1.5 font-semibold">{BUCKET_NOUN[bucket]}</th>
-                <th className="py-1.5 text-right font-semibold">Escaneos</th>
+                {separado ? (
+                  <>
+                    <th className="py-1.5 text-right font-semibold">QR</th>
+                    <th className="py-1.5 text-right font-semibold">NFC</th>
+                    <th className="py-1.5 text-right font-semibold">Total</th>
+                  </>
+                ) : (
+                  <th className="py-1.5 text-right font-semibold">Escaneos</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {points.map((point, index) => (
                 <tr key={index} className="border-t" style={{ borderColor: "var(--line)" }}>
                   <td className="py-1.5">{formatFull(point.date, bucket)}</td>
+                  {separado ? (
+                    <>
+                      <td className="py-1.5 text-right font-mono tabular-nums">{point.qr}</td>
+                      <td className="py-1.5 text-right font-mono tabular-nums">{point.nfc}</td>
+                    </>
+                  ) : null}
                   <td className="py-1.5 text-right font-mono tabular-nums">{point.value}</td>
                 </tr>
               ))}
@@ -92,7 +126,11 @@ export function ScanChart({ data, bucket }: Props) {
           width={width}
           height={HEIGHT}
           role="img"
-          aria-label={`Escaneos por ${BUCKET_NOUN[bucket]}: ${total} en total`}
+          aria-label={
+            separado
+              ? `Escaneos por ${BUCKET_NOUN[bucket]}: ${total} en total, ${totalQr} por QR y ${totalNfc} por NFC`
+              : `Escaneos por ${BUCKET_NOUN[bucket]}: ${total} en total`
+          }
           onMouseLeave={() => setHover(null)}
           style={{ display: "block", touchAction: "pan-y" }}
         >
@@ -128,15 +166,27 @@ export function ScanChart({ data, bucket }: Props) {
             const height = (point.value / scaleMax) * plotHeight;
             const y = PAD.top + plotHeight - height;
             const isHovered = hover === index;
+            const opacity = hover === null || isHovered ? 1 : 0.5;
 
             return (
               <g key={index}>
                 {point.value > 0 ? (
-                  <path
-                    d={roundedTopBar(x, y, barWidth, height)}
-                    fill="var(--series-1)"
-                    opacity={hover === null || isHovered ? 1 : 0.5}
-                  />
+                  separado ? (
+                    <BarraApilada
+                      x={x}
+                      baseline={PAD.top + plotHeight}
+                      width={barWidth}
+                      qrHeight={(point.qr / scaleMax) * plotHeight}
+                      nfcHeight={(point.nfc / scaleMax) * plotHeight}
+                      opacity={opacity}
+                    />
+                  ) : (
+                    <path
+                      d={roundedTopBar(x, y, barWidth, height)}
+                      fill="var(--series-1)"
+                      opacity={opacity}
+                    />
+                  )
                 ) : null}
 
                 {/* etiqueta directa selectiva: solo el pico */}
@@ -205,12 +255,90 @@ export function ScanChart({ data, bucket }: Props) {
           }}
         >
           <p className="text-ink-2">{formatFull(active.date, bucket)}</p>
-          <p className="font-mono text-sm font-semibold tabular-nums">
-            {active.value} escaneo{active.value === 1 ? "" : "s"}
-          </p>
+          {separado ? (
+            <div className="mt-1 flex flex-col gap-0.5">
+              <FilaTooltip color="var(--series-qr)" texto="QR" valor={active.qr} />
+              <FilaTooltip color="var(--series-nfc)" texto="NFC" valor={active.nfc} />
+              <p
+                className="mt-0.5 flex justify-between border-t pt-0.5 font-semibold"
+                style={{ borderColor: "var(--line)" }}
+              >
+                <span>Total</span>
+                <span className="font-mono tabular-nums">{active.value}</span>
+              </p>
+            </div>
+          ) : (
+            <p className="font-mono text-sm font-semibold tabular-nums">
+              {active.value} escaneo{active.value === 1 ? "" : "s"}
+            </p>
+          )}
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Una barra partida en dos: QR abajo, NFC arriba, con una separacion del
+ * color del fondo entre las dos. La punta redondeada va solo arriba de todo,
+ * que es donde termina el dato; el tramo de abajo queda recto.
+ */
+function BarraApilada({
+  x,
+  baseline,
+  width,
+  qrHeight,
+  nfcHeight,
+  opacity,
+}: {
+  x: number;
+  baseline: number;
+  width: number;
+  qrHeight: number;
+  nfcHeight: number;
+  opacity: number;
+}) {
+  const qrTop = baseline - qrHeight;
+  const ambos = qrHeight > 0 && nfcHeight > 0;
+  // La separacion sale del tramo de arriba, para que la barra entera mida
+  // lo mismo que el total. Un tramo de NFC muy chico nunca desaparece.
+  const nfcVisible = ambos ? Math.max(1, nfcHeight - STACK_GAP) : nfcHeight;
+  const nfcBottom = ambos ? qrTop - STACK_GAP : baseline;
+
+  return (
+    <g opacity={opacity}>
+      {qrHeight > 0 ? (
+        <path
+          d={ambos ? squareBar(x, qrTop, width, qrHeight) : roundedTopBar(x, qrTop, width, qrHeight)}
+          fill="var(--series-qr)"
+        />
+      ) : null}
+      {nfcHeight > 0 ? (
+        <path d={roundedTopBar(x, nfcBottom - nfcVisible, width, nfcVisible)} fill="var(--series-nfc)" />
+      ) : null}
+    </g>
+  );
+}
+
+function Referencia({ color, texto, valor }: { color: string; texto: string; valor: number }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
+      {texto}
+      <span className="font-mono text-ink-1 tabular-nums">{valor}</span>
+    </span>
+  );
+}
+
+function FilaTooltip({ color, texto, valor }: { color: string; texto: string; valor: number }) {
+  return (
+    <p className="flex items-center justify-between gap-2">
+      <span className="inline-flex items-center gap-1.5 text-ink-2">
+        <span aria-hidden="true" className="inline-block h-2 w-2 rounded-sm" style={{ background: color }} />
+        {texto}
+      </span>
+      <span className="font-mono tabular-nums">{valor}</span>
+    </p>
   );
 }
 
@@ -239,6 +367,10 @@ function roundedTopBar(x: number, y: number, width: number, height: number): str
     `L ${x + width} ${bottom}`,
     "Z",
   ].join(" ");
+}
+
+function squareBar(x: number, y: number, width: number, height: number): string {
+  return `M ${x} ${y + height} L ${x} ${y} L ${x + width} ${y} L ${x + width} ${y + height} Z`;
 }
 
 /**
