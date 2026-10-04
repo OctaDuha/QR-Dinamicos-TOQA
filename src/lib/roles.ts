@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 
-export type Rol = "dueno" | "empleado";
+/**
+ * "pendiente" es una cuenta que existe pero que el dueño todavia no aprobo:
+ * puede entrar, pero no ve ni toca nada. Toda cuenta nueva arranca asi.
+ */
+export type Rol = "dueno" | "empleado" | "pendiente";
 
 export type Sesion = {
   supabase: SupabaseClient;
@@ -29,7 +33,7 @@ export async function sesionActual(): Promise<Sesion | null> {
 
   if (!user) return null;
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("perfiles")
     .select("rol")
     .eq("id", user.id)
@@ -39,11 +43,20 @@ export async function sesionActual(): Promise<Sesion | null> {
     supabase,
     userId: user.id,
     email: user.email ?? null,
-    // Sin perfil cargado se asume el permiso mas bajo. Es lo que pasa si
-    // todavia no se corrio la migracion de roles: el panel sigue andando y
-    // solo se esconden los botones de borrar.
-    rol: data?.rol === "dueno" ? "dueno" : "empleado",
+    rol: rolDe(data?.rol, Boolean(error)),
   };
+}
+
+/**
+ * Si la consulta falla es porque todavia no se corrio la migracion de roles:
+ * ahi el panel sigue andando como antes, con los botones de borrar
+ * escondidos. Pero si la consulta anda y la cuenta no tiene perfil, o lo
+ * tiene pendiente, no se le da nada: la base tampoco se lo daria.
+ */
+function rolDe(rol: string | undefined, fallo: boolean): Rol {
+  if (fallo) return "empleado";
+  if (rol === "dueno" || rol === "empleado") return rol;
+  return "pendiente";
 }
 
 export async function esDueno(): Promise<boolean> {

@@ -1,12 +1,12 @@
 import JSZip from "jszip";
 import { NextResponse } from "next/server";
 
+import { requireAdmin } from "@/lib/canva-guard";
 import { exportCsv, pngFileName } from "@/lib/export";
 import { designNames } from "@/lib/placa-designs";
 import { fetchQrCodes, readRange } from "@/lib/export-query";
 import { qrPngBuffer, siteUrl } from "@/lib/qr";
 import { anotarDescarga } from "@/lib/respaldo";
-import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,14 +24,10 @@ const MAX_PNGS = 250;
 const ZIP_PNG_WIDTH = 1024;
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return new NextResponse("No autorizado", { status: 401 });
-  }
+  // Cuenta aprobada, no solo logueada: lo que se baja aca es la lista
+  // completa de clientes y destinos.
+  const { supabase, denied } = await requireAdmin();
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const range = readRange(url);

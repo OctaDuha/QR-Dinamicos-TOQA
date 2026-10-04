@@ -314,10 +314,18 @@ alter table public.canva_connections enable row level security;
 alter table public.canva_batches     enable row level security;
 alter table public.canva_batch_items enable row level security;
 
+-- Solo en una base nueva. Si ya se corrieron las migraciones de roles y
+-- acceso (existe public.perfiles), estas politicas abiertas no se crean:
+-- sumadas a las de esas migraciones, las anularian y cualquier cuenta podria
+-- volver a ver y editar todo.
 do $$
 declare
   t text;
 begin
+  if to_regclass('public.perfiles') is not null then
+    return;
+  end if;
+
   foreach t in array array[
     'qr_codes', 'scans', 'canva_connections', 'canva_batches', 'canva_batch_items'
   ] loop
@@ -437,9 +445,16 @@ drop table if exists public.placa_settings;
 
 alter table public.placa_designs enable row level security;
 
-drop policy if exists placa_designs_admin_all on public.placa_designs;
-create policy placa_designs_admin_all on public.placa_designs
-  for all to authenticated using (true) with check (true);
+-- Igual que arriba: la politica abierta solo en una base sin roles.
+do $$
+begin
+  if to_regclass('public.perfiles') is null then
+    drop policy if exists placa_designs_admin_all on public.placa_designs;
+    create policy placa_designs_admin_all on public.placa_designs
+      for all to authenticated using (true) with check (true);
+  end if;
+end;
+$$;
 
 revoke all on public.placa_designs from anon;
 grant select, insert, update, delete on public.placa_designs to authenticated;

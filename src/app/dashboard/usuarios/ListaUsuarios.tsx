@@ -6,7 +6,7 @@ import { useState } from "react";
 export type Usuario = {
   id: string;
   email: string | null;
-  rol: "dueno" | "empleado";
+  rol: "dueno" | "empleado" | "pendiente";
   creado_en: string;
 };
 
@@ -27,7 +27,10 @@ export function ListaUsuarios({ usuarios, yo }: { usuarios: Usuario[]; yo: strin
       });
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
       if (response.ok) {
-        setNota({ malo: false, texto: "Rol actualizado." });
+        setNota({
+          malo: false,
+          texto: rol === "pendiente" ? "Listo: esa cuenta ya no tiene acceso." : "Rol actualizado.",
+        });
         router.refresh();
       } else {
         setNota({ malo: true, texto: payload.error ?? "No pude cambiar el rol." });
@@ -37,8 +40,22 @@ export function ListaUsuarios({ usuarios, yo }: { usuarios: Usuario[]; yo: strin
     }
   };
 
+  const pendientes = usuarios.filter((u) => u.rol === "pendiente" && u.id !== yo).length;
+
   return (
     <div className="flex flex-col gap-3">
+      {pendientes > 0 ? (
+        <p
+          className="rounded-lg px-3 py-2 text-sm"
+          style={{ background: "var(--brand-2-soft)", color: "var(--brand-2-ink)" }}
+        >
+          {pendientes === 1
+            ? "Hay 1 cuenta esperando que la apruebes."
+            : `Hay ${pendientes} cuentas esperando que las apruebes.`}{" "}
+          Si no sabés de quién es, dejala como está: sin acceso no puede ver ni tocar nada.
+        </p>
+      ) : null}
+
       {nota ? (
         <p
           role="status"
@@ -71,6 +88,14 @@ export function ListaUsuarios({ usuarios, yo }: { usuarios: Usuario[]; yo: strin
                   <td className="px-4 py-3">
                     {usuario.email ?? <span className="text-ink-3">sin email</span>}
                     {soyYo ? <span className="chip ml-2">vos</span> : null}
+                    {!soyYo && usuario.rol === "pendiente" ? (
+                      <span
+                        className="ml-2 rounded px-1.5 py-0.5 text-xs font-medium"
+                        style={{ background: "var(--brand-2-soft)", color: "var(--brand-2-ink)" }}
+                      >
+                        esperando aprobación
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">
                     {soyYo ? (
@@ -85,6 +110,7 @@ export function ListaUsuarios({ usuarios, yo }: { usuarios: Usuario[]; yo: strin
                         onChange={(event) => void cambiar(usuario.id, event.target.value)}
                         aria-label={`Rol de ${usuario.email ?? usuario.id}`}
                       >
+                        <option value="pendiente">Sin acceso</option>
                         <option value="empleado">Empleado</option>
                         <option value="dueno">Dueño</option>
                       </select>

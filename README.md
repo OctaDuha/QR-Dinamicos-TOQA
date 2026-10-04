@@ -136,12 +136,48 @@ la política de lectura de `perfiles` deja que cada uno vea sólo el suyo. Un
 empleado no puede ni listar los mails de los demás.
 
 Las cuentas se siguen creando en Supabase · Authentication · Users; el rol se
-asigna desde *Usuarios* en el panel. Un usuario nuevo
-entra como empleado salvo que sea el primero de la cuenta.
+asigna desde *Usuarios* en el panel.
 
 Para habilitarlo hay que correr `supabase/migraciones/2026-09-roles.sql`.
 Mientras no se corra, todos quedan como empleados: el panel sigue funcionando
 y sólo desaparecen los botones de borrar.
+
+### Cuentas nuevas: sin acceso hasta aprobarlas
+
+Con `supabase/migraciones/2026-10-acceso-aprobado.sql`, toda cuenta nueva
+nace **Sin acceso** (`pendiente` en la base): puede iniciar sesión, pero no ve
+ni toca nada hasta que el dueño la pasa a Empleado desde *Usuarios*. La única
+excepción es la primera cuenta de una base nueva, que queda de dueño.
+
+Es la segunda cerradura. La primera es tener apagado *Allow new users to sign
+up* en Supabase (Authentication → Sign In / Providers): con eso nadie puede
+crearse una cuenta solo. Esta sigue cerrando aunque aquel interruptor quedara
+encendido por error. El control vive en tres lugares: las políticas de la
+base, las funciones del gráfico, y las rutas del panel que leen cosas que no
+están en la base (el respaldo, los mails, Canva), que responden 403.
+
+> Si alguna vez se vuelve a correr `schema.sql` entero en un proyecto que ya
+> está andando, hay que volver a correr también esta migración. `schema.sql`
+> no reabre los permisos de los QR, pero sí recrea las funciones del gráfico
+> sin el control.
+
+### Entrar con Google
+
+El login ofrece **Continuar con Google** además de mail y contraseña. Google
+sólo confirma de quién es el Gmail; quién entra lo sigue decidiendo la lista
+de usuarios de Supabase. Con el registro apagado, un Gmail que no está en la
+lista vuelve al login con un aviso; uno que está pero no fue aprobado ve la
+pantalla de "sin acceso".
+
+Para que una persona entre con Google, se la da de alta en Supabase con el
+mismo mail de su cuenta de Google (con *Auto Confirm User*) y se la aprueba en
+*Usuarios*. Supabase vincula las dos formas de entrar a la misma cuenta.
+
+El botón aparece solo cuando Google está activado en Supabase: el login le
+pregunta a Supabase qué proveedores tiene activos cada vez que se abre. Lo que
+hay que configurar está en Google Cloud (un cliente OAuth) y en Supabase
+(Authentication → Sign In / Providers → Google, y en URL Configuration la
+dirección `https://toqaqr.com.ar/auth/callback` entre las permitidas).
 
 ---
 
@@ -153,12 +189,16 @@ cliente no configura nada: la placa llega funcionando.
 
 | | Qué lleva |
 |---|---|
-| QR impreso | `https://toqaqr.com.ar/0042` |
-| Chip NFC | `https://toqaqr.com.ar/0042?n` |
+| QR impreso | `https://toqaqr.com.ar/qr/0042` |
+| Chip NFC | `https://toqaqr.com.ar/nfc/0042` |
 
-Esa marca `?n` es lo único que los distingue, y es lo que permite contarlos
-por separado: la ficha de cada QR muestra el total y el reparto entre los dos.
-Sin marca, o desde antes de esta versión, la visita cuenta como QR.
+El camino es lo único que los distingue, y es lo que permite contarlos por
+separado: la ficha de cada QR muestra el total y el reparto entre los dos.
+Va en el camino y no como parámetro porque un parámetro lo puede borrar un
+navegador o una app que limpie las direcciones.
+
+Las formas anteriores siguen funcionando para siempre: `/0042` y `/r/0042`
+cuentan como QR, y `/0042?n` como NFC.
 
 La dirección para grabar en el chip está en la ficha de cada QR, con botón de
 copiar, y en la columna `url_nfc` del CSV exportado.

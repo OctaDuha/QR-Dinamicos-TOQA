@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { requireAdmin } from "@/lib/canva-guard";
 import { exportCsv } from "@/lib/export";
 import { designNames } from "@/lib/placa-designs";
 import { fetchQrCodes, readRange } from "@/lib/export-query";
 import { siteUrl } from "@/lib/qr";
 import { anotarDescarga } from "@/lib/respaldo";
-import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,14 +13,10 @@ export const dynamic = "force-dynamic";
 const MAX_ROWS = 20000;
 
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return new NextResponse("No autorizado", { status: 401 });
-  }
+  // Cuenta aprobada, no solo logueada: lo que se baja aca es la lista
+  // completa de clientes y destinos.
+  const { supabase, denied } = await requireAdmin();
+  if (denied) return denied;
 
   const range = readRange(new URL(request.url));
 

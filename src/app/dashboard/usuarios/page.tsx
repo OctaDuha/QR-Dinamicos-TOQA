@@ -48,7 +48,7 @@ export default async function UsuariosPage() {
         <h1 className="text-xl font-semibold tracking-tight">Usuarios</h1>
         <p className="mt-1 text-sm text-ink-2">
           Quién puede entrar al panel y qué puede hacer. Las cuentas se crean desde Supabase ·
-          Authentication · Users; acá les asignás el rol.
+          Authentication · Users; acá las aprobás y les asignás el rol.
         </p>
       </div>
 
@@ -75,11 +75,17 @@ export default async function UsuariosPage() {
             ) : null}
           </li>
           <li>
-            <strong className="text-ink-1">Add user</strong> → <em>Create new user</em>: su mail y
-            una contraseña provisoria
+            <strong className="text-ink-1">Add user</strong> → <em>Create new user</em>: su mail, una
+            contraseña provisoria, y tildá <strong className="text-ink-1">Auto Confirm User</strong>
           </li>
-          <li>Pasale esos datos y que la cambie al entrar</li>
-          <li>Volvé acá: ya va a aparecer en la lista, como Empleado</li>
+          <li>
+            Si va a entrar con Google, el mail tiene que ser el de su cuenta de Google. La contraseña
+            no la va a usar, pero Supabase la pide igual: poné cualquiera larga.
+          </li>
+          <li>
+            Volvé acá: va a aparecer como <strong className="text-ink-1">Sin acceso</strong>.
+            Cambiale el rol a Empleado y ya puede entrar.
+          </li>
         </ol>
         <p className="mt-3 text-xs text-ink-3">
           Las cuentas se crean allá y no acá a propósito. Hacerlo desde este panel exigiría guardar
@@ -99,6 +105,11 @@ export default async function UsuariosPage() {
           <strong className="text-ink-1">Empleado:</strong> crear QRs y lotes, editar destinos y
           etiquetas, subir diseños, generar las placas para imprenta y exportar. No puede borrar
           nada.
+        </p>
+        <p className="mt-2">
+          <strong className="text-ink-1">Sin acceso:</strong> puede iniciar sesión, pero no ve ni
+          toca nada. Toda cuenta nueva arranca así hasta que la aprobás, y sirve también para
+          quitarle el acceso a alguien sin borrar su cuenta.
         </p>
         <p className="mt-3 text-xs text-ink-3">
           El control no está sólo en esta pantalla: aunque alguien intentara saltear el panel, la

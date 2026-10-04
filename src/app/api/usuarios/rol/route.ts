@@ -11,7 +11,13 @@ export async function POST(request: NextRequest) {
   if (denied) return denied;
 
   const body = (await request.json().catch(() => ({}))) as { id?: string; rol?: string };
-  const rol = body.rol === "dueno" ? "dueno" : "empleado";
+  const rol = body.rol;
+
+  // "pendiente" sirve tanto para dejar esperando una cuenta nueva como para
+  // quitarle el acceso a alguien sin borrarlo.
+  if (rol !== "dueno" && rol !== "empleado" && rol !== "pendiente") {
+    return NextResponse.json({ error: "Rol desconocido." }, { status: 400 });
+  }
 
   if (!body.id) {
     return NextResponse.json({ error: "Falta el usuario." }, { status: 400 });
