@@ -169,9 +169,30 @@ de usuarios de Supabase. Con el registro apagado, un Gmail que no está en la
 lista vuelve al login con un aviso; uno que está pero no fue aprobado ve la
 pantalla de "sin acceso".
 
-Para que una persona entre con Google, se la da de alta en Supabase con el
-mismo mail de su cuenta de Google (con *Auto Confirm User*) y se la aprueba en
-*Usuarios*. Supabase vincula las dos formas de entrar a la misma cuenta.
+Las cuentas que ya existen pueden entrar con Google si el mail coincide:
+Supabase vincula las dos formas de entrar a la misma cuenta.
+
+### Lista de invitados
+
+Con `supabase/migraciones/2026-10-invitaciones.sql`, sumar a alguien se hace
+en un solo lugar: el dueño escribe su mail de Google en *Usuarios* → *Invitar*,
+y esa persona entra con "Continuar con Google" y ya tiene el rol elegido. La
+invitación se gasta al usarse.
+
+La que decide quién se puede registrar pasa a ser la base: un trigger sobre
+`auth.users` rechaza, antes de crearla, cualquier cuenta cuyo mail no esté
+invitado, y toda cuenta nueva con contraseña (alguien podría registrar con
+contraseña el mail de un invitado antes que él; con Google, el mail lo
+confirma Google). La excepción es la primera cuenta de una base vacía, que
+queda de dueño. Las cuentas que ya existen siguen entrando como siempre.
+
+Por eso, **después** de correr esa migración se enciende en Supabase *Allow
+new users to sign up*: con el interruptor apagado, ni los invitados podrían
+registrarse. El orden importa: encenderlo antes de correrla dejaría que
+cualquiera se registre (aunque quedaría "Sin acceso").
+
+La política de privacidad que pide Google para publicar la app está en
+`/privacidad`.
 
 El botón aparece solo cuando Google está activado en Supabase: el login le
 pregunta a Supabase qué proveedores tiene activos cada vez que se abre. Lo que

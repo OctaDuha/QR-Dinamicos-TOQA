@@ -2,20 +2,7 @@ import { redirect } from "next/navigation";
 
 import { sesionActual } from "@/lib/roles";
 
-/**
- * Link al panel de usuarios de Supabase, sacado de la URL del proyecto.
- *
- * Crear cuentas se hace alla y no aca a proposito: requeriria la clave
- * service_role, que saltea todas las protecciones —los roles incluidos— y
- * tendria que vivir para siempre dentro del sitio. Para algo que se hace un
- * puñado de veces en la vida, no compensa.
- */
-function panelDeSupabase(): string | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const ref = url?.match(/https:\/\/([a-z0-9]+)\.supabase\.co/i)?.[1];
-  return ref ? `https://supabase.com/dashboard/project/${ref}/auth/users` : null;
-}
-
+import { Invitaciones, type Invitacion } from "./Invitaciones";
 import { ListaUsuarios, type Usuario } from "./ListaUsuarios";
 
 export const dynamic = "force-dynamic";
@@ -37,65 +24,41 @@ export default async function UsuariosPage() {
     );
   }
 
-  const { data } = await sesion.supabase
-    .from("perfiles")
-    .select("id, email, rol, creado_en")
-    .order("creado_en", { ascending: true });
+  const [{ data }, invitaciones] = await Promise.all([
+    sesion.supabase
+      .from("perfiles")
+      .select("id, email, rol, creado_en")
+      .order("creado_en", { ascending: true }),
+    sesion.supabase
+      .from("invitaciones")
+      .select("email, rol, creado_en")
+      .order("creado_en", { ascending: true }),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Usuarios</h1>
         <p className="mt-1 text-sm text-ink-2">
-          Quién puede entrar al panel y qué puede hacer. Las cuentas se crean desde Supabase ·
-          Authentication · Users; acá las aprobás y les asignás el rol.
+          Quién puede entrar al panel y qué puede hacer. Para sumar a alguien, invitalo abajo con
+          su mail de Google.
         </p>
       </div>
 
       <ListaUsuarios usuarios={(data ?? []) as Usuario[]} yo={sesion.userId} />
 
-      <div className="card p-5">
-        <h2 className="text-sm font-semibold">Agregar a alguien</h2>
-        <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-sm text-ink-2">
-          <li>
-            Entrá a Supabase, a <strong className="text-ink-1">Authentication → Users</strong>
-            {panelDeSupabase() ? (
-              <>
-                {" "}
-                <a
-                  href={panelDeSupabase()!}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="underline"
-                  style={{ color: "var(--accent)" }}
-                >
-                  (abrir)
-                </a>
-              </>
-            ) : null}
-          </li>
-          <li>
-            <strong className="text-ink-1">Add user</strong> → <em>Create new user</em>: su mail, una
-            contraseña provisoria, y tildá <strong className="text-ink-1">Auto Confirm User</strong>
-          </li>
-          <li>
-            Si va a entrar con Google, el mail tiene que ser el de su cuenta de Google. La contraseña
-            no la va a usar, pero Supabase la pide igual: poné cualquiera larga. Y anotalo también en
-            Google Cloud → <strong className="text-ink-1">Google Auth Platform → Público → Usuarios de
-            prueba</strong>: mientras la app esté en modo prueba, Google frena a quien no esté ahí.
-          </li>
-          <li>
-            Volvé acá: va a aparecer como <strong className="text-ink-1">Sin acceso</strong>.
-            Cambiale el rol a Empleado y ya puede entrar.
-          </li>
-        </ol>
-        <p className="mt-3 text-xs text-ink-3">
-          Las cuentas se crean allá y no acá a propósito. Hacerlo desde este panel exigiría guardar
-          dentro del sitio la clave maestra de Supabase, que saltea todas las protecciones,
-          incluidos estos roles. Para algo que vas a hacer un puñado de veces, no compensa el
-          riesgo.
-        </p>
-      </div>
+      {invitaciones.error ? (
+        // Todavia no se corrio la migracion: se explica en vez de romper.
+        <div className="card p-5 text-sm text-ink-2">
+          <h2 className="text-sm font-semibold text-ink-1">Invitar a alguien</h2>
+          <p className="mt-2">
+            Para invitar gente desde acá falta correr en Supabase el archivo{" "}
+            <code>2026-10-invitaciones.sql</code>.
+          </p>
+        </div>
+      ) : (
+        <Invitaciones invitaciones={(invitaciones.data ?? []) as Invitacion[]} />
+      )}
 
       <div className="card p-5 text-sm text-ink-2">
         <h2 className="text-sm font-semibold text-ink-1">Qué puede hacer cada uno</h2>
@@ -110,8 +73,7 @@ export default async function UsuariosPage() {
         </p>
         <p className="mt-2">
           <strong className="text-ink-1">Sin acceso:</strong> puede iniciar sesión, pero no ve ni
-          toca nada. Toda cuenta nueva arranca así hasta que la aprobás, y sirve también para
-          quitarle el acceso a alguien sin borrar su cuenta.
+          toca nada. Sirve para quitarle el acceso a alguien sin borrar su cuenta.
         </p>
         <p className="mt-3 text-xs text-ink-3">
           El control no está sólo en esta pantalla: aunque alguien intentara saltear el panel, la

@@ -6,7 +6,7 @@ import LoginForm from "./LoginForm";
 /** Lo que vuelve de /auth/callback cuando entrar con Google no salio. */
 const ERRORES: Record<string, string> = {
   "sin-acceso":
-    "Esa cuenta de Google no tiene acceso a este panel. Si debería tenerlo, pedile al dueño que la dé de alta.",
+    "Esa cuenta de Google no está invitada a este panel. Si deberías entrar, pedile al dueño que te invite.",
   google:
     "No se pudo entrar con Google. Probá de nuevo, o entrá con tu mail y contraseña.",
 };
@@ -74,7 +74,10 @@ export default async function LoginPage({
         </div>
 
         <p className="mt-5 text-center text-xs text-ink-3">
-          Los usuarios se crean desde Supabase · Authentication · Users.
+          Para entrar, el dueño del panel te tiene que invitar.{" "}
+          <a href="/privacidad" className="underline">
+            Privacidad
+          </a>
         </p>
       </div>
     </main>

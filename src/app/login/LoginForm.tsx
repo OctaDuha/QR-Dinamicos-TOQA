@@ -75,8 +75,8 @@ export default function LoginForm({
       `${hash.get("error_code") ?? ""} ${hash.get("error_description") ?? ""}`.toLowerCase();
     if (!motivo.trim()) return;
     setErrorGoogle(
-      /signup|not allowed/.test(motivo)
-        ? "Esa cuenta de Google no tiene acceso a este panel. Si debería tenerlo, pedile al dueño que la dé de alta."
+      /signup|not allowed|database error saving new user/.test(motivo)
+        ? "Esa cuenta de Google no está invitada a este panel. Si deberías entrar, pedile al dueño que te invite."
         : "No se pudo entrar con Google. Probá de nuevo, o entrá con tu mail y contraseña.",
     );
     window.history.replaceState(

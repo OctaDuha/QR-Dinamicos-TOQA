@@ -37,7 +37,13 @@ export async function GET(request: NextRequest) {
   );
 }
 
+/**
+ * Por que no se pudo entrar. Con el registro apagado, Supabase dice "signups
+ * not allowed"; con la lista de invitados, la base rechaza la cuenta nueva y
+ * Supabase solo dice "database error saving new user", sin el motivo. Las dos
+ * cosas significan lo mismo para quien esta del otro lado: no esta invitado.
+ */
 function motivo(...textos: (string | null | undefined)[]): "sin-acceso" | "google" {
   const texto = textos.filter(Boolean).join(" ").toLowerCase();
-  return /signup|sign up|signups not allowed|not allowed/.test(texto) ? "sin-acceso" : "google";
+  return /signup|sign up|not allowed|database error saving new user/.test(texto) ? "sin-acceso" : "google";
 }
