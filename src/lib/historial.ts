@@ -17,7 +17,7 @@ type Cambio = { antes?: string | null; despues?: string | null };
 export type FilaHistorial = {
   id: number;
   qr_id: number | null;
-  accion: "creo" | "edito" | "borro" | "imprimio";
+  accion: "creo" | "edito" | "borro" | "imprimio" | "recupero";
   cambios: Partial<Record<"destino" | "etiqueta" | "diseno", Cambio>>;
   detalle: { diseno?: string; formato?: string };
   usuario_email: string | null;
@@ -104,6 +104,8 @@ export function describirFila(fila: FilaHistorial, numero?: string): { titulo: s
         titulo: `Borró ${placa}`,
         detalles: fila.cambios.destino?.antes ? [`Llevaba a ${fila.cambios.destino.antes}`] : [],
       };
+    case "recupero":
+      return { titulo: `Recuperó ${placa} de la papelera`, detalles: ["Volvió con sus estadísticas"] };
     case "imprimio":
       return {
         titulo: `Generó ${placa} para imprenta`,
@@ -214,6 +216,8 @@ export function describirGrupo(grupo: GrupoHistorial & { conEtiqueta?: boolean }
       return { titulo: `Creó ${placas}`, detalles: grupo.conEtiqueta ? ["Con etiqueta"] : [] };
     case "borro":
       return { titulo: `Borró ${placas}`, detalles: [] };
+    case "recupero":
+      return { titulo: `Recuperó ${placas} de la papelera`, detalles: ["Volvieron con sus estadísticas"] };
     case "imprimio": {
       const disenos = grupo.disenos ?? [];
       return {

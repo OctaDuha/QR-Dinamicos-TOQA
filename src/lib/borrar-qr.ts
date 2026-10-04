@@ -53,9 +53,10 @@ export async function borrarConAviso(
     `${lista}${y}\n\n` +
     (previo.conEscaneos > 0
       ? `OJO: ${previo.conEscaneos} de estos ya fueron escaneados alguna vez, así que es probable ` +
-        `que haya placas impresas dando vueltas. Esas placas van a dejar de funcionar y no se pueden arreglar.\n\n`
+        `que haya placas impresas dando vueltas. Esas placas van a dejar de funcionar mientras estén borradas.\n\n`
       : "Ninguno tiene escaneos, así que parecen QR de prueba.\n\n") +
-    "Esto no se puede deshacer. ¿Seguimos?";
+    "Van a quedar 30 días en la papelera (en Historial), de donde el dueño los puede recuperar con sus " +
+    "escaneos. Después se eliminan para siempre. ¿Seguimos?";
 
   if (!window.confirm(aviso)) return null;
 

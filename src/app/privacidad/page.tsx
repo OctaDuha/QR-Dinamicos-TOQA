@@ -111,7 +111,9 @@ export default function PrivacidadPage() {
       <Seccion titulo="Cuánto tiempo los guardamos">
         <p>
           Los registros de escaneos, mientras exista la placa. Las cuentas del panel, hasta que se den
-          de baja. Si una placa o una cuenta se elimina, sus datos se eliminan con ella. Las copias de
+          de baja. Si una cuenta se elimina, sus datos se eliminan con ella. Si se elimina una placa,
+          queda 30 días en una papelera, con sus escaneos, por si hay que recuperarla, y después se
+          elimina definitivamente. Las copias de
           seguridad de la lista de placas guardan versiones anteriores, así que una placa eliminada
           puede seguir figurando en copias viejas hasta que se borren. El registro de quién hizo
           cada cosa en el panel se conserva aunque la placa se elimine, para que quede constancia de

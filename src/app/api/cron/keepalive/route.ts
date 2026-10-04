@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { publicConfig, resolveQr } from "@/lib/supabase/public-key";
+import { publicConfig, publicKeyHeaders, resolveQr } from "@/lib/supabase/public-key";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -36,8 +36,32 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const papelera = await vaciarPapelera(config);
+
   return NextResponse.json(
-    { ok: true, ms: Date.now() - desde },
+    { ok: true, ms: Date.now() - desde, papelera },
     { headers: { "Cache-Control": "no-store" } },
   );
+}
+
+/**
+ * De paso, elimina para siempre lo que lleva más de 30 días en la papelera.
+ * La función solo hace eso, así que se puede llamar sin usuario. Si falla
+ * (o todavía no se corrió 2026-10-papelera.sql) no afecta al keepalive:
+ * se vuelve a intentar mañana, y lo vencido igual no se muestra.
+ */
+async function vaciarPapelera(config: { url: string; key: string }): Promise<number | string> {
+  try {
+    const response = await fetch(`${config.url}/rest/v1/rpc/vaciar_papelera`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...publicKeyHeaders(config.key) },
+      body: "{}",
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return `supabase ${response.status}`;
+    return Number(await response.json()) || 0;
+  } catch (error) {
+    return (error as Error).message;
+  }
 }

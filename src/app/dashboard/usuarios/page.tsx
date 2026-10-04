@@ -67,7 +67,7 @@ export default async function UsuariosPage() {
           borrar diseños y cambiar estos roles.
         </p>
         <p className="mt-2">
-          <strong className="text-ink-1">Empleado:</strong> crear QRs y lotes, editar destinos y
+          <strong className="text-ink-1">Equipo:</strong> crear QRs y lotes, editar destinos y
           etiquetas, subir diseños, generar las placas para imprenta y exportar. No puede borrar
           nada.
         </p>

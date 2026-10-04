@@ -9,8 +9,11 @@ import {
   quien,
   type GrupoHistorial,
 } from "@/lib/historial";
+import { borradasEn, leerPapelera, listaDeNumeros, vencimiento, type EnPapelera } from "@/lib/papelera";
 import { formatQrCode, parseQrId } from "@/lib/qr";
 import { sesionActual } from "@/lib/roles";
+
+import { BotonRecuperar } from "./BotonRecuperar";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +26,14 @@ const POR_PAGINA = 50;
 export default async function HistorialPage({
   searchParams,
 }: {
-  searchParams: Promise<{ placa?: string; persona?: string; antes?: string }>;
+  searchParams: Promise<{
+    placa?: string;
+    persona?: string;
+    antes?: string;
+    recuperadas?: string;
+    "en-uso"?: string;
+    "no-esta"?: string;
+  }>;
 }) {
   const sesion = await sesionActual();
   if (!sesion) redirect("/login");
@@ -37,13 +47,14 @@ export default async function HistorialPage({
     );
   }
 
-  const { placa: rawPlaca, persona: rawPersona, antes: rawAntes } = await searchParams;
+  const parametros = await searchParams;
+  const { placa: rawPlaca, persona: rawPersona, antes: rawAntes } = parametros;
   const placa = rawPlaca?.trim() ? parseQrId(rawPlaca.trim()) : null;
   const placaInvalida = Boolean(rawPlaca?.trim()) && placa === null;
   const persona = rawPersona?.trim() || null;
   const antes = rawAntes && !Number.isNaN(Date.parse(rawAntes)) ? rawAntes : null;
 
-  const [{ data, error }, perfiles] = await Promise.all([
+  const [{ data, error }, perfiles, papelera] = await Promise.all([
     sesion.supabase.rpc("historial_general", {
       p_limite: POR_PAGINA,
       p_antes: antes,
@@ -51,6 +62,7 @@ export default async function HistorialPage({
       p_usuario: persona,
     }),
     sesion.supabase.from("perfiles").select("email").order("email", { ascending: true }),
+    leerPapelera(sesion.supabase),
   ]);
 
   const grupos = (data ?? []) as GrupoHistorial[];
@@ -78,6 +90,14 @@ export default async function HistorialPage({
           datos sola: nadie lo puede borrar ni cambiar desde el panel.
         </p>
       </div>
+
+      <AvisoRecuperadas
+        recuperadas={numeros(parametros.recuperadas)}
+        enUso={numeros(parametros["en-uso"])}
+        noEsta={numeros(parametros["no-esta"])}
+      />
+
+      <Papelera papelera={papelera.data} error={papelera.error} />
 
       <form action="/dashboard/historial" className="card flex flex-wrap items-end gap-3 p-5">
         <label className="flex flex-col gap-1 text-xs text-ink-3" htmlFor="placa">
@@ -164,6 +184,7 @@ export default async function HistorialPage({
                   <p className="mt-0.5 text-xs text-ink-3">
                     {quien(grupo.usuario_email)} · {cuando(grupo.creado_en)}
                   </p>
+                  {grupo.accion === "borro" ? <RecuperarBorradas papelera={papelera.data} instante={grupo.creado_en} /> : null}
                 </li>
               );
             })}
@@ -183,5 +204,126 @@ export default async function HistorialPage({
         “Sistema” quiere decir que el cambio se hizo directo en Supabase, no desde el panel.
       </p>
     </div>
+  );
+}
+
+function numeros(valor: string | undefined): number[] {
+  return (valor ?? "")
+    .split(",")
+    .map((parte) => parseQrId(parte))
+    .filter((id): id is number => id !== null);
+}
+
+function AvisoRecuperadas({ recuperadas, enUso, noEsta }: { recuperadas: number[]; enUso: number[]; noEsta: number[] }) {
+  if (recuperadas.length + enUso.length + noEsta.length === 0) return null;
+  const una = recuperadas.length === 1;
+  return (
+    <div className="flex flex-col gap-2">
+      {recuperadas.length > 0 ? (
+        <p role="status" className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+          {una ? (
+            <>
+              Listo: la placa{" "}
+              <Link href={`/dashboard/qr/${recuperadas[0]}`} className="underline">
+                {formatQrCode(recuperadas[0])}
+              </Link>{" "}
+              volvió con sus estadísticas. El QR y el chip ya funcionan de nuevo.
+            </>
+          ) : (
+            <>
+              Listo: volvieron {recuperadas.length} placas ({listaDeNumeros(recuperadas)}) con sus estadísticas. Los QR
+              y los chips ya funcionan de nuevo.
+            </>
+          )}
+        </p>
+      ) : null}
+      {enUso.length > 0 ? (
+        <p role="status" className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--danger-soft)", color: "var(--danger)" }}>
+          No recuperé {listaDeNumeros(enUso)}: ese número ya lo usa otra placa (por ejemplo, una que entró con Importar
+          CSV). Para no pisarla, quedó en la papelera.
+        </p>
+      ) : null}
+      {noEsta.length > 0 ? (
+        <p role="status" className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--danger-soft)", color: "var(--danger)" }}>
+          No recuperé {listaDeNumeros(noEsta)}: ya no está en la papelera (ya se recuperó o pasaron los 30 días).
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const A_LA_VISTA = 8;
+
+function Papelera({ papelera, error }: { papelera: EnPapelera[]; error: { code?: string; message: string } | null }) {
+  const vista = papelera.slice(0, A_LA_VISTA);
+  const resto = papelera.slice(A_LA_VISTA);
+  return (
+    <div className="card p-5">
+      <h2 className="text-sm font-semibold">Papelera</h2>
+      <p className="mb-3 text-xs text-ink-3">
+        Las placas borradas quedan acá 30 días, con sus estadísticas. Mientras están acá, el QR y el chip no llevan a
+        ningún lado. Al recuperarlas vuelven exactamente como estaban.
+      </p>
+      {error ? (
+        <p className="text-sm" style={{ color: "var(--danger)" }}>
+          {faltaMigracion(error) ? (
+            <>
+              Para usar la papelera falta correr en Supabase el archivo <code>2026-10-papelera.sql</code>.
+            </>
+          ) : (
+            <>No pude leer la papelera: {error.message}</>
+          )}
+        </p>
+      ) : papelera.length === 0 ? (
+        <p className="text-sm text-ink-3">Está vacía.</p>
+      ) : (
+        <>
+          <ul className="flex flex-col gap-4">
+            {vista.map((placa) => (
+              <PlacaEnPapelera key={placa.qr_id} placa={placa} />
+            ))}
+          </ul>
+          {resto.length > 0 ? (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-xs text-ink-2">Ver {resto.length} más</summary>
+              <ul className="mt-4 flex flex-col gap-4">
+                {resto.map((placa) => (
+                  <PlacaEnPapelera key={placa.qr_id} placa={placa} />
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PlacaEnPapelera({ placa }: { placa: EnPapelera }) {
+  return (
+    <li className="border-l-2 pl-3" style={{ borderColor: "var(--line)" }}>
+      <p className="text-sm font-medium">
+        <span className="numero-placa">{formatQrCode(placa.qr_id)}</span>
+        {placa.label ? <span className="text-ink-2"> · {placa.label}</span> : null}
+      </p>
+      <p className="text-xs [overflow-wrap:anywhere] text-ink-2">Llevaba a {placa.destination_url}</p>
+      <p className="text-xs text-ink-2">
+        {placa.escaneos === 1 ? "1 escaneo" : `${placa.escaneos} escaneos`}
+        {placa.diseno_nombre ? ` · Diseño "${placa.diseno_nombre}"` : ""}
+      </p>
+      <p className="mt-0.5 text-xs text-ink-3">
+        La borró {quien(placa.borrado_por_email)} el {cuando(placa.borrado_en)} · {vencimiento(placa.borrado_en)}
+      </p>
+      <BotonRecuperar ids={[placa.qr_id]}>Recuperar</BotonRecuperar>
+    </li>
+  );
+}
+
+/** En el renglón "Borró…", el botón para deshacerlo mientras sigan en la papelera. */
+function RecuperarBorradas({ papelera, instante }: { papelera: EnPapelera[]; instante: string }) {
+  const ids = borradasEn(papelera, instante);
+  if (ids.length === 0) return null;
+  return (
+    <BotonRecuperar ids={ids}>{ids.length === 1 ? "Recuperar" : `Recuperar las ${ids.length}`}</BotonRecuperar>
   );
 }

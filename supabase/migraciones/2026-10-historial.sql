@@ -34,7 +34,7 @@ create table if not exists public.historial (
 do $$
 begin
   alter table public.historial
-    add constraint historial_accion_check check (accion in ('creo', 'edito', 'borro', 'imprimio'));
+    add constraint historial_accion_check check (accion in ('creo', 'edito', 'borro', 'imprimio', 'recupero'));
 exception
   when duplicate_object then null;
 end;
@@ -75,7 +75,8 @@ begin
     insert into public.historial (qr_id, accion, cambios, usuario_id, usuario_email)
     values (
       new.id,
-      'creo',
+      -- Una placa que vuelve de la papelera (2026-10-papelera.sql).
+      case when current_setting('toqa.recuperando', true) = 'si' then 'recupero' else 'creo' end,
       jsonb_strip_nulls(jsonb_build_object(
         'destino', jsonb_build_object('despues', new.destination_url),
         'etiqueta', case when new.label is not null then jsonb_build_object('despues', new.label) end,

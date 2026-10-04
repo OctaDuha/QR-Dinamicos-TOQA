@@ -114,7 +114,7 @@ export function ListaUsuarios({ usuarios, yo }: { usuarios: Usuario[]; yo: strin
                         aria-label={`Rol de ${usuario.email ?? usuario.id}`}
                       >
                         <option value="pendiente">Sin acceso</option>
-                        <option value="empleado">Empleado</option>
+                        <option value="empleado">Equipo</option>
                         <option value="dueno">Dueño</option>
                       </select>
                     )}

@@ -33,7 +33,7 @@ export function BorrarRangoForm() {
       }
       setNota({
         malo: false,
-        texto: `Listo: borré ${resultado.borrados} ${resultado.borrados === 1 ? "QR" : "QR"}.`,
+        texto: `Listo: borré ${resultado.borrados} QR. Quedan 30 días en la papelera, en Historial.`,
       });
       setDesde("");
       setHasta("");

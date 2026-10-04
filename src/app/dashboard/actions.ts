@@ -98,7 +98,10 @@ export async function updateQrCode(_prev: ActionState, formData: FormData): Prom
   return { ok: true, message: "Destino actualizado." };
 }
 
-/** Borra un QR y sus escaneos. Ojo: la placa impresa queda muerta. */
+/**
+ * Borra un QR y sus escaneos. La placa impresa queda muerta mientras tanto,
+ * pero con 2026-10-papelera.sql la base guarda una copia 30 días.
+ */
 export async function deleteQrCode(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const id = parseQrId(String(formData.get("id") ?? ""));
   if (id === null) {

@@ -110,9 +110,12 @@ la red de seguridad es para placas impresas, no para errores de tipeo.
 
 ---
 
-## Roles: dueño y empleado
+## Roles: dueño y equipo
 
-| | Dueño | Empleado |
+En el panel el rol se llama **Equipo**; en la base sigue siendo `empleado`
+(cambiar el valor guardado obligaría a tocar todas las políticas).
+
+| | Dueño | Equipo |
 |---|:---:|:---:|
 | Ver QRs y estadísticas | ✅ | ✅ |
 | Crear QRs y lotes | ✅ | ✅ |
@@ -213,6 +216,22 @@ Lo ve solo el dueño: en *Editar* de cada placa ("Historial de esta placa") y en
 vez (un lote, un borrado de varias) y se puede filtrar por placa o por persona.
 Nadie lo puede borrar ni cambiar desde el panel, ni siquiera el dueño, y se
 conserva aunque la placa se borre.
+
+### Papelera
+
+Con `supabase/migraciones/2026-10-papelera.sql`, borrar una placa ya no es
+para siempre: justo antes de borrarla, un trigger guarda una copia de la placa
+y de sus escaneos en `papelera` / `papelera_escaneos`. La placa sí queda
+borrada (no redirige, no está en la lista ni en las copias), pero durante 30
+días el dueño la puede recuperar desde *Historial* → *Papelera*, o con el
+botón del renglón "Borró…": vuelve con el mismo número, destino, etiqueta,
+diseño, fecha de creación y estadísticas.
+
+Lo vencido se elimina en `vaciar_papelera()`, que corre al borrar, al abrir
+Historial y una vez por día en el cron de keepalive. Si otra placa ya usa ese
+número (por ejemplo, entró con Importar CSV), no se recupera: no se pisa
+nada. Y la numeración nunca vuelve a dar un número que ya se usó, aunque esté
+en la papelera o ya eliminado: puede haber una placa impresa con él.
 
 ---
 

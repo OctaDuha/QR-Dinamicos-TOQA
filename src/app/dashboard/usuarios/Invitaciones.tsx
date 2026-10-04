@@ -80,7 +80,7 @@ export function Invitaciones({ invitaciones }: { invitaciones: Invitacion[] }) {
             value={rol}
             onChange={(event) => setRol(event.target.value as "empleado" | "dueno")}
           >
-            <option value="empleado">Empleado</option>
+            <option value="empleado">Equipo</option>
             <option value="dueno">Dueño</option>
           </select>
         </label>
@@ -115,7 +115,7 @@ export function Invitaciones({ invitaciones }: { invitaciones: Invitacion[] }) {
                 <span className="min-w-0 break-all">
                   {invitacion.email}{" "}
                   <span className="text-ink-3">
-                    · {invitacion.rol === "dueno" ? "Dueño" : "Empleado"}
+                    · {invitacion.rol === "dueno" ? "Dueño" : "Equipo"}
                   </span>
                 </span>
                 <button

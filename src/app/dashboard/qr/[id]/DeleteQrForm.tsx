@@ -16,7 +16,9 @@ export function DeleteQrForm({ id, code }: { id: number; code: string }) {
       action={formAction}
       onSubmit={(event) => {
         const ok = window.confirm(
-          `¿Borrar el QR #${code} y todos sus escaneos?\n\nSi hay placas impresas con este QR, van a quedar sin destino.`,
+          `¿Borrar el QR #${code}?\n\nSi hay placas impresas con este QR, van a quedar sin destino mientras esté borrado.\n\n` +
+            "Queda 30 días en la papelera (en Historial), con sus escaneos, por si hay que recuperarlo. " +
+            "Después se elimina para siempre.",
         );
         if (!ok) event.preventDefault();
       }}
