@@ -67,6 +67,9 @@ export async function loginConGoogle(formData: FormData) {
 
 export async function logout() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  // Solo esta sesion. Supabase por defecto cierra todas las del usuario, en
+  // todos los navegadores: salir en una ventana de prueba dejaba la otra con
+  // la pantalla a la vista pero sin sesion, y cada accion daba "No autorizado".
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/login");
 }

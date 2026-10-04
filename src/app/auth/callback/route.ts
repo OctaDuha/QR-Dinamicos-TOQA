@@ -22,19 +22,31 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(new URL(next, url.origin));
-    return NextResponse.redirect(new URL(`/login?error=${motivo(error.code, error.message)}`, url.origin));
+    return volverAlLogin(url, "canje del codigo", error.code, error.message);
   }
 
-  return NextResponse.redirect(
-    new URL(
-      `/login?error=${motivo(
-        url.searchParams.get("error_code"),
-        url.searchParams.get("error_description"),
-        url.searchParams.get("error"),
-      )}`,
-      url.origin,
-    ),
+  return volverAlLogin(
+    url,
+    "respuesta de Supabase",
+    url.searchParams.get("error_code") ?? url.searchParams.get("error"),
+    url.searchParams.get("error_description") ?? (url.search ? null : "volvio sin codigo ni error"),
   );
+}
+
+/**
+ * Vuelve al login con el aviso para la persona y, en letra chica, el motivo
+ * tecnico tal cual lo mando Supabase. Sin ese detalle, "no se pudo entrar"
+ * no dice si fallo el secreto de Google, la direccion de vuelta o la
+ * invitacion; con el, se sabe al primer intento. No tiene nada sensible.
+ */
+function volverAlLogin(url: URL, etapa: string, codigo: string | null | undefined, texto: string | null | undefined) {
+  const detalle = [codigo, texto].filter(Boolean).join(": ").slice(0, 160);
+  console.error(`[auth/callback] fallo en ${etapa}: ${detalle || "(sin detalle)"}`);
+
+  const destino = new URL("/login", url.origin);
+  destino.searchParams.set("error", motivo(codigo, texto));
+  if (detalle) destino.searchParams.set("detalle", detalle);
+  return NextResponse.redirect(destino);
 }
 
 /**

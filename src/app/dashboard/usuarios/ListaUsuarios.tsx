@@ -33,7 +33,10 @@ export function ListaUsuarios({ usuarios, yo }: { usuarios: Usuario[]; yo: strin
         });
         router.refresh();
       } else {
-        setNota({ malo: true, texto: payload.error ?? "No pude cambiar el rol." });
+        setNota({
+          malo: true,
+          texto: response.status === 401 ? "Tu sesión se cerró (por ejemplo, si saliste del panel en otra ventana). Recargá la página y volvé a entrar." : (payload.error ?? "No pude cambiar el rol."),
+        });
       }
     } finally {
       setBusy(null);

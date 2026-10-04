@@ -24,7 +24,10 @@ export function Invitaciones({ invitaciones }: { invitaciones: Invitacion[] }) {
       });
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) {
-        setNota({ malo: true, texto: payload.error ?? "No se pudo." });
+        setNota({
+          malo: true,
+          texto: response.status === 401 ? "Tu sesión se cerró (por ejemplo, si saliste del panel en otra ventana). Recargá la página y volvé a entrar." : (payload.error ?? "No se pudo."),
+        });
         return false;
       }
       router.refresh();

@@ -56,15 +56,19 @@ export default function LoginForm({
   next,
   conGoogle,
   errorInicial,
+  detalleInicial,
 }: {
   next: string;
   conGoogle: boolean;
+  /** El motivo tecnico que mando Supabase, para poder diagnosticar. */
+  detalleInicial: string | null;
   errorInicial: string | null;
 }) {
   const [state, formAction] = useActionState<LoginState, FormData>(login, {
     error: null,
   });
   const [errorGoogle, setErrorGoogle] = useState<string | null>(errorInicial);
+  const [detalle, setDetalle] = useState<string | null>(detalleInicial);
 
   // Segun como falle, Supabase puede mandar el motivo despues de un "#" en la
   // direccion, que el servidor nunca ve. Se lee aca para no mostrar un error
@@ -74,6 +78,7 @@ export default function LoginForm({
     const motivo =
       `${hash.get("error_code") ?? ""} ${hash.get("error_description") ?? ""}`.toLowerCase();
     if (!motivo.trim()) return;
+    setDetalle(motivo.trim().slice(0, 160));
     setErrorGoogle(
       /signup|not allowed|database error saving new user/.test(motivo)
         ? "Esa cuenta de Google no está invitada a este panel. Si deberías entrar, pedile al dueño que te invite."
@@ -154,6 +159,13 @@ export default function LoginForm({
             style={{ background: "var(--danger-soft)", color: "var(--danger)" }}
           >
             {error}
+            {/* El detalle es de Google, no de la contraseña: si el error es de
+                mail y contraseña, no corresponde mostrarlo. */}
+            {detalle && !state.error ? (
+              <span className="mt-1 block font-mono text-xs break-all opacity-80">
+                Detalle: {detalle}
+              </span>
+            ) : null}
           </p>
         ) : null}
 

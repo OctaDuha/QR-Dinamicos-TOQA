@@ -43,9 +43,9 @@ async function googleActivo(): Promise<boolean> {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; detalle?: string }>;
 }) {
-  const { next, error } = await searchParams;
+  const { next, error, detalle } = await searchParams;
   const target = destinoSeguro(next);
   const conGoogle = await googleActivo();
 
@@ -70,6 +70,7 @@ export default async function LoginPage({
             next={target}
             conGoogle={conGoogle}
             errorInicial={error ? (ERRORES[error] ?? ERRORES.google) : null}
+            detalleInicial={error && detalle ? detalle.slice(0, 160) : null}
           />
         </div>
 
