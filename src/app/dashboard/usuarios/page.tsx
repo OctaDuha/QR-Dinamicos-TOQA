@@ -80,7 +80,9 @@ export default async function UsuariosPage() {
           </li>
           <li>
             Si va a entrar con Google, el mail tiene que ser el de su cuenta de Google. La contraseña
-            no la va a usar, pero Supabase la pide igual: poné cualquiera larga.
+            no la va a usar, pero Supabase la pide igual: poné cualquiera larga. Y anotalo también en
+            Google Cloud → <strong className="text-ink-1">Google Auth Platform → Público → Usuarios de
+            prueba</strong>: mientras la app esté en modo prueba, Google frena a quien no esté ahí.
           </li>
           <li>
             Volvé acá: va a aparecer como <strong className="text-ink-1">Sin acceso</strong>.
