@@ -38,12 +38,17 @@ export function PdfPreview({ url, page }: { url: string; page: number }) {
         const base = target.getViewport({ scale: 1 });
         const available = { width: box.clientWidth - 24, height: 520 };
         const scale = Math.min(available.width / base.width, available.height / base.height);
-        const viewport = target.getViewport({ scale: scale * (window.devicePixelRatio || 1) });
+        const dpr = window.devicePixelRatio || 1;
+        const viewport = target.getViewport({ scale: scale * dpr });
 
-        canvas.width = Math.ceil(viewport.width);
-        canvas.height = Math.ceil(viewport.height);
-        canvas.style.width = `${Math.ceil(base.width * scale)}px`;
-        canvas.style.height = `${Math.ceil(base.height * scale)}px`;
+        // El lienzo se redondea para abajo, nunca para arriba. Una placa de
+        // 10x15 a 520 px de alto mide 346,67 px de ancho: redondeado para
+        // arriba, la fraccion que sobraba dejaba ver el fondo blanco de abajo
+        // como una linea fina en el borde derecho, que no esta en el PDF.
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.style.width = `${canvas.width / dpr}px`;
+        canvas.style.height = `${canvas.height / dpr}px`;
 
         const context = canvas.getContext("2d");
         if (!context) throw new Error("sin canvas");
