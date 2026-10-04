@@ -346,6 +346,7 @@ const BUCKET_NOUN: Record<ScanBucket, string> = {
   day: "día",
   week: "semana",
   month: "mes",
+  year: "año",
 };
 
 /** El backend devuelve un timestamp sin zona ya convertido a hora local. */
@@ -396,13 +397,18 @@ function niceScale(maxValue: number): { scaleMax: number; ticks: number[] } {
 }
 
 function formatAxis(date: Date, bucket: ScanBucket): string {
+  if (bucket === "year") return String(date.getFullYear());
   if (bucket === "month") {
-    return date.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
+    // Con el año corto: un rango elegido a mano puede abarcar varios años, y
+    // "oct" solo no dice cual.
+    const mes = date.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
+    return `${mes} ${String(date.getFullYear()).slice(2)}`;
   }
   return date.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
 }
 
 function formatFull(date: Date, bucket: ScanBucket): string {
+  if (bucket === "year") return `Año ${date.getFullYear()}`;
   if (bucket === "month") {
     return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
   }

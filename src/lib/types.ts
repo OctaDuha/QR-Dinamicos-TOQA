@@ -12,7 +12,7 @@ export type QrCodeWithStats = QrCode & {
   last_scan_at: string | null;
 };
 
-export type ScanBucket = "day" | "week" | "month";
+export type ScanBucket = "day" | "week" | "month" | "year";
 
 export type ScanSeriesPoint = {
   bucket_start: string;

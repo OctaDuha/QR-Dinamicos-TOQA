@@ -27,16 +27,22 @@ export default async function QrDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ bucket?: string }>;
+  searchParams: Promise<{ bucket?: string; desde?: string; hasta?: string }>;
 }) {
   const { id: rawId } = await params;
-  const { bucket: rawBucket } = await searchParams;
+  const { bucket: rawBucket, desde: rawDesde, hasta: rawHasta } = await searchParams;
 
   const id = parseQrId(rawId);
   if (id === null) notFound();
 
-  const bucket: ScanBucket =
-    rawBucket === "week" || rawBucket === "month" ? rawBucket : "day";
+  const hoy = fechaArgentina(new Date());
+  const rango = leerRango(rawDesde, rawHasta, hoy);
+
+  const bucket: ScanBucket = rango
+    ? rango.bucket
+    : rawBucket === "week" || rawBucket === "month"
+      ? rawBucket
+      : "day";
 
   const supabase = await createClient();
   const sesion = await sesionActual();
@@ -50,7 +56,7 @@ export default async function QrDetailPage({
   if (!code) notFound();
 
   const [seriesResult, totalResult, nfcResult, recentResult, pngDataUrl, designs] = await Promise.all([
-    leerSerie(supabase, id, bucket),
+    rango ? leerSerieRango(supabase, id, rango) : leerSerie(supabase, id, bucket),
     supabase.from("scans").select("id", { count: "exact", head: true }).eq("qr_id", id),
     supabase
       .from("scans")
@@ -66,7 +72,13 @@ export default async function QrDetailPage({
     listDesigns(supabase),
   ]);
 
-  const series = seriesResult.data;
+  // Si las fechas elegidas no se pudieron leer porque falta la funcion en la
+  // base, el grafico vuelve a los ultimos 30 dias y se avisa que falta.
+  const faltaMigracionRango = rango !== null && seriesResult.error?.code === "PGRST202";
+  const serieFinal = faltaMigracionRango ? await leerSerie(supabase, id, "day") : seriesResult;
+  const series = serieFinal.data;
+  const rangoActivo = faltaMigracionRango ? null : rango;
+  const bucketActivo: ScanBucket = faltaMigracionRango ? "day" : bucket;
   const target = qrTargetUrl(id, siteUrl());
   const targetNfc = nfcTargetUrl(id, siteUrl());
 
@@ -74,7 +86,18 @@ export default async function QrDetailPage({
   // falla: ahi no se muestra el desglose en vez de romper la pagina.
   const total = totalResult.count ?? 0;
   const porNfc = nfcResult.error ? null : (nfcResult.count ?? 0);
-  const activeWindow = BUCKETS.find((b) => b.value === bucket)!.window;
+  const activeWindow = rangoActivo
+    ? `del ${fechaCorta(rangoActivo.desde)} al ${fechaCorta(rangoActivo.hasta)}${
+        rangoActivo.recortadoAHoy ? " (hoy)" : ""
+      } · agrupado por ${NOMBRE_BUCKET[rangoActivo.bucket]}`
+    : BUCKETS.find((b) => b.value === bucketActivo)!.window;
+
+  // Lo que muestran las fechas del calendario: el rango elegido, o el que
+  // corresponde al boton activo, para que se vea desde donde se arranca.
+  // Si el rango no se pudo mostrar porque falta la migracion, el calendario
+  // conserva lo que se eligio: no hay que volver a cargarlo despues.
+  const calendarioDesde = rango?.desde ?? fechaArgentina(rangeStart(bucketActivo));
+  const calendarioHasta = rango?.hasta ?? hoy;
 
   return (
     <div className="flex flex-col gap-6">
@@ -179,7 +202,9 @@ export default async function QrDetailPage({
                     key={option.value}
                     href={`/dashboard/qr/${code.id}?bucket=${option.value}`}
                     className={
-                      option.value === bucket ? "btn btn-primary text-xs" : "btn btn-ghost text-xs"
+                      !rangoActivo && option.value === bucketActivo
+                        ? "btn btn-primary text-xs"
+                        : "btn btn-ghost text-xs"
                     }
                     scroll={false}
                   >
@@ -189,12 +214,53 @@ export default async function QrDetailPage({
               </div>
             </div>
 
-            {seriesResult.error ? (
+            {/* Un formulario comun: el calendario lo pone el navegador, y al
+                tocar "Ver" la pagina se recarga con las fechas en la direccion,
+                asi que el rango se puede guardar o compartir como un link. */}
+            <form
+              action={`/dashboard/qr/${code.id}`}
+              className="mb-4 flex flex-wrap items-end gap-2"
+            >
+              <label className="flex flex-col gap-1 text-xs text-ink-3" htmlFor="desde">
+                Desde
+                <input
+                  id="desde"
+                  type="date"
+                  name="desde"
+                  required
+                  defaultValue={calendarioDesde}
+                  className="input py-1 text-sm"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-ink-3" htmlFor="hasta">
+                Hasta
+                <input
+                  id="hasta"
+                  type="date"
+                  name="hasta"
+                  required
+                  defaultValue={calendarioHasta}
+                  className="input py-1 text-sm"
+                />
+              </label>
+              <button type="submit" className={rangoActivo ? "btn btn-primary text-xs" : "btn btn-secondary text-xs"}>
+                Ver esas fechas
+              </button>
+              {faltaMigracionRango ? (
+                <p className="w-full text-xs" style={{ color: "var(--danger)" }}>
+                  Para elegir fechas falta correr en Supabase el archivo{" "}
+                  <code>2026-10-rango-fechas.sql</code>. Mientras tanto te muestro los últimos 30
+                  días.
+                </p>
+              ) : null}
+            </form>
+
+            {serieFinal.error ? (
               <p className="text-sm" style={{ color: "var(--danger)" }}>
-                No pude leer las estadísticas: {seriesResult.error.message}
+                No pude leer las estadísticas: {serieFinal.error.message}
               </p>
             ) : (
-              <ScanChart data={series} bucket={bucket} />
+              <ScanChart data={series} bucket={bucketActivo} />
             )}
           </div>
 
@@ -220,6 +286,83 @@ export default async function QrDetailPage({
   );
 }
 
+type SerieLeida = { data: ScanSeriesPoint[]; error: { message: string; code?: string } | null };
+
+const NOMBRE_BUCKET: Record<ScanBucket, string> = {
+  day: "día",
+  week: "semana",
+  month: "mes",
+  year: "año",
+};
+
+type Rango = { desde: string; hasta: string; bucket: ScanBucket; recortadoAHoy: boolean };
+
+/**
+ * Las fechas del calendario, ya ordenadas y con el agrupado que conviene.
+ *
+ * El agrupado sale del largo del rango, para que siempre se lea: un año por
+ * dia serian 365 barras imposibles de mirar. Las fechas futuras se recortan a
+ * hoy, porque escaneos del futuro no hay: elegir "hasta 2030" muestra todo
+ * hasta hoy, que es lo que se quiere ver.
+ */
+function leerRango(rawDesde: string | undefined, rawHasta: string | undefined, hoy: string): Rango | null {
+  // Ida y vuelta: JavaScript convierte el 30 de febrero en 2 de marzo sin
+  // avisar, y la base despues lo rechazaria. Solo pasa lo que existe.
+  const valida = (v: string | undefined) => {
+    if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+    const ms = Date.parse(`${v}T00:00:00Z`);
+    return !Number.isNaN(ms) && new Date(ms).toISOString().slice(0, 10) === v ? v : null;
+  };
+  let desde = valida(rawDesde);
+  let hasta = valida(rawHasta);
+  if (!desde || !hasta) return null;
+
+  const recortadoAHoy = hasta > hoy;
+  if (desde > hoy) desde = hoy;
+  if (hasta > hoy) hasta = hoy;
+  if (desde > hasta) [desde, hasta] = [hasta, desde];
+
+  const dias = (Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86_400_000;
+  const bucket: ScanBucket = dias <= 62 ? "day" : dias <= 366 ? "week" : dias <= 3660 ? "month" : "year";
+
+  return { desde, hasta, bucket, recortadoAHoy };
+}
+
+async function leerSerieRango(supabase: SupabaseClient, id: number, rango: Rango): Promise<SerieLeida> {
+  const { data, error } = await supabase.rpc("qr_scan_series_rango", {
+    p_qr_id: id,
+    p_bucket: rango.bucket,
+    p_desde: rango.desde,
+    p_hasta: rango.hasta,
+  });
+  if (error) return { data: [], error };
+
+  const filas = (data ?? []) as { bucket_start: string; qr: number; nfc: number }[];
+  return {
+    data: filas.map((fila) => {
+      const qr = Number(fila.qr);
+      const nfc = Number(fila.nfc);
+      return { bucket_start: fila.bucket_start, scans: qr + nfc, qr, nfc };
+    }),
+    error: null,
+  };
+}
+
+/** La fecha de hoy (o de cualquier momento) como dia de Argentina, AAAA-MM-DD. */
+function fechaArgentina(fecha: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(fecha);
+}
+
+function fechaCorta(iso: string): string {
+  const [anio, mes, dia] = iso.split("-");
+  return `${dia}/${mes}/${anio}`;
+}
+
 /**
  * La serie del grafico, separada en QR y NFC.
  *
@@ -231,7 +374,7 @@ async function leerSerie(
   supabase: SupabaseClient,
   id: number,
   bucket: ScanBucket,
-): Promise<{ data: ScanSeriesPoint[]; error: { message: string } | null }> {
+): Promise<SerieLeida> {
   const args = { p_qr_id: id, p_bucket: bucket, p_from: rangeStart(bucket).toISOString() };
 
   const separada = await supabase.rpc("qr_scan_series_via", args);
