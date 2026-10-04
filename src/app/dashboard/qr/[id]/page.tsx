@@ -11,6 +11,7 @@ import type { QrCode, ScanBucket, ScanSeriesPoint } from "@/lib/types";
 import { CopyButton } from "../../_components/CopyButton";
 import { DeleteQrForm } from "./DeleteQrForm";
 import { EditQrForm } from "./EditQrForm";
+import { HistorialPlaca } from "./HistorialPlaca";
 import { PlacaCard } from "./PlacaCard";
 import { ScanChart } from "./ScanChart";
 
@@ -114,7 +115,7 @@ export default async function QrDetailPage({
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
         <div className="flex flex-col gap-5">
           <div className="card flex flex-col items-center gap-3 p-5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -273,6 +274,8 @@ export default async function QrDetailPage({
             }))}
             initialDesignId={code.design_id}
           />
+
+          {sesion?.rol === "dueno" ? <HistorialPlaca supabase={supabase} qrId={code.id} /> : null}
 
           {sesion?.rol === "dueno" ? (
             <div className="card p-5">

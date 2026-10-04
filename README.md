@@ -200,6 +200,20 @@ hay que configurar está en Google Cloud (un cliente OAuth) y en Supabase
 (Authentication → Sign In / Providers → Google, y en URL Configuration la
 dirección `https://toqaqr.com.ar/auth/callback` entre las permitidas).
 
+### Historial
+
+Con `supabase/migraciones/2026-10-historial.sql`, la base anota sola quién
+creó, editó (destino, etiqueta o diseño, con el antes y el después) o borró
+cada placa, y el panel anota quién la generó para imprenta. Lo escribe un
+trigger sobre `qr_codes`, así que queda registrado se haga desde donde se haga;
+lo que se cambia directo en Supabase figura como "Sistema".
+
+Lo ve solo el dueño: en *Editar* de cada placa ("Historial de esta placa") y en
+*Historial*, la lista general, que junta en un renglón lo que se hizo de una
+vez (un lote, un borrado de varias) y se puede filtrar por placa o por persona.
+Nadie lo puede borrar ni cambiar desde el panel, ni siquiera el dueño, y se
+conserva aunque la placa se borre.
+
 ---
 
 ## QR y chip NFC: dos puertas, una placa

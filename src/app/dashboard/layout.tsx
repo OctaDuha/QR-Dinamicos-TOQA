@@ -17,7 +17,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen">
       <header className="marca-barra sticky top-0 z-10">
-        <div className="mx-auto flex max-w-6xl items-center gap-5 px-5 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-3 px-5 py-3">
           <Link href="/dashboard" className="marca-logo">
             <span className="marca-nombre">
               TOQA<span className="marca-punto">.</span>

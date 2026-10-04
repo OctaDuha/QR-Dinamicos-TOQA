@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
+import { anotarImpresion } from "@/lib/historial";
 import { respaldarDespues } from "@/lib/respaldo-auto";
 import { placaFileName, renderPlacas, type PlacaItem } from "@/lib/placa";
 import { loadDesign } from "@/lib/placa-designs";
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
     }
     const buffer = await zip.generateAsync({ type: "nodebuffer" });
     const stamp = new Date().toISOString().slice(0, 10);
+    anotarImpresion(supabase, items, "zip");
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
@@ -125,6 +127,7 @@ export async function POST(request: NextRequest) {
   }
 
   const pdf = await renderPlacas({ items, baseUrl: base });
+  anotarImpresion(supabase, items, "pdf");
 
   return new NextResponse(pdf as unknown as BodyInit, {
     headers: {

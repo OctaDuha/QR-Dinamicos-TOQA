@@ -69,6 +69,11 @@ export default function PrivacidadPage() {
           las API de Google se ajusta a la Política de Datos del Usuario de los Servicios de API de
           Google, incluidos sus requisitos de uso limitado.
         </p>
+        <p>
+          Para saber quién hizo cada cosa, el panel anota qué usuario creó, modificó, preparó para
+          imprimir o eliminó cada placa, cuándo lo hizo y qué cambió. Ese registro solo lo ve el
+          dueño de la cuenta.
+        </p>
       </Seccion>
 
       <Seccion titulo="Datos de los comercios">
@@ -108,7 +113,9 @@ export default function PrivacidadPage() {
           Los registros de escaneos, mientras exista la placa. Las cuentas del panel, hasta que se den
           de baja. Si una placa o una cuenta se elimina, sus datos se eliminan con ella. Las copias de
           seguridad de la lista de placas guardan versiones anteriores, así que una placa eliminada
-          puede seguir figurando en copias viejas hasta que se borren.
+          puede seguir figurando en copias viejas hasta que se borren. El registro de quién hizo
+          cada cosa en el panel se conserva aunque la placa se elimine, para que quede constancia de
+          quién la eliminó.
         </p>
       </Seccion>
 

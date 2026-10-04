@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/canva-guard";
 import { respaldarDespues } from "@/lib/respaldo-auto";
 import { fetchQrCodes, readRange } from "@/lib/export-query";
+import { anotarImpresion } from "@/lib/historial";
 import { placaFileName, renderPlacas, type PlacaItem } from "@/lib/placa";
 import { loadDesign, loadDesigns } from "@/lib/placa-designs";
 import { formatQrCode, siteUrl } from "@/lib/qr";
@@ -213,6 +214,7 @@ async function generar({
     }
 
     const buffer = await zip.generateAsync({ type: "nodebuffer" });
+    anotarImpresion(supabase, items, "zip");
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
@@ -224,6 +226,7 @@ async function generar({
   }
 
   const pdf = await renderPlacas({ items, baseUrl: base });
+  anotarImpresion(supabase, items, "pdf");
 
   return new NextResponse(pdf as unknown as BodyInit, {
     headers: {
