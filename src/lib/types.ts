@@ -10,6 +10,9 @@ export type QrCodeWithStats = QrCode & {
   design_name: string | null;
   total_scans: number;
   last_scan_at: string | null;
+  /** Solo con la migración 2026-10-clientes.sql. */
+  cliente_id?: number | null;
+  cliente_nombre?: string | null;
 };
 
 export type ScanBucket = "day" | "week" | "month" | "year";

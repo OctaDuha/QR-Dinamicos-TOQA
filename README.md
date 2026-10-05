@@ -233,6 +233,23 @@ número (por ejemplo, entró con Importar CSV), no se recupera: no se pisa
 nada. Y la numeración nunca vuelve a dar un número que ya se usó, aunque esté
 en la papelera o ya eliminado: puede haber una placa impresa con él.
 
+### Clientes
+
+Con `supabase/migraciones/2026-10-clientes.sql`, cada placa puede ser de un
+cliente (`qr_codes.cliente_id`). Cada cliente tiene nombre del negocio,
+contacto, notas y uno o más teléfonos de WhatsApp (`cliente_telefonos`),
+guardados solo con números y código de país (`5491112345678`), que es como
+los informa WhatsApp: es la base para que un bot reconozca a cada cliente.
+El panel acepta los teléfonos como los escribe la gente (`11 15 1234-5678`,
+`0351 612-3456`, `+54 9 …`) y los normaliza.
+
+Se ven y se editan en *Clientes* (dueño y equipo; borrar un cliente, solo el
+dueño, y sus placas quedan sin cliente). Las placas se asignan por número
+desde la ficha del cliente (`41, 43-45`) o desde la pantalla de cada placa.
+El historial anota los cambios de cliente, la papelera los conserva, y la
+planilla CSV y las copias de seguridad llevan la columna `cliente` (por
+nombre; al importar, se busca entre los clientes que existen).
+
 ---
 
 ## QR y chip NFC: dos puertas, una placa

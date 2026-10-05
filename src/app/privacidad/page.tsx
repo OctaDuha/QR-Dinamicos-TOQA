@@ -79,7 +79,10 @@ export default function PrivacidadPage() {
       <Seccion titulo="Datos de los comercios">
         <p>
           De cada placa guardamos su número, el nombre o la etiqueta que le pone TOQA y la dirección
-          a la que lleva. Hacemos copias de seguridad de esa lista para no perderla.
+          a la que lleva. De cada comercio que contrata el servicio guardamos el nombre del negocio,
+          la persona de contacto, sus teléfonos de WhatsApp y qué placas son suyas, para poder
+          atenderlo e informarle sus estadísticas. Hacemos copias de seguridad de la lista de placas
+          para no perderla.
         </p>
       </Seccion>
 
@@ -110,7 +113,8 @@ export default function PrivacidadPage() {
 
       <Seccion titulo="Cuánto tiempo los guardamos">
         <p>
-          Los registros de escaneos, mientras exista la placa. Las cuentas del panel, hasta que se den
+          Los registros de escaneos, mientras exista la placa. Los datos de un comercio, mientras
+          tenga el servicio o hasta que pida que los borremos. Las cuentas del panel, hasta que se den
           de baja. Si una cuenta se elimina, sus datos se eliminan con ella. Si se elimina una placa,
           queda 30 días en una papelera, con sus escaneos, por si hay que recuperarla, y después se
           elimina definitivamente. Las copias de

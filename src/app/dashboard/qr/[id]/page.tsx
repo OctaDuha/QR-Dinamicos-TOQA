@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { QrCode, ScanBucket, ScanSeriesPoint } from "@/lib/types";
 
 import { CopyButton } from "../../_components/CopyButton";
+import { ClienteDePlaca } from "./ClienteDePlaca";
 import { DeleteQrForm } from "./DeleteQrForm";
 import { EditQrForm } from "./EditQrForm";
 import { HistorialPlaca } from "./HistorialPlaca";
@@ -56,7 +57,7 @@ export default async function QrDetailPage({
 
   if (!code) notFound();
 
-  const [seriesResult, totalResult, nfcResult, recentResult, pngDataUrl, designs] = await Promise.all([
+  const [seriesResult, totalResult, nfcResult, recentResult, pngDataUrl, designs, clienteDeLaPlaca, clientes] = await Promise.all([
     rango ? leerSerieRango(supabase, id, rango) : leerSerie(supabase, id, bucket),
     supabase.from("scans").select("id", { count: "exact", head: true }).eq("qr_id", id),
     supabase
@@ -71,7 +72,12 @@ export default async function QrDetailPage({
       .gte("scanned_at", daysAgo(30).toISOString()),
     qrPngDataUrl(id, siteUrl(), 420),
     listDesigns(supabase),
+    // Aparte de la consulta principal: sin la migración de clientes, la
+    // columna no existe y esto falla solo, sin llevarse la página.
+    supabase.from("qr_codes").select("cliente_id").eq("id", id).maybeSingle<{ cliente_id: number | null }>(),
+    supabase.from("clientes").select("id, nombre").order("nombre", { ascending: true }).limit(1000),
   ]);
+  const hayClientes = !clienteDeLaPlaca.error && !clientes.error;
 
   // Si las fechas elegidas no se pudieron leer porque falta la funcion en la
   // base, el grafico vuelve a los ultimos 30 dias y se avisa que falta.
@@ -183,6 +189,16 @@ export default async function QrDetailPage({
         </div>
 
         <div className="flex flex-col gap-5">
+          {hayClientes ? (
+            <div className="card p-5">
+              <ClienteDePlaca
+                qrId={code.id}
+                clienteId={clienteDeLaPlaca.data?.cliente_id ?? null}
+                clientes={(clientes.data ?? []) as { id: number; nombre: string }[]}
+              />
+            </div>
+          ) : null}
+
           <div className="card p-5">
             <EditQrForm
               id={code.id}

@@ -222,7 +222,17 @@ export function QrTable({
                       {formatQrCode(code.id)}
                     </Link>
                   </Td>
-                  <Td>{code.label ?? <span className="text-ink-3">—</span>}</Td>
+                  <Td>
+                    {code.label ?? <span className="text-ink-3">—</span>}
+                    {code.cliente_id && code.cliente_nombre ? (
+                      <Link
+                        href={`/dashboard/clientes/${code.cliente_id}`}
+                        className="mt-0.5 block text-xs text-ink-3 hover:underline"
+                      >
+                        {code.cliente_nombre}
+                      </Link>
+                    ) : null}
+                  </Td>
                   <Td>
                     <a
                       href={code.destination_url}

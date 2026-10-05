@@ -41,3 +41,29 @@ export async function fetchQrCodes(
 
   return codes;
 }
+
+/**
+ * El cliente de cada placa, por número. Va aparte de fetchQrCodes a
+ * propósito: sin la migración de clientes la columna no existe, y la copia
+ * de seguridad tiene que salir igual (con la columna vacía).
+ */
+export async function nombresDeClientes(supabase: SupabaseClient): Promise<Map<number, string>> {
+  const nombres = new Map<number, string>();
+  const pageSize = 1000;
+
+  for (let offset = 0; offset < 100_000; offset += pageSize) {
+    const { data, error } = await supabase
+      .from("qr_codes_with_stats")
+      .select("id, cliente_nombre")
+      .not("cliente_id", "is", null)
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) return nombres;
+
+    const page = (data ?? []) as { id: number; cliente_nombre: string | null }[];
+    for (const fila of page) if (fila.cliente_nombre) nombres.set(fila.id, fila.cliente_nombre);
+    if (page.length < pageSize) break;
+  }
+
+  return nombres;
+}

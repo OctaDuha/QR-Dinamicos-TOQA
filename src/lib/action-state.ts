@@ -5,6 +5,11 @@
  * exportar funciones asincronicas. Exportar un objeto ahi compila igual, pero
  * revienta en runtime la primera vez que alguien usa un boton.
  */
-export type ActionState = { ok: boolean; message: string | null };
+export type ActionState = {
+  ok: boolean;
+  message: string | null;
+  /** Lo que se había escrito, para no borrárselo a la persona si algo falla. */
+  campos?: Record<string, string>;
+};
 
 export const IDLE: ActionState = { ok: false, message: null };

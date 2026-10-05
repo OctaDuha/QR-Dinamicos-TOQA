@@ -18,7 +18,7 @@ export type FilaHistorial = {
   id: number;
   qr_id: number | null;
   accion: "creo" | "edito" | "borro" | "imprimio" | "recupero";
-  cambios: Partial<Record<"destino" | "etiqueta" | "diseno", Cambio>>;
+  cambios: Partial<Record<"destino" | "etiqueta" | "diseno" | "cliente", Cambio>>;
   detalle: { diseno?: string; formato?: string };
   usuario_email: string | null;
   creado_en: string;
@@ -66,7 +66,7 @@ const comillas = (texto: string) => `"${texto}"`;
 
 function describirCambios(cambios: FilaHistorial["cambios"]): string[] {
   const lineas: string[] = [];
-  const { destino, etiqueta, diseno } = cambios;
+  const { destino, etiqueta, diseno, cliente } = cambios;
 
   if (destino) {
     if (destino.antes && destino.despues) lineas.push(`Cambió el destino: de ${destino.antes} a ${destino.despues}`);
@@ -84,6 +84,12 @@ function describirCambios(cambios: FilaHistorial["cambios"]): string[] {
     } else if (diseno.despues) lineas.push(`Le asignó el diseño ${comillas(diseno.despues)}`);
     else if (diseno.antes) lineas.push(`Le quitó el diseño (${diseno.antes})`);
     else lineas.push("Le quitó el diseño");
+  }
+  if (cliente) {
+    if (cliente.antes && cliente.despues) {
+      lineas.push(`Cambió el cliente: de ${comillas(cliente.antes)} a ${comillas(cliente.despues)}`);
+    } else if (cliente.despues) lineas.push(`La asignó al cliente ${comillas(cliente.despues)}`);
+    else if (cliente.antes) lineas.push(`La sacó del cliente ${comillas(cliente.antes)}`);
   }
   return lineas;
 }
@@ -188,7 +194,12 @@ function rango(grupo: GrupoHistorial): string {
     : `entre la ${desde} y la ${hasta}`;
 }
 
-const NOMBRE_CAMPO: Record<string, string> = { destino: "el destino", etiqueta: "la etiqueta", diseno: "el diseño" };
+const NOMBRE_CAMPO: Record<string, string> = {
+  destino: "el destino",
+  etiqueta: "la etiqueta",
+  diseno: "el diseño",
+  cliente: "el cliente",
+};
 
 /** Un renglón de la lista general, que puede abarcar varias placas. */
 export function describirGrupo(grupo: GrupoHistorial & { conEtiqueta?: boolean }): {

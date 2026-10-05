@@ -163,6 +163,10 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
   ]);
   const labelCol = findColumn(header, ["label", "etiqueta", "nombre", "cliente"]);
   const designCol = findColumn(header, ["diseno", "diseño", "design", "modelo"]);
+  // En la planilla vieja "cliente" era la etiqueta: si esa columna ya se usó
+  // como etiqueta, no se la lee además como cliente.
+  const clienteColumna = findColumn(header, ["cliente"]);
+  const clienteCol = clienteColumna === labelCol ? -1 : clienteColumna;
 
   if (idCol === -1 || destCol === -1) {
     return {
@@ -179,6 +183,7 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
     design_id?: number | null;
   }[] = [];
   const nombresDeDiseno = new Map<number, string>();
+  const nombresDeCliente = new Map<number, string>();
   const problems: string[] = [];
 
   for (let i = 1; i < rows.length; i++) {
@@ -205,6 +210,7 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
       const nombre = (row[designCol] ?? "").trim().toLowerCase();
       if (nombre) nombresDeDiseno.set(id, nombre);
     }
+    if (clienteCol !== -1) nombresDeCliente.set(id, (row[clienteCol] ?? "").trim());
   }
 
   if (records.length === 0) {
@@ -248,6 +254,8 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
     };
   }
 
+  const notaClientes = clienteCol === -1 ? "" : await asignarClientesImportados(supabase, nombresDeCliente);
+
   respaldarDespues(supabase);
   revalidatePath("/dashboard");
 
@@ -255,7 +263,51 @@ export async function importQrCsv(_prev: ActionState, formData: FormData): Promi
     ? ` ${problems.length} fila${problems.length === 1 ? "" : "s"} salteada${problems.length === 1 ? "" : "s"}: ${problems.slice(0, 3).join(" · ")}${problems.length > 3 ? " …" : ""}`
     : "";
 
-  return { ok: true, message: `${records.length} QR importados conservando su número.${skipped}` };
+  return { ok: true, message: `${records.length} QR importados conservando su número.${skipped}${notaClientes}` };
+}
+
+/**
+ * La columna "cliente" trae el nombre. Se busca entre los clientes que ya
+ * existen; vacía quiere decir sin cliente. Un nombre que no existe no se
+ * inventa ni se borra: esa placa queda como estaba y se avisa.
+ * Va aparte del upsert para no pisar el cliente de las placas que no se
+ * pudieron resolver.
+ */
+async function asignarClientesImportados(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  nombres: Map<number, string>,
+): Promise<string> {
+  const { data, error } = await supabase.from("clientes").select("id, nombre");
+  if (error) return " La columna cliente no se usó: falta correr 2026-10-clientes.sql.";
+
+  const porNombre = new Map(
+    ((data ?? []) as { id: number; nombre: string }[]).map((c) => [c.nombre.trim().toLowerCase(), c.id]),
+  );
+  const grupos = new Map<number | null, number[]>();
+  const desconocidos = new Set<string>();
+
+  for (const [qrId, nombre] of nombres) {
+    const clienteId = nombre ? porNombre.get(nombre.toLowerCase()) : null;
+    if (clienteId === undefined) {
+      desconocidos.add(nombre);
+      continue;
+    }
+    grupos.set(clienteId, [...(grupos.get(clienteId) ?? []), qrId]);
+  }
+
+  for (const [clienteId, ids] of grupos) {
+    for (let i = 0; i < ids.length; i += 500) {
+      const { error: errorAsignar } = await supabase
+        .from("qr_codes")
+        .update({ cliente_id: clienteId })
+        .in("id", ids.slice(i, i + 500));
+      if (errorAsignar) return ` No pude asignar los clientes: ${errorAsignar.message}`;
+    }
+  }
+
+  if (desconocidos.size === 0) return "";
+  const lista = [...desconocidos].slice(0, 5).map((n) => `"${n}"`).join(", ");
+  return ` No encontré ${desconocidos.size === 1 ? "el cliente" : "los clientes"} ${lista}${desconocidos.size > 5 ? "…" : ""}: creal${desconocidos.size === 1 ? "o" : "os"} en Clientes con ese nombre y volvé a importar.`;
 }
 
 function findColumn(header: string[], candidates: string[]): number {

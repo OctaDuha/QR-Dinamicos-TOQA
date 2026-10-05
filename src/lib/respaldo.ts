@@ -3,7 +3,7 @@ import { get, list, put } from "@vercel/blob";
 import { after } from "next/server";
 
 import { exportCsv } from "./export";
-import { fetchQrCodes } from "./export-query";
+import { fetchQrCodes, nombresDeClientes } from "./export-query";
 import { designNames } from "./placa-designs";
 import { siteUrl } from "./qr";
 
@@ -146,7 +146,7 @@ export async function respaldar(
     const codes = await fetchQrCodes(supabase, { from: null, to: null }, MAX_FILAS);
     if (codes.length === 0) return { ok: true };
 
-    const csv = exportCsv(codes, siteUrl(), await designNames(supabase));
+    const csv = exportCsv(codes, siteUrl(), await designNames(supabase), await nombresDeClientes(supabase));
     const acceso_ = acceso();
 
     // Privado a proposito: la planilla lleva los nombres de los clientes y

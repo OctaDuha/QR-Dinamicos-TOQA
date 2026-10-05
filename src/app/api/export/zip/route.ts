@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/canva-guard";
 import { exportCsv, pngFileName } from "@/lib/export";
 import { designNames } from "@/lib/placa-designs";
-import { fetchQrCodes, readRange } from "@/lib/export-query";
+import { fetchQrCodes, nombresDeClientes, readRange } from "@/lib/export-query";
 import { qrPngBuffer, siteUrl } from "@/lib/qr";
 import { anotarDescarga } from "@/lib/respaldo";
 
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     folder.file(pngFileName(code.id), await qrPngBuffer(code.id, base, ZIP_PNG_WIDTH));
   }
 
-  zip.file("qrs.csv", exportCsv(codes, base, await designNames(supabase)));
+  zip.file("qrs.csv", exportCsv(codes, base, await designNames(supabase), await nombresDeClientes(supabase)));
   zip.file(
     "LEEME.txt",
     [

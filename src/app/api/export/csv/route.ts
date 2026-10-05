@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/canva-guard";
 import { exportCsv } from "@/lib/export";
 import { designNames } from "@/lib/placa-designs";
-import { fetchQrCodes, readRange } from "@/lib/export-query";
+import { fetchQrCodes, nombresDeClientes, readRange } from "@/lib/export-query";
 import { siteUrl } from "@/lib/qr";
 import { anotarDescarga } from "@/lib/respaldo";
 
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     return new NextResponse(`Error al leer los QR: ${(error as Error).message}`, { status: 500 });
   }
 
-  const csv = exportCsv(codes, siteUrl(), await designNames(supabase));
+  const csv = exportCsv(codes, siteUrl(), await designNames(supabase), await nombresDeClientes(supabase));
   anotarDescarga();
 
   const stamp = new Date().toISOString().slice(0, 10);

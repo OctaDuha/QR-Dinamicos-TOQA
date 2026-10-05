@@ -11,10 +11,12 @@ import type { QrCode } from "./types";
  *   url_qr        -> la URL fija impresa en la placa
  *   url_nfc       -> la que se graba en el chip, igual pero con la marca
  *   diseno        -> con que diseño se imprime
+ *   cliente       -> de qué cliente es (por nombre)
  *
  * Sirve tambien de copia de respaldo: este mismo CSV se vuelve a importar
  * desde el panel y reconstruye los numeros, los destinos, las etiquetas y
- * los diseños tal cual estaban. Es lo unico que hace falta guardar para que
+ * los diseños y los clientes tal cual estaban (los clientes tienen que
+ * existir con ese nombre; sus teléfonos no viajan en esta planilla). Es lo unico que hace falta guardar para que
  * una placa impresa no muera si se pierde la base.
  *
  * OJO: esta columna NO sirve para poner el QR en un diseno con la Creacion
@@ -30,12 +32,14 @@ export const EXPORT_HEADER = [
   "url_qr",
   "url_nfc",
   "diseno",
+  "cliente",
 ];
 
 export function exportRows(
   codes: QrCode[],
   base: string,
   nombresDeDiseno?: Map<number, string>,
+  clientes?: Map<number, string>,
 ): (string | number)[][] {
   return codes.map((code) => [
     formatQrCode(code.id),
@@ -45,6 +49,7 @@ export function exportRows(
     qrTargetUrl(code.id, base),
     nfcTargetUrl(code.id, base),
     (code.design_id !== null ? nombresDeDiseno?.get(code.design_id) : "") ?? "",
+    clientes?.get(code.id) ?? "",
   ]);
 }
 
@@ -52,8 +57,9 @@ export function exportCsv(
   codes: QrCode[],
   base: string,
   nombresDeDiseno?: Map<number, string>,
+  clientes?: Map<number, string>,
 ): string {
-  return toCsv([EXPORT_HEADER, ...exportRows(codes, base, nombresDeDiseno)]);
+  return toCsv([EXPORT_HEADER, ...exportRows(codes, base, nombresDeDiseno, clientes)]);
 }
 
 export function pngFileName(id: number): string {

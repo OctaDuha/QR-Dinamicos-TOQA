@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const SECCIONES = [
   { href: "/dashboard", label: "QRs" },
+  { href: "/dashboard/clientes", label: "Clientes" },
   { href: "/dashboard/placa", label: "Placas" },
   { href: "/dashboard/canva", label: "Canva" },
 ];
