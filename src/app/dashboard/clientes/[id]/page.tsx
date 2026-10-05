@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AVISO_MIGRACION_CLIENTES, faltaMigracionClientes, mostrarTelefono, type Cliente } from "@/lib/clientes";
+import { fechaArgentina, rangoPorDefecto } from "@/lib/estadisticas";
 import { formatQrCode, parseQrId } from "@/lib/qr";
 import { sesionActual } from "@/lib/roles";
 import type { QrCodeWithStats } from "@/lib/types";
@@ -40,6 +41,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
 
   const placas = (placasData ?? []) as QrCodeWithStats[];
   const escaneos = placas.reduce((total, placa) => total + Number(placa.total_scans), 0);
+  const ultimos30 = rangoPorDefecto(fechaArgentina(new Date()));
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,6 +76,31 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
 
         <div className="card p-5">
           <h2 className="text-sm font-semibold">Placas</h2>
+          {placas.length > 0 ? (
+            // Un formulario comun que pide el archivo: el navegador lo descarga
+            // sin salir de la pantalla.
+            <form
+              action="/api/estadisticas/descargar"
+              className="mt-3 flex flex-wrap items-end gap-2 rounded-lg p-3"
+              style={{ background: "var(--surface-2)" }}
+            >
+              <input type="hidden" name="cliente" value={cliente.id} />
+              <p className="w-full text-xs text-ink-2">
+                Estadísticas de todas sus placas, día por día, para abrir en Excel o Google Sheets.
+              </p>
+              <label className="flex flex-col gap-1 text-xs text-ink-3">
+                Desde
+                <input type="date" name="desde" required defaultValue={ultimos30.desde} className="input py-1 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-ink-3">
+                Hasta
+                <input type="date" name="hasta" required defaultValue={ultimos30.hasta} className="input py-1 text-sm" />
+              </label>
+              <button type="submit" className="btn btn-secondary text-xs">
+                Descargar (CSV)
+              </button>
+            </form>
+          ) : null}
           <div className="mt-3">
             <AgregarPlacasForm clienteId={cliente.id} />
           </div>

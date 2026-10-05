@@ -3,6 +3,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 
 import { mostrarTelefono } from "@/lib/clientes";
+import {
+  NOMBRE_BUCKET,
+  fechaArgentina,
+  fechaCorta,
+  leerRango,
+  leerSerieRango,
+  type SerieLeida,
+} from "@/lib/estadisticas";
 import { listDesigns } from "@/lib/placa-designs";
 import { sesionActual } from "@/lib/roles";
 import { formatQrCode, nfcTargetUrl, parseQrId, qrPngDataUrl, qrTargetUrl, siteUrl } from "@/lib/qr";
@@ -275,6 +283,17 @@ export default async function QrDetailPage({
               <button type="submit" className={rangoActivo ? "btn btn-primary text-xs" : "btn btn-secondary text-xs"}>
                 Ver esas fechas
               </button>
+              <a
+                href={`/api/estadisticas/descargar?${new URLSearchParams({
+                  qr: String(code.id),
+                  desde: calendarioDesde,
+                  hasta: calendarioHasta,
+                })}`}
+                className="btn btn-ghost text-xs"
+                download
+              >
+                Descargar (CSV)
+              </a>
               {faltaMigracionRango ? (
                 <p className="w-full text-xs" style={{ color: "var(--danger)" }}>
                   Para elegir fechas falta correr en Supabase el archivo{" "}
@@ -315,83 +334,6 @@ export default async function QrDetailPage({
       </div>
     </div>
   );
-}
-
-type SerieLeida = { data: ScanSeriesPoint[]; error: { message: string; code?: string } | null };
-
-const NOMBRE_BUCKET: Record<ScanBucket, string> = {
-  day: "día",
-  week: "semana",
-  month: "mes",
-  year: "año",
-};
-
-type Rango = { desde: string; hasta: string; bucket: ScanBucket; recortadoAHoy: boolean };
-
-/**
- * Las fechas del calendario, ya ordenadas y con el agrupado que conviene.
- *
- * El agrupado sale del largo del rango, para que siempre se lea: un año por
- * dia serian 365 barras imposibles de mirar. Las fechas futuras se recortan a
- * hoy, porque escaneos del futuro no hay: elegir "hasta 2030" muestra todo
- * hasta hoy, que es lo que se quiere ver.
- */
-function leerRango(rawDesde: string | undefined, rawHasta: string | undefined, hoy: string): Rango | null {
-  // Ida y vuelta: JavaScript convierte el 30 de febrero en 2 de marzo sin
-  // avisar, y la base despues lo rechazaria. Solo pasa lo que existe.
-  const valida = (v: string | undefined) => {
-    if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
-    const ms = Date.parse(`${v}T00:00:00Z`);
-    return !Number.isNaN(ms) && new Date(ms).toISOString().slice(0, 10) === v ? v : null;
-  };
-  let desde = valida(rawDesde);
-  let hasta = valida(rawHasta);
-  if (!desde || !hasta) return null;
-
-  const recortadoAHoy = hasta > hoy;
-  if (desde > hoy) desde = hoy;
-  if (hasta > hoy) hasta = hoy;
-  if (desde > hasta) [desde, hasta] = [hasta, desde];
-
-  const dias = (Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86_400_000;
-  const bucket: ScanBucket = dias <= 62 ? "day" : dias <= 366 ? "week" : dias <= 3660 ? "month" : "year";
-
-  return { desde, hasta, bucket, recortadoAHoy };
-}
-
-async function leerSerieRango(supabase: SupabaseClient, id: number, rango: Rango): Promise<SerieLeida> {
-  const { data, error } = await supabase.rpc("qr_scan_series_rango", {
-    p_qr_id: id,
-    p_bucket: rango.bucket,
-    p_desde: rango.desde,
-    p_hasta: rango.hasta,
-  });
-  if (error) return { data: [], error };
-
-  const filas = (data ?? []) as { bucket_start: string; qr: number; nfc: number }[];
-  return {
-    data: filas.map((fila) => {
-      const qr = Number(fila.qr);
-      const nfc = Number(fila.nfc);
-      return { bucket_start: fila.bucket_start, scans: qr + nfc, qr, nfc };
-    }),
-    error: null,
-  };
-}
-
-/** La fecha de hoy (o de cualquier momento) como dia de Argentina, AAAA-MM-DD. */
-function fechaArgentina(fecha: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Argentina/Buenos_Aires",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(fecha);
-}
-
-function fechaCorta(iso: string): string {
-  const [anio, mes, dia] = iso.split("-");
-  return `${dia}/${mes}/${anio}`;
 }
 
 /**

@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { EditQrForm } from "../../qr/[id]/EditQrForm";
 import { QuitarPlacaBoton } from "../Formularios";
+import { EstadisticasPlaca } from "./EstadisticasPlaca";
 
 /** Una placa en la ficha del cliente, con su configuración a mano. */
 export function PlacaDelCliente({
@@ -16,7 +17,8 @@ export function PlacaDelCliente({
   placa: { id: number; label: string | null; destination_url: string; total_scans: number };
   numero: string;
 }) {
-  const [editando, setEditando] = useState(false);
+  const [abierto, setAbierto] = useState<"editar" | "estadisticas" | null>(null);
+  const alternar = (que: "editar" | "estadisticas") => setAbierto((actual) => (actual === que ? null : que));
 
   return (
     <li className="border-t py-3" style={{ borderColor: "var(--line)" }}>
@@ -41,21 +43,30 @@ export function PlacaDelCliente({
         <div className="flex items-start gap-1">
           <button
             type="button"
-            className={editando ? "btn btn-primary text-xs" : "btn btn-secondary text-xs"}
-            aria-expanded={editando}
-            onClick={() => setEditando((abierto) => !abierto)}
+            className={abierto === "editar" ? "btn btn-primary text-xs" : "btn btn-secondary text-xs"}
+            aria-expanded={abierto === "editar"}
+            onClick={() => alternar("editar")}
           >
-            {editando ? "Cerrar" : "Editar"}
+            Editar
           </button>
-          <Link href={`/dashboard/qr/${placa.id}`} className="btn btn-ghost text-xs">
+          <button
+            type="button"
+            className={abierto === "estadisticas" ? "btn btn-primary text-xs" : "btn btn-ghost text-xs"}
+            aria-expanded={abierto === "estadisticas"}
+            onClick={() => alternar("estadisticas")}
+          >
             Estadísticas
-          </Link>
+          </button>
           <QuitarPlacaBoton clienteId={clienteId} qrId={placa.id} numero={numero} />
         </div>
       </div>
-      {editando ? (
-        <div className="mt-3 rounded-lg p-4" style={{ background: "var(--surface-2)" }}>
-          <EditQrForm id={placa.id} label={placa.label} destinationUrl={placa.destination_url} compacto />
+      {abierto ? (
+        <div className="mt-3 rounded-lg p-3 sm:p-4" style={{ background: "var(--surface-2)" }}>
+          {abierto === "editar" ? (
+            <EditQrForm id={placa.id} label={placa.label} destinationUrl={placa.destination_url} compacto />
+          ) : (
+            <EstadisticasPlaca qrId={placa.id} />
+          )}
         </div>
       ) : null}
     </li>

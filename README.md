@@ -250,6 +250,11 @@ negocio, el contacto y el WhatsApp; si el negocio ya existe se completan sus
 datos, y si no, se crea al guardar. También se asignan placas por número
 desde la ficha del cliente (`41, 43-45`), y desde ahí mismo se edita la
 etiqueta y el destino de cada una.
+
+Las estadísticas también se ven ahí mismo ("Estadísticas" en cada placa,
+con fechas a elección) y se descargan como CSV día por día
+(`/api/estadisticas/descargar`): de una placa (`?qr=`), o de todas las de un
+cliente juntas (`?cliente=`). La pantalla de cada placa tiene el mismo botón.
 El historial anota los cambios de cliente, la papelera los conserva, y la
 planilla CSV y las copias de seguridad llevan la columna `cliente` (por
 nombre; al importar, se busca entre los clientes que existen).
