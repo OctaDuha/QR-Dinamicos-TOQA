@@ -252,9 +252,15 @@ desde la ficha del cliente (`41, 43-45`), y desde ahí mismo se edita la
 etiqueta y el destino de cada una.
 
 Las estadísticas también se ven ahí mismo ("Estadísticas" en cada placa,
-con fechas a elección) y se descargan como CSV día por día
-(`/api/estadisticas/descargar`): de una placa (`?qr=`), o de todas las de un
-cliente juntas (`?cliente=`). La pantalla de cada placa tiene el mismo botón.
+con fechas a elección). Lo que se le manda al cliente es el **reporte en
+imagen** (`/api/estadisticas/imagen`, PNG de 1080 px de ancho, fondo claro):
+totales, porcentaje QR/NFC, el gráfico y, si es un cliente, cuánto escaneó
+cada placa. Imagen y no PDF porque WhatsApp la muestra en el chat; en el
+celular, "Compartir" abre el menú del teléfono con la imagen adjunta. Se
+pide de una placa (`?qr=`) o de todas las de un cliente (`?cliente=`), con
+`?desde=&hasta=`. La planilla CSV día por día (`/api/estadisticas/descargar`)
+queda como opción secundaria. Las letras del reporte (Noto Sans, licencia
+OFL) están en `src/assets/fuentes/`.
 El historial anota los cambios de cliente, la papelera los conserva, y la
 planilla CSV y las copias de seguridad llevan la columna `cliente` (por
 nombre; al importar, se busca entre los clientes que existen).

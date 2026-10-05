@@ -9,6 +9,7 @@ import type { QrCodeWithStats } from "@/lib/types";
 
 import { AgregarPlacasForm, BorrarClienteForm, ClienteForm } from "../Formularios";
 import { PlacaDelCliente } from "./PlacaDelCliente";
+import { ReporteCliente } from "./ReporteCliente";
 
 export const dynamic = "force-dynamic";
 
@@ -77,29 +78,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
         <div className="card p-5">
           <h2 className="text-sm font-semibold">Placas</h2>
           {placas.length > 0 ? (
-            // Un formulario comun que pide el archivo: el navegador lo descarga
-            // sin salir de la pantalla.
-            <form
-              action="/api/estadisticas/descargar"
-              className="mt-3 flex flex-wrap items-end gap-2 rounded-lg p-3"
-              style={{ background: "var(--surface-2)" }}
-            >
-              <input type="hidden" name="cliente" value={cliente.id} />
-              <p className="w-full text-xs text-ink-2">
-                Estadísticas de todas sus placas, día por día, para abrir en Excel o Google Sheets.
-              </p>
-              <label className="flex flex-col gap-1 text-xs text-ink-3">
-                Desde
-                <input type="date" name="desde" required defaultValue={ultimos30.desde} className="input py-1 text-sm" />
-              </label>
-              <label className="flex flex-col gap-1 text-xs text-ink-3">
-                Hasta
-                <input type="date" name="hasta" required defaultValue={ultimos30.hasta} className="input py-1 text-sm" />
-              </label>
-              <button type="submit" className="btn btn-secondary text-xs">
-                Descargar (CSV)
-              </button>
-            </form>
+            <ReporteCliente clienteId={cliente.id} desde={ultimos30.desde} hasta={ultimos30.hasta} />
           ) : null}
           <div className="mt-3">
             <AgregarPlacasForm clienteId={cliente.id} />

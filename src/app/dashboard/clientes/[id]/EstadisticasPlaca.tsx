@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { ScanBucket, ScanSeriesPoint } from "@/lib/types";
 
+import { BotonesReporte } from "../../_components/BotonesReporte";
 import { ScanChart } from "../../qr/[id]/ScanChart";
 
 type Respuesta = {
@@ -58,8 +59,6 @@ export function EstadisticasPlaca({ qrId }: { qrId: number }) {
     void cargar();
   }, [cargar]);
 
-  const descarga = `/api/estadisticas/descargar?${new URLSearchParams({ qr: String(qrId), desde, hasta })}`;
-
   return (
     <div className="flex flex-col gap-4">
       <form
@@ -92,12 +91,11 @@ export function EstadisticasPlaca({ qrId }: { qrId: number }) {
         <button type="submit" className="btn btn-secondary text-xs" disabled={cargando}>
           {cargando ? "Cargando…" : "Ver esas fechas"}
         </button>
-        {datos && !error ? (
-          <a href={descarga} className="btn btn-ghost text-xs" download>
-            Descargar (CSV)
-          </a>
-        ) : null}
       </form>
+
+      {/* Lo que se descarga es lo que se está viendo, no lo que quedó escrito
+          en el calendario sin tocar "Ver esas fechas". */}
+      {datos && !error ? <BotonesReporte pedido={{ qr: String(qrId), desde: datos.desde, hasta: datos.hasta }} /> : null}
 
       {error ? (
         <p className="text-sm" style={{ color: "var(--danger)" }}>

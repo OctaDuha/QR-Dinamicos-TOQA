@@ -17,6 +17,7 @@ import { formatQrCode, nfcTargetUrl, parseQrId, qrPngDataUrl, qrTargetUrl, siteU
 import { createClient } from "@/lib/supabase/server";
 import type { QrCode, ScanBucket, ScanSeriesPoint } from "@/lib/types";
 
+import { BotonesReporte } from "../../_components/BotonesReporte";
 import { CopyButton } from "../../_components/CopyButton";
 import { DeleteQrForm } from "./DeleteQrForm";
 import { EditQrForm, type ClienteOpcion } from "./EditQrForm";
@@ -283,17 +284,7 @@ export default async function QrDetailPage({
               <button type="submit" className={rangoActivo ? "btn btn-primary text-xs" : "btn btn-secondary text-xs"}>
                 Ver esas fechas
               </button>
-              <a
-                href={`/api/estadisticas/descargar?${new URLSearchParams({
-                  qr: String(code.id),
-                  desde: calendarioDesde,
-                  hasta: calendarioHasta,
-                })}`}
-                className="btn btn-ghost text-xs"
-                download
-              >
-                Descargar (CSV)
-              </a>
+
               {faltaMigracionRango ? (
                 <p className="w-full text-xs" style={{ color: "var(--danger)" }}>
                   Para elegir fechas falta correr en Supabase el archivo{" "}
@@ -302,6 +293,12 @@ export default async function QrDetailPage({
                 </p>
               ) : null}
             </form>
+
+            <div className="mb-4">
+              <BotonesReporte
+                pedido={{ qr: String(code.id), desde: calendarioDesde, hasta: calendarioHasta }}
+              />
+            </div>
 
             {serieFinal.error ? (
               <p className="text-sm" style={{ color: "var(--danger)" }}>
