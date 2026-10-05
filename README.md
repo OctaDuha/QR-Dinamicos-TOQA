@@ -244,8 +244,12 @@ El panel acepta los teléfonos como los escribe la gente (`11 15 1234-5678`,
 `0351 612-3456`, `+54 9 …`) y los normaliza.
 
 Se ven y se editan en *Clientes* (dueño y equipo; borrar un cliente, solo el
-dueño, y sus placas quedan sin cliente). Las placas se asignan por número
-desde la ficha del cliente (`41, 43-45`) o desde la pantalla de cada placa.
+dueño, y sus placas quedan sin cliente). Lo más cómodo es cargarlo al
+configurar la placa: en *Editar*, junto al destino y la etiqueta, va el
+negocio, el contacto y el WhatsApp; si el negocio ya existe se completan sus
+datos, y si no, se crea al guardar. También se asignan placas por número
+desde la ficha del cliente (`41, 43-45`), y desde ahí mismo se edita la
+etiqueta y el destino de cada una.
 El historial anota los cambios de cliente, la papelera los conserva, y la
 planilla CSV y las copias de seguridad llevan la columna `cliente` (por
 nombre; al importar, se busca entre los clientes que existen).

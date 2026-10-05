@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { guardarClienteDePlaca, leerClienteEscrito } from "@/lib/clientes-guardar";
 import { parseCsv } from "@/lib/csv";
 import { formatQrCode, normalizeDestination, parseQrId } from "@/lib/qr";
 import type { ActionState } from "@/lib/action-state";
@@ -69,7 +70,10 @@ export async function createQrCodes(_prev: ActionState, formData: FormData): Pro
   return { ok: true, message: `${ids.length} QR creado${ids.length === 1 ? "" : "s"} (${range}).` };
 }
 
-/** Cambia el destino y/o la etiqueta de un QR. El QR impreso no cambia. */
+/**
+ * Cambia el destino y/o la etiqueta de un QR, y su cliente si el formulario
+ * lo trae. El QR impreso no cambia.
+ */
 export async function updateQrCode(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const id = parseQrId(String(formData.get("id") ?? ""));
   const label = String(formData.get("label") ?? "").trim();
@@ -82,6 +86,10 @@ export async function updateQrCode(_prev: ActionState, formData: FormData): Prom
     return { ok: false, message: "El destino no es una URL válida." };
   }
 
+  const conCliente = formData.get("con_cliente") === "si";
+  const leido = conCliente ? leerClienteEscrito(formData) : null;
+  if (leido && "error" in leido) return { ok: false, message: leido.error };
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("qr_codes")
@@ -92,10 +100,20 @@ export async function updateQrCode(_prev: ActionState, formData: FormData): Prom
     return { ok: false, message: `No se pudo guardar: ${error.message}` };
   }
 
+  const cliente = leido ? await guardarClienteDePlaca(supabase, id, leido.cliente) : {};
+
   respaldarDespues(supabase);
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/qr/${id}`);
-  return { ok: true, message: "Destino actualizado." };
+  revalidatePath("/dashboard/clientes", "layout");
+
+  if (cliente.error) {
+    return { ok: false, message: `Guardé el destino y la etiqueta, pero no el cliente: ${cliente.error}` };
+  }
+  return {
+    ok: true,
+    message: cliente.creado ? `Guardado. Cliente nuevo: ${cliente.creado}.` : "Guardado.",
+  };
 }
 
 /**

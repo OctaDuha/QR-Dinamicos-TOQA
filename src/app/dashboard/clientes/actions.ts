@@ -211,22 +211,3 @@ export async function quitarPlaca(_prev: ActionState, formData: FormData): Promi
   revalidatePath(`/dashboard/clientes/${clienteId}`);
   return { ok: true, message: `Quité la ${formatQrCode(qrId)}.` };
 }
-
-/** Desde la pantalla de una placa: elegir su cliente, o ninguno. */
-export async function elegirClienteDePlaca(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const qrId = parseQrId(String(formData.get("qr_id") ?? ""));
-  if (qrId === null) return { ok: false, message: "QR inválido." };
-  const crudo = String(formData.get("cliente_id") ?? "");
-  const clienteId = crudo ? parseQrId(crudo) : null;
-  if (crudo && clienteId === null) return { ok: false, message: "Cliente inválido." };
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("qr_codes").update({ cliente_id: clienteId }).eq("id", qrId);
-  if (error) return fallo("No pude guardar", error);
-
-  respaldarDespues(supabase);
-  revalidatePath("/dashboard");
-  revalidatePath(`/dashboard/qr/${qrId}`);
-  revalidatePath("/dashboard/clientes");
-  return { ok: true, message: clienteId ? "Cliente guardado." : "La placa quedó sin cliente." };
-}

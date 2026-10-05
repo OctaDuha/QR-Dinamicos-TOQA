@@ -6,7 +6,8 @@ import { formatQrCode, parseQrId } from "@/lib/qr";
 import { sesionActual } from "@/lib/roles";
 import type { QrCodeWithStats } from "@/lib/types";
 
-import { AgregarPlacasForm, BorrarClienteForm, ClienteForm, QuitarPlacaBoton } from "../Formularios";
+import { AgregarPlacasForm, BorrarClienteForm, ClienteForm } from "../Formularios";
+import { PlacaDelCliente } from "./PlacaDelCliente";
 
 export const dynamic = "force-dynamic";
 
@@ -79,43 +80,16 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
           {placas.length === 0 ? (
             <p className="mt-5 text-sm text-ink-3">Todavía no tiene placas. Agregalas por número arriba.</p>
           ) : (
-            <div className="relative mt-5 overflow-x-auto">
-              <table className="w-full min-w-[520px] border-collapse text-sm">
-                <thead>
-                  <tr className="text-left text-xs tracking-wide text-ink-2 uppercase">
-                    <th className="py-2 pr-3 font-semibold">Número</th>
-                    <th className="py-2 pr-3 font-semibold">Etiqueta</th>
-                    <th className="py-2 pr-3 font-semibold">Destino</th>
-                    <th className="py-2 pr-3 text-right font-semibold">Escaneos</th>
-                    <th className="py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {placas.map((placa) => (
-                    <tr key={placa.id} className="border-t" style={{ borderColor: "var(--line)" }}>
-                      <td className="py-2 pr-3">
-                        <Link
-                          href={`/dashboard/qr/${placa.id}`}
-                          className="numero-placa font-mono font-semibold no-underline hover:underline"
-                        >
-                          {formatQrCode(placa.id)}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-3">{placa.label ?? <span className="text-ink-3">—</span>}</td>
-                      <td className="py-2 pr-3">
-                        <span className="block max-w-[28ch] truncate text-ink-2" title={placa.destination_url}>
-                          {placa.destination_url}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-3 text-right font-mono tabular-nums">{placa.total_scans}</td>
-                      <td className="py-2 text-right">
-                        <QuitarPlacaBoton clienteId={cliente.id} qrId={placa.id} numero={formatQrCode(placa.id)} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ul className="mt-5">
+              {placas.map((placa) => (
+                <PlacaDelCliente
+                  key={placa.id}
+                  clienteId={cliente.id}
+                  placa={placa}
+                  numero={formatQrCode(placa.id)}
+                />
+              ))}
+            </ul>
           )}
         </div>
       </div>
