@@ -267,13 +267,27 @@ nombre; al importar, se busca entre los clientes que existen).
 
 ### Bot de WhatsApp
 
-Con `supabase/migraciones/2026-10-bot-whatsapp.sql`, un cliente le escribe
-**Estadísticas** al WhatsApp del negocio, elige un período de una lista
-(últimos 7 o 30 días, este mes, mes pasado u otras fechas) y recibe el mismo
-reporte en imagen del panel, con sus placas. Lo reconoce por el número, que
-tiene que estar cargado en su ficha. Comparte el número con la persona que
-atiende: **solo** contesta esa palabra, sus propias opciones y las fechas si
-se las acaba de pedir; todo lo demás lo deja pasar.
+Con `supabase/migraciones/2026-10-bot-whatsapp.sql`, el WhatsApp del negocio
+tiene un asistente que comparte el número con la persona que atiende:
+
+- Al empezar una conversación (esa persona no escribía hace 12 horas), diga
+  lo que diga, le muestra un menú: 🛒 Quiero un producto, 📊 Estadísticas,
+  ❓ ¿Cómo funciona TOQA?, 🔧 Tengo un problema y 💬 Hablar con nosotros.
+  Estadísticas y problema solo los ve un cliente cargado (lo reconoce por el
+  número, que tiene que estar en su ficha).
+- Estadísticas pide un período (7 o 30 días, este mes, mes pasado u otras
+  fechas) y manda el mismo reporte en imagen del panel.
+- Después de producto, problema o hablar con nosotros se calla con ese
+  número 12 horas (`bot_silencios`): sigue una persona. Con el número en
+  coexistencia, también se calla si la persona responde desde la app (llegan
+  como `smb_message_echoes`).
+- En medio de una charla no se mete. Lo explícito se contesta siempre:
+  sus opciones, "menú" y "estadísticas".
+- Los textos se editan en *WhatsApp* → Textos del bot (`bot_textos`); los
+  no editados usan los de `src/lib/bot-textos.ts`. Los títulos del menú son
+  fijos porque WhatsApp no acepta más de 24 caracteres.
+- Lo que pide atención (producto, problema, hablar con nosotros, números que
+  no son clientes) queda en *WhatsApp* → Últimas consultas al bot.
 
 - Meta manda cada mensaje a `/api/whatsapp`, firmado con la clave secreta de
   la app (`WHATSAPP_APP_SECRET`): sin firma válida no se procesa. Se responde
@@ -285,7 +299,6 @@ se las acaba de pedir; todo lo demás lo deja pasar.
   teléfono (`bot_estadisticas`).
 - La palabra de verificación del webhook sale de la llave, así que no hay
   que inventar otra: el panel la muestra junto con la URL para pegar en Meta.
-- Las consultas quedan en *WhatsApp* → Últimas consultas.
 - Variables: `WHATSAPP_TOKEN` y `WHATSAPP_APP_SECRET` (Secret),
   `WHATSAPP_PHONE_ID` y `WHATSAPP_NUMERO` (el del link `wa.me`), y
   `BOT_LLAVE` (Secret).

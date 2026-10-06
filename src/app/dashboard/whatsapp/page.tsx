@@ -5,10 +5,12 @@ import { mostrarTelefono } from "@/lib/clientes";
 import { fechaCorta } from "@/lib/estadisticas";
 import { siteUrl } from "@/lib/qr";
 import { sesionActual } from "@/lib/roles";
-import { configWhatsapp, linkEstadisticas, tokenVerificacion } from "@/lib/whatsapp";
+import { textosDelBot } from "@/lib/bot-textos";
+import { configWhatsapp, tokenVerificacion } from "@/lib/whatsapp";
 
 import { CopyButton } from "../_components/CopyButton";
 import { GenerarLlave } from "./GenerarLlave";
+import { TextosBot } from "./TextosBot";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,10 @@ type Consulta = {
 };
 
 const RESULTADO: Record<string, string> = {
-  enviado: "reporte enviado",
+  producto: "🛒 quiere un producto: te toca responder",
+  problema: "🔧 avisó un problema: te toca responder",
+  persona: "💬 quiere hablar con vos: te toca responder",
+  enviado: "📊 recibió sus estadísticas",
   "no-registrado": "no recibió estadísticas",
   "sin-placas": "no tiene placas cargadas",
   error: "falló el envío",
@@ -42,14 +47,18 @@ export default async function WhatsappPage() {
   }
 
   const config = configWhatsapp();
-  const [verificacion, consultas] = await Promise.all([
+  const [verificacion, consultas, textos] = await Promise.all([
     sesion.supabase.rpc("bot_llave_valida", { p_llave: config.llave ?? "" }),
     sesion.supabase
       .from("bot_consultas")
       .select("id, telefono, clientes, desde, hasta, resultado, creado_en")
       .order("creado_en", { ascending: false })
       .limit(30),
+    sesion.supabase.from("bot_textos").select("clave, texto"),
   ]);
+  const textosActuales = textosDelBot(
+    Object.fromEntries(((textos.data ?? []) as { clave: string; texto: string }[]).map((t) => [t.clave, t.texto])),
+  );
   const migrada = verificacion.error?.code !== "PGRST202";
   const llaveOk = verificacion.data === true;
   const datosMeta = Boolean(config.token && config.appSecret && config.phoneId);
@@ -61,8 +70,10 @@ export default async function WhatsappPage() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Bot de WhatsApp</h1>
         <p className="mt-1 text-sm text-ink-2">
-          Cuando un cliente escribe <strong>Estadísticas</strong>, el bot le ofrece un período y le manda el reporte
-          en imagen de sus placas. A cualquier otro mensaje no responde: lo contestás vos, como siempre.
+          Cuando alguien empieza una conversación, el bot le muestra un menú: quiero un producto, estadísticas, cómo
+          funciona TOQA, tengo un problema y hablar con nosotros. Las estadísticas y los problemas solo se los
+          ofrece a los clientes cargados. En medio de una charla no se mete, y si alguien pide hablar con una
+          persona, se calla con ese número por 12 horas.
         </p>
       </div>
 
@@ -121,16 +132,28 @@ export default async function WhatsappPage() {
       {config.numero ? (
         <div className="card p-5">
           <h2 className="text-sm font-semibold">Probar</h2>
-          <p className="mt-1 mb-3 text-sm text-ink-2">
-            Este es el link que le das a cada cliente: abre el chat con “Estadísticas” ya escrito. Para probarlo, tu
-            número tiene que estar cargado como WhatsApp de algún cliente.
+          <p className="mt-1 text-sm text-ink-2">
+            Desde tu celular, escribile cualquier cosa al <strong>+{config.numero}</strong>: te tiene que llegar el
+            menú. Para ver las estadísticas, tu número tiene que estar cargado como WhatsApp de algún cliente. Si
+            ya le escribiste hace poco, mandá <strong>menú</strong> para que vuelva a aparecer.
           </p>
-          <Dato titulo="Link para pedir estadísticas" valor={linkEstadisticas(config.numero)} enlace />
         </div>
       ) : null}
 
       <div className="card p-5">
-        <h2 className="text-sm font-semibold">Últimas consultas</h2>
+        <h2 className="text-sm font-semibold">Textos del bot</h2>
+        <p className="mt-1 mb-4 text-sm text-ink-2">
+          Lo que contesta el bot en cada opción. Cambialos cuando quieras, por ejemplo al sumar productos nuevos.
+        </p>
+        {textos.error ? (
+          <p className="text-sm text-ink-3">Para editarlos falta correr en Supabase el archivo 2026-10-bot-whatsapp.sql.</p>
+        ) : (
+          <TextosBot actuales={textosActuales} />
+        )}
+      </div>
+
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold">Últimas consultas al bot</h2>
         {consultas.error ? (
           <p className="mt-2 text-sm text-ink-3">Todavía no hay consultas (o falta correr la migración).</p>
         ) : (consultas.data ?? []).length === 0 ? (

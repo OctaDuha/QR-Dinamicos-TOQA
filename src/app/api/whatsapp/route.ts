@@ -1,6 +1,6 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 
-import { atender, leerMensajes } from "@/lib/bot";
+import { atender, leerAviso, respondioUnaPersona } from "@/lib/bot";
 import { configWhatsapp, firmaValida, tokenVerificacion } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
@@ -43,9 +43,17 @@ export async function POST(request: NextRequest) {
     return new NextResponse("JSON inválido", { status: 400 });
   }
 
-  const mensajes = leerMensajes(aviso);
-  if (mensajes.length > 0) {
+  const { mensajes, respondidos } = leerAviso(aviso);
+  if (mensajes.length > 0 || respondidos.length > 0) {
     after(async () => {
+      // Si la persona del negocio contestó desde la app, el bot se corre.
+      for (const telefono of respondidos) {
+        try {
+          await respondioUnaPersona(telefono);
+        } catch (error) {
+          console.error("[bot] error anotando una respuesta de la app:", (error as Error).message);
+        }
+      }
       for (const mensaje of mensajes) {
         try {
           await atender(mensaje);

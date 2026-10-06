@@ -85,10 +85,11 @@ export default function PrivacidadPage() {
           para no perderla.
         </p>
         <p>
-          Si un comercio nos pide sus estadísticas por WhatsApp, un asistente automático reconoce su
-          número entre los teléfonos que nos dio y le responde con el reporte de sus placas. De esas
-          consultas guardamos el número, la fecha y el período pedido. El asistente solo responde a
-          los mensajes que piden estadísticas: el resto los lee y los contesta una persona.
+          Cuando nos escribís por WhatsApp, un asistente automático te muestra un menú de opciones al
+          empezar la conversación. Si sos cliente, reconoce tu número entre los teléfonos que nos
+          diste y puede mandarte el reporte de tus placas. De esas consultas guardamos el número, la
+          fecha, la opción elegida y el período pedido. El resto de la conversación la lee y la
+          contesta una persona.
         </p>
       </Seccion>
 

@@ -10,8 +10,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  *   WHATSAPP_APP_SECRET  (Secret) la clave secreta de la app de Meta, para
  *                        comprobar que los avisos vienen de Meta
  *   WHATSAPP_PHONE_ID    el identificador del número que usa el bot
- *   WHATSAPP_NUMERO      ese número, solo dígitos con código de país, para
- *                        armar el link "wa.me" que se le da al cliente
+ *   WHATSAPP_NUMERO      ese número, solo dígitos con código de país (para
+ *                        mostrarlo en el panel y probar)
  *   BOT_LLAVE            (Secret) la llave del bot, generada en el panel
  */
 
@@ -50,11 +50,6 @@ export function firmaValida(cuerpo: string, encabezado: string | null, appSecret
   const esperada = createHmac("sha256", appSecret).update(cuerpo, "utf8").digest();
   const recibida = Buffer.from(encabezado.slice(7), "hex");
   return recibida.length === esperada.length && timingSafeEqual(recibida, esperada);
-}
-
-/** El link que abre el chat del bot con "Estadísticas" ya escrito. */
-export function linkEstadisticas(numero: string): string {
-  return `https://wa.me/${numero}?text=${encodeURIComponent("Estadísticas")}`;
 }
 
 type Respuesta = { ok: true; datos: Record<string, unknown> } | { ok: false; error: string };
@@ -96,23 +91,23 @@ async function mandar(para: string, mensaje: Record<string, unknown>): Promise<R
 }
 
 export function enviarTexto(para: string, texto: string) {
-  return mandar(para, { type: "text", text: { body: texto, preview_url: false } });
+  return mandar(para, { type: "text", text: { body: texto.slice(0, 4096), preview_url: false } });
 }
 
 export type Opcion = { id: string; titulo: string; descripcion?: string };
 
 /** Una lista de opciones: se abre con un botón y el cliente toca una. */
-export function enviarLista(para: string, texto: string, boton: string, opciones: Opcion[]) {
+export function enviarLista(para: string, texto: string, boton: string, seccion: string, opciones: Opcion[]) {
   return mandar(para, {
     type: "interactive",
     interactive: {
       type: "list",
-      body: { text: texto },
+      body: { text: texto.slice(0, 1024) },
       action: {
         button: boton.slice(0, 20),
         sections: [
           {
-            title: "Período",
+            title: seccion.slice(0, 24),
             rows: opciones.map((o) => ({
               id: o.id,
               title: o.titulo.slice(0, 24),

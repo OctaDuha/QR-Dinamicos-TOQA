@@ -1,5 +1,6 @@
 -- ------------------------------------------------------------------
--- Bot de WhatsApp: le manda a cada cliente el reporte de sus placas.
+-- Bot de WhatsApp: un menú al empezar cada conversación, y el reporte de
+-- estadísticas para los clientes.
 --
 -- Pegá TODO esto en Supabase → SQL Editor → Run. Se puede correr más de una
 -- vez. No borra nada y no cambia ningún QR.
@@ -11,10 +12,12 @@
 --     una llave propia: el dueño la genera en el panel (WhatsApp → Generar
 --     llave) y la pega en Vercel. La base guarda solo una huella de la
 --     llave, nunca la llave.
---   - Con la llave, el bot puede hacer exactamente tres cosas: anotar un
---     mensaje recibido, recordar que espera unas fechas, y leer las
---     estadísticas de las placas del cliente dueño del teléfono que
---     escribió. Nada más: no ve otros clientes ni cambia nada.
+--   - Con la llave, el bot puede solamente: anotar un mensaje recibido,
+--     recordar que espera unas fechas o que tiene que quedarse callado con
+--     un número, leer sus textos, y leer las estadísticas de las placas del
+--     cliente dueño del teléfono que escribió. No ve otros clientes ni
+--     cambia nada más.
+--   - Los textos que manda el bot los edita el dueño en el panel.
 --   - Sin la llave, esas funciones no hacen nada. No se usa la clave
 --     secreta de Supabase.
 -- ------------------------------------------------------------------
@@ -53,15 +56,38 @@ create table if not exists public.bot_consultas (
 
 create index if not exists bot_consultas_por_fecha on public.bot_consultas (creado_en desc);
 
--- Nadie las lee ni las escribe directo, salvo el dueño que mira las
--- consultas. Todo lo demás pasa por las funciones de abajo.
+-- Con qué números el bot se queda callado, porque sigue una persona.
+create table if not exists public.bot_silencios (
+  telefono text primary key,
+  hasta    timestamptz not null
+);
+
+-- Los textos del bot que el dueño cambió (los que no están acá usan el
+-- texto de siempre).
+create table if not exists public.bot_textos (
+  clave          text primary key,
+  texto          text not null check (length(texto) between 1 and 1000),
+  actualizado_en timestamptz not null default now()
+);
+
+-- Nadie las lee ni las escribe directo, salvo el dueño, que mira las
+-- consultas y edita los textos. Todo lo demás pasa por las funciones de
+-- abajo.
+alter table public.bot_silencios enable row level security;
+alter table public.bot_textos enable row level security;
 alter table public.bot_config enable row level security;
 alter table public.bot_mensajes enable row level security;
 alter table public.bot_esperas enable row level security;
 alter table public.bot_consultas enable row level security;
 
-revoke all on public.bot_config, public.bot_mensajes, public.bot_esperas, public.bot_consultas
+revoke all on public.bot_config, public.bot_mensajes, public.bot_esperas, public.bot_consultas,
+  public.bot_silencios, public.bot_textos
   from anon, authenticated;
+
+drop policy if exists bot_textos_dueno on public.bot_textos;
+create policy bot_textos_dueno on public.bot_textos
+  for all to authenticated using (public.es_dueno()) with check (public.es_dueno());
+grant select, insert, update, delete on public.bot_textos to authenticated;
 
 drop policy if exists bot_consultas_leer on public.bot_consultas;
 create policy bot_consultas_leer on public.bot_consultas
@@ -122,7 +148,9 @@ revoke all on function public.bot_generar_llave() from public;
 grant execute on function public.bot_generar_llave() to authenticated;
 
 -- 5. Llega un mensaje: se anota (si ya estaba, es repetido) y se devuelve
---    de quién es el teléfono y si el bot le estaba esperando algo.
+--    todo lo que el bot necesita para decidir: de qué clientes es el
+--    teléfono, si es una conversación nueva (no escribía hace 12 horas), si
+--    tiene que quedarse callado, si esperaba algo, y sus textos.
 create or replace function public.bot_recibir(p_llave text, p_wamid text, p_telefono text)
 returns jsonb
 language plpgsql
@@ -131,9 +159,12 @@ security definer
 set search_path = public
 as $$
 declare
+  v_tel     text := public.bot_telefono_comparable(p_telefono);
   v_filas   integer;
+  v_ultimo  timestamptz;
   v_espera  text;
   v_nombres text[];
+  v_textos  jsonb;
 begin
   if not public.bot_llave_valida(p_llave) then
     raise exception 'Llave del bot inválida';
@@ -141,20 +172,32 @@ begin
 
   delete from public.bot_mensajes where recibido_en < now() - interval '7 days';
   delete from public.bot_esperas where hasta < now();
+  delete from public.bot_silencios where hasta < now();
 
-  insert into public.bot_mensajes (wamid, telefono) values (left(p_wamid, 200), left(p_telefono, 20))
+  select max(m.recibido_en) into v_ultimo from public.bot_mensajes m
+  where public.bot_telefono_comparable(m.telefono) = v_tel and m.wamid <> p_wamid;
+
+  insert into public.bot_mensajes (wamid, telefono) values (left(p_wamid, 200), left(v_tel, 20))
   on conflict (wamid) do nothing;
   get diagnostics v_filas = row_count;
 
-  select e.espera into v_espera from public.bot_esperas e
-  where e.telefono = public.bot_telefono_comparable(p_telefono) and e.hasta >= now();
+  select e.espera into v_espera from public.bot_esperas e where e.telefono = v_tel and e.hasta >= now();
 
   select array_agg(distinct c.nombre order by c.nombre) into v_nombres
   from public.clientes c
   join public.cliente_telefonos t on t.cliente_id = c.id
-  where public.bot_telefono_comparable(t.telefono) = public.bot_telefono_comparable(p_telefono);
+  where public.bot_telefono_comparable(t.telefono) = v_tel;
 
-  return jsonb_build_object('nuevo', v_filas > 0, 'espera', v_espera, 'clientes', coalesce(to_jsonb(v_nombres), '[]'::jsonb));
+  select jsonb_object_agg(clave, texto) into v_textos from public.bot_textos;
+
+  return jsonb_build_object(
+    'nuevo', v_filas > 0,
+    'conversacion_nueva', v_ultimo is null or v_ultimo < now() - interval '12 hours',
+    'silencio', exists (select 1 from public.bot_silencios s where s.telefono = v_tel and s.hasta >= now()),
+    'espera', v_espera,
+    'clientes', coalesce(to_jsonb(v_nombres), '[]'::jsonb),
+    'textos', coalesce(v_textos, '{}'::jsonb)
+  );
 end;
 $$;
 
@@ -186,6 +229,32 @@ $$;
 
 revoke all on function public.bot_esperar(text, text, text) from public;
 grant execute on function public.bot_esperar(text, text, text) to anon, authenticated;
+
+-- 6b. Quedarse callado con un número por unas horas (0: volver a hablar),
+--     porque la charla la sigue una persona.
+create or replace function public.bot_silenciar(p_llave text, p_telefono text, p_horas integer)
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = public
+as $$
+begin
+  if not public.bot_llave_valida(p_llave) then
+    raise exception 'Llave del bot inválida';
+  end if;
+  if coalesce(p_horas, 0) <= 0 then
+    delete from public.bot_silencios where telefono = public.bot_telefono_comparable(p_telefono);
+  else
+    insert into public.bot_silencios (telefono, hasta)
+    values (public.bot_telefono_comparable(p_telefono), now() + make_interval(hours => least(p_horas, 72)))
+    on conflict (telefono) do update set hasta = excluded.hasta;
+  end if;
+end;
+$$;
+
+revoke all on function public.bot_silenciar(text, text, integer) from public;
+grant execute on function public.bot_silenciar(text, text, integer) to anon, authenticated;
 
 -- 7. Anotar una consulta (también las de números que no son clientes).
 create or replace function public.bot_anotar(

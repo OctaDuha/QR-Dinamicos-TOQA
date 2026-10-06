@@ -1,33 +1,54 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { textosDelBot, type ClaveTexto } from "./bot-textos";
 import { fechaArgentina, fechaCorta, leerRango, type Rango } from "./estadisticas";
-import { dibujarReporte, sumarSeries, type TotalPlaca } from "./reporte-imagen";
 import { slug } from "./estadisticas-pedido";
+import { dibujarReporte, sumarSeries, type TotalPlaca } from "./reporte-imagen";
 import { configWhatsapp, enviarImagen, enviarLista, enviarTexto, type Opcion } from "./whatsapp";
 
 /**
- * El bot de estadísticas. Comparte el número con la persona que atiende el
- * WhatsApp del negocio, así que es callado a propósito: solo contesta
- *   - la palabra "Estadísticas" (es lo que trae escrito el link del cliente),
- *   - las opciones de su propia lista, y
- *   - las fechas, solo si se las acaba de pedir a ese mismo teléfono.
- * Cualquier otro mensaje lo deja pasar sin responder: lo contesta una persona.
+ * El bot de TOQA. Comparte el número con la persona que atiende el WhatsApp
+ * del negocio, así que habla poco:
+ *   - Al empezar una conversación (esa persona no escribía hace 12 horas),
+ *     sea lo que sea que escriba, le muestra el menú. A un cliente le
+ *     muestra todas las opciones; a quien todavía no es cliente, solo las
+ *     que le sirven.
+ *   - Contesta siempre lo que se le pide explícito: una opción de sus
+ *     menús, "menú" o "estadísticas", y las fechas si se las acaba de pedir.
+ *   - Fuera de eso no contesta nada. Y después de "Quiero un producto",
+ *     "Problema con mi producto" o "Hablar con una persona" se calla con ese
+ *     número por 12 horas: sigue una persona. Si la persona responde desde
+ *     la app (con el número conectado en coexistencia), también se calla.
  */
+
+const HORAS_SILENCIO = 12;
 
 export type MensajeEntrante = {
   id: string;
   de: string;
-  /** El texto escrito, o el id de la opción elegida de una lista. */
+  /** El texto escrito (null si es audio, foto, etc.). */
   texto: string | null;
+  /** El id de la opción elegida de una lista. */
   opcion: string | null;
 };
 
-/** Saca de un aviso de Meta los mensajes de clientes (ni estados ni ecos). */
-export function leerMensajes(aviso: unknown): MensajeEntrante[] {
+/**
+ * Saca de un aviso de Meta los mensajes de los clientes, y los números a los
+ * que la persona del negocio les escribió desde la app (los "ecos", que
+ * llegan con el número en coexistencia). Los estados de entrega se ignoran.
+ */
+export function leerAviso(aviso: unknown): { mensajes: MensajeEntrante[]; respondidos: string[] } {
   const mensajes: MensajeEntrante[] = [];
+  const respondidos: string[] = [];
   const entradas = (aviso as { entry?: unknown[] })?.entry ?? [];
-  for (const entrada of entradas as { changes?: { field?: string; value?: { messages?: unknown[] } }[] }[]) {
+  for (const entrada of entradas as { changes?: { field?: string; value?: Record<string, unknown> }[] }[]) {
     for (const cambio of entrada.changes ?? []) {
+      if (cambio.field === "smb_message_echoes") {
+        for (const eco of (cambio.value?.message_echoes ?? []) as { to?: string }[]) {
+          if (eco.to) respondidos.push(eco.to.replace(/\D/g, ""));
+        }
+        continue;
+      }
       if (cambio.field !== "messages") continue;
       for (const m of (cambio.value?.messages ?? []) as {
         id?: string;
@@ -37,28 +58,17 @@ export function leerMensajes(aviso: unknown): MensajeEntrante[] {
         interactive?: { list_reply?: { id?: string }; button_reply?: { id?: string } };
       }[]) {
         if (!m.id || !m.from) continue;
-        const opcion = m.interactive?.list_reply?.id ?? m.interactive?.button_reply?.id ?? null;
         mensajes.push({
           id: m.id,
           de: m.from.replace(/\D/g, ""),
           texto: m.type === "text" ? (m.text?.body ?? null) : null,
-          opcion,
+          opcion: m.interactive?.list_reply?.id ?? m.interactive?.button_reply?.id ?? null,
         });
       }
     }
   }
-  return mensajes;
+  return { mensajes, respondidos };
 }
-
-const DISPARADORES = new Set([
-  "estadisticas",
-  "estadistica",
-  "mis estadisticas",
-  "ver estadisticas",
-  "ver mis estadisticas",
-  "reporte",
-  "mi reporte",
-]);
 
 /** "📊 Ver Estadísticas!" -> "ver estadisticas" */
 function normalizar(texto: string): string {
@@ -71,11 +81,39 @@ function normalizar(texto: string): string {
     .trim();
 }
 
-export function esDisparador(texto: string | null): boolean {
-  return texto !== null && DISPARADORES.has(normalizar(texto));
-}
+const PIDE_ESTADISTICAS = new Set([
+  "estadisticas",
+  "estadistica",
+  "mis estadisticas",
+  "ver estadisticas",
+  "ver mis estadisticas",
+  "reporte",
+  "mi reporte",
+]);
+const PIDE_MENU = new Set(["menu", "el menu", "ver menu", "opciones", "inicio", "volver"]);
 
-const OPCIONES: Opcion[] = [
+export const esPedidoDeEstadisticas = (texto: string | null) => texto !== null && PIDE_ESTADISTICAS.has(normalizar(texto));
+export const esPedidoDeMenu = (texto: string | null) => texto !== null && PIDE_MENU.has(normalizar(texto));
+
+/**
+ * El menú, en el orden que eligió el dueño. Los de cliente no los ve quien
+ * no lo es. WhatsApp rechaza títulos de más de 24 caracteres (el emoji
+ * cuenta): lo largo va en la descripción.
+ */
+const MENU: (Opcion & { soloClientes?: boolean })[] = [
+  { id: "toqa:producto", titulo: "🛒 Quiero un producto", descripcion: "Placas, vinilos y más de TOQA" },
+  { id: "toqa:estadisticas", titulo: "📊 Estadísticas", descripcion: "Los escaneos de tus productos", soloClientes: true },
+  { id: "toqa:como", titulo: "❓ ¿Cómo funciona TOQA?", descripcion: "Cómo funcionan los productos TOQA" },
+  {
+    id: "toqa:problema",
+    titulo: "🔧 Tengo un problema",
+    descripcion: "Contanos qué pasa y en breve lo solucionaremos",
+    soloClientes: true,
+  },
+  { id: "toqa:persona", titulo: "💬 Hablar con nosotros", descripcion: "Te responde una persona del equipo" },
+];
+
+const PERIODOS: Opcion[] = [
   { id: "toqa:7d", titulo: "Últimos 7 días" },
   { id: "toqa:30d", titulo: "Últimos 30 días" },
   { id: "toqa:mes", titulo: "Este mes" },
@@ -83,10 +121,12 @@ const OPCIONES: Opcion[] = [
   { id: "toqa:fechas", titulo: "Otras fechas", descripcion: "Me escribís desde qué día hasta qué día" },
 ];
 
+const VOLVER_AL_MENU = "\n\nSi querés volver al menú, escribí *menú*.";
+
 const DIA = 86_400_000;
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
-/** El rango de cada opción, en días de Argentina. */
+/** El rango de cada período, en días de Argentina. */
 export function rangoDeOpcion(opcion: string, hoy: string): Rango | null {
   const t = Date.parse(`${hoy}T00:00:00Z`);
   const [anio, mes] = hoy.split("-").map(Number);
@@ -124,9 +164,7 @@ export function leerFechas(texto: string, hoy: string): Rango | null {
     if (!a && armada() > hoy) anio -= 1;
     return armada();
   };
-  const desde = fecha(m[1], m[2], m[3]);
-  const hasta = fecha(m[4], m[5], m[6] ?? m[3]);
-  return leerRango(desde, hasta, hoy);
+  return leerRango(fecha(m[1], m[2], m[3]), fecha(m[4], m[5], m[6] ?? m[3]), hoy);
 }
 
 function clienteBase(): SupabaseClient | null {
@@ -136,14 +174,28 @@ function clienteBase(): SupabaseClient | null {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
+type Recibido = {
+  nuevo: boolean;
+  conversacion_nueva: boolean;
+  silencio: boolean;
+  espera: string | null;
+  clientes: string[];
+  textos: Record<string, string>;
+};
+
+/** La persona del negocio le escribió a ese número desde la app: el bot se corre. */
+export async function respondioUnaPersona(telefono: string): Promise<void> {
+  const { llave } = configWhatsapp();
+  const supabase = clienteBase();
+  if (!llave || !supabase) return;
+  await supabase.rpc("bot_silenciar", { p_llave: llave, p_telefono: telefono, p_horas: HORAS_SILENCIO });
+}
+
 /** Atiende un mensaje. Nunca lanza: lo que falla queda en el registro. */
 export async function atender(mensaje: MensajeEntrante): Promise<void> {
   const { llave } = configWhatsapp();
   const supabase = clienteBase();
   if (!llave || !supabase) return;
-
-  const opcionNuestra = mensaje.opcion?.startsWith("toqa:") ? mensaje.opcion : null;
-  const disparador = esDisparador(mensaje.texto);
 
   const { data, error } = await supabase.rpc("bot_recibir", {
     p_llave: llave,
@@ -154,73 +206,117 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
     console.error("[bot] no pude anotar el mensaje:", error.message);
     return;
   }
-  const recibido = data as { nuevo: boolean; espera: string | null; clientes: string[] };
-  if (!recibido.nuevo) return; // Meta lo mandó de nuevo: ya se atendió.
+  const r = data as Recibido;
+  if (!r.nuevo) return; // Meta lo mandó de nuevo: ya se atendió.
 
-  const esperaFechas = recibido.espera === "fechas" && mensaje.texto !== null && !disparador;
-  if (!opcionNuestra && !disparador && !esperaFechas) return; // No es para el bot.
-
-  const anotar = (desde: string | null, hasta: string | null, resultado: string) =>
-    supabase.rpc("bot_anotar", {
-      p_llave: llave,
-      p_telefono: mensaje.de,
-      p_clientes: recibido.clientes.join(", ") || null,
-      p_desde: desde,
-      p_hasta: hasta,
+  const de = mensaje.de;
+  const esCliente = r.clientes.length > 0;
+  const textos = textosDelBot(r.textos);
+  const opcion = mensaje.opcion?.startsWith("toqa:") ? mensaje.opcion : null;
+  const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn, { p_llave: llave, p_telefono: de, ...args });
+  const anotar = (resultado: string, rango?: Rango) =>
+    rpc("bot_anotar", {
+      p_clientes: r.clientes.join(", ") || null,
+      p_desde: rango?.desde ?? null,
+      p_hasta: rango?.hasta ?? null,
       p_resultado: resultado,
     });
-
-  if (recibido.clientes.length === 0) {
-    await enviarTexto(
-      mensaje.de,
-      "Hola 👋 No encontré este número entre nuestros clientes, así que no puedo mostrarte estadísticas. " +
-        "Ya quedó anotado: en breve te escribimos para revisarlo.",
-    );
-    await anotar(null, null, "no-registrado");
-    return;
-  }
-
-  const hoy = fechaArgentina(new Date());
-
-  if (disparador) {
-    await supabase.rpc("bot_esperar", { p_llave: llave, p_telefono: mensaje.de, p_espera: "" });
+  const callarse = () => rpc("bot_silenciar", { p_horas: HORAS_SILENCIO });
+  const decir = async (clave: ClaveTexto, extra = "") => {
+    const enviado = await enviarTexto(de, textos[clave] + extra);
+    if (!enviado.ok) console.error(`[bot] no pude mandar "${clave}":`, enviado.error);
+  };
+  const mostrarMenu = async () => {
+    const saludo = esCliente ? textos.saludo_cliente.replaceAll("{nombre}", r.clientes.join(" y ")) : textos.saludo;
     const enviado = await enviarLista(
-      mensaje.de,
-      `Hola 👋 Te muestro los escaneos de ${recibido.clientes.join(" y ")}. ¿De qué período?`,
-      "Elegir período",
-      OPCIONES,
+      de,
+      saludo,
+      "Ver opciones",
+      "Opciones",
+      MENU.filter((o) => esCliente || !o.soloClientes),
     );
-    if (!enviado.ok) console.error("[bot] no pude mandar la lista:", enviado.error);
-    return;
-  }
-
-  if (opcionNuestra === "toqa:fechas") {
-    await supabase.rpc("bot_esperar", { p_llave: llave, p_telefono: mensaje.de, p_espera: "fechas" });
-    await enviarTexto(mensaje.de, "Dale. Escribime las fechas así: 1/9 al 30/9 (o con año: 01/09/2026 al 30/09/2026).");
-    return;
-  }
-
-  let rango: Rango | null = null;
-  if (opcionNuestra) {
-    rango = rangoDeOpcion(opcionNuestra, hoy);
-  } else if (esperaFechas) {
-    rango = leerFechas(mensaje.texto ?? "", hoy);
-    if (!rango) {
-      // Si parece un intento de fechas, se ayuda; si no, era para una
-      // persona y el bot se corre.
-      if (/\d/.test(mensaje.texto ?? "")) {
-        await enviarTexto(mensaje.de, "No entendí esas fechas 🙈 Probá así: 1/9 al 30/9");
-      } else {
-        await supabase.rpc("bot_esperar", { p_llave: llave, p_telefono: mensaje.de, p_espera: "" });
-      }
+    if (!enviado.ok) console.error("[bot] no pude mandar el menú:", enviado.error);
+  };
+  const ofrecerPeriodos = async () => {
+    if (!esCliente) {
+      await decir("no_cliente");
+      await anotar("no-registrado");
       return;
     }
-    await supabase.rpc("bot_esperar", { p_llave: llave, p_telefono: mensaje.de, p_espera: "" });
-  }
-  if (!rango) return;
+    await rpc("bot_esperar", { p_espera: "" });
+    const enviado = await enviarLista(de, "¿De qué período querés ver los escaneos?", "Elegir período", "Período", PERIODOS);
+    if (!enviado.ok) console.error("[bot] no pude mandar los períodos:", enviado.error);
+  };
 
-  const resultado = await mandarReporte(supabase, llave, mensaje.de, rango, recibido.clientes);
-  await anotar(rango.desde, rango.hasta, resultado);
+  // 1. Lo que se pide explícito se contesta siempre, aunque esté callado.
+  if (opcion) {
+    switch (opcion) {
+      case "toqa:producto":
+        await decir("producto");
+        await callarse();
+        await anotar("producto");
+        return;
+      case "toqa:estadisticas":
+        await ofrecerPeriodos();
+        return;
+      case "toqa:como":
+        await decir("como", VOLVER_AL_MENU);
+        return;
+      case "toqa:problema":
+        await decir("problema");
+        await callarse();
+        await anotar("problema");
+        return;
+      case "toqa:persona":
+        await decir("persona");
+        await callarse();
+        await anotar("persona");
+        return;
+      case "toqa:fechas":
+        if (!esCliente) return;
+        await rpc("bot_esperar", { p_espera: "fechas" });
+        await enviarTexto(de, "Dale. Escribime las fechas así: 1/9 al 30/9 (o con año: 01/09/2026 al 30/09/2026).");
+        return;
+      default: {
+        if (!esCliente) return;
+        const rango = rangoDeOpcion(opcion, fechaArgentina(new Date()));
+        if (rango) await anotar(await mandarReporte(supabase, llave, de, rango, r.clientes), rango);
+        return;
+      }
+    }
+  }
+
+  if (esPedidoDeEstadisticas(mensaje.texto)) {
+    await rpc("bot_silenciar", { p_horas: 0 });
+    await ofrecerPeriodos();
+    return;
+  }
+  if (esPedidoDeMenu(mensaje.texto)) {
+    await rpc("bot_silenciar", { p_horas: 0 });
+    await mostrarMenu();
+    return;
+  }
+
+  // 2. Las fechas, si se las acaba de pedir.
+  if (r.espera === "fechas" && mensaje.texto !== null && esCliente) {
+    const rango = leerFechas(mensaje.texto, fechaArgentina(new Date()));
+    if (rango) {
+      await rpc("bot_esperar", { p_espera: "" });
+      await anotar(await mandarReporte(supabase, llave, de, rango, r.clientes), rango);
+    } else if (/\d/.test(mensaje.texto)) {
+      await enviarTexto(de, "No entendí esas fechas 🙈 Probá así: 1/9 al 30/9");
+    } else {
+      // Escribió otra cosa: era para una persona, el bot se corre.
+      await rpc("bot_esperar", { p_espera: "" });
+    }
+    return;
+  }
+
+  // 3. Callado, o en medio de una charla: no se mete.
+  if (r.silencio || !r.conversacion_nueva) return;
+
+  // 4. Primer mensaje de una conversación nueva, diga lo que diga: el menú.
+  await mostrarMenu();
 }
 
 async function mandarReporte(
@@ -251,7 +347,7 @@ async function mandarReporte(
     nfc: number;
   }[];
   if (filas.length === 0) {
-    await enviarTexto(telefono, "Todavía no tenés placas cargadas a tu nombre. En breve lo revisamos 🙌");
+    await enviarTexto(telefono, "Todavía no tenés productos cargados a tu nombre. En breve lo revisamos 🙌");
     return "sin-placas";
   }
 
@@ -285,7 +381,8 @@ async function mandarReporte(
   const numero = (n: number) => new Intl.NumberFormat("es-AR").format(n);
   const pie =
     `📊 Del ${fechaCorta(rango.desde)} al ${fechaCorta(rango.hasta)}: ${numero(qr + nfc)} escaneos ` +
-    `(${numero(qr)} por QR y ${numero(nfc)} por NFC).\n\nPara ver otro período, escribí *Estadísticas*.`;
+    `(${numero(qr)} por QR y ${numero(nfc)} por NFC).\n\n` +
+    "Para ver otro período, escribí *Estadísticas*. Para volver al menú, *menú*.";
 
   const enviado = await enviarImagen(telefono, png, `reporte-${slug(nombre)}-${rango.desde}-al-${rango.hasta}.png`, pie);
   if (!enviado.ok) {
