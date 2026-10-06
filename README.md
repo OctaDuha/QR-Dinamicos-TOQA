@@ -265,6 +265,31 @@ El historial anota los cambios de cliente, la papelera los conserva, y la
 planilla CSV y las copias de seguridad llevan la columna `cliente` (por
 nombre; al importar, se busca entre los clientes que existen).
 
+### Bot de WhatsApp
+
+Con `supabase/migraciones/2026-10-bot-whatsapp.sql`, un cliente le escribe
+**Estadísticas** al WhatsApp del negocio, elige un período de una lista
+(últimos 7 o 30 días, este mes, mes pasado u otras fechas) y recibe el mismo
+reporte en imagen del panel, con sus placas. Lo reconoce por el número, que
+tiene que estar cargado en su ficha. Comparte el número con la persona que
+atiende: **solo** contesta esa palabra, sus propias opciones y las fechas si
+se las acaba de pedir; todo lo demás lo deja pasar.
+
+- Meta manda cada mensaje a `/api/whatsapp`, firmado con la clave secreta de
+  la app (`WHATSAPP_APP_SECRET`): sin firma válida no se procesa. Se responde
+  enseguida y se atiende después (`after()`), y los repetidos se descartan.
+- El bot no usa la clave secreta de Supabase. Tiene su propia llave
+  (`BOT_LLAVE`), que genera el dueño en *WhatsApp* y de la que la base
+  guarda solo la huella. Con ella puede únicamente anotar mensajes, recordar
+  que espera unas fechas y leer las estadísticas de los clientes de ese
+  teléfono (`bot_estadisticas`).
+- La palabra de verificación del webhook sale de la llave, así que no hay
+  que inventar otra: el panel la muestra junto con la URL para pegar en Meta.
+- Las consultas quedan en *WhatsApp* → Últimas consultas.
+- Variables: `WHATSAPP_TOKEN` y `WHATSAPP_APP_SECRET` (Secret),
+  `WHATSAPP_PHONE_ID` y `WHATSAPP_NUMERO` (el del link `wa.me`), y
+  `BOT_LLAVE` (Secret).
+
 ---
 
 ## QR y chip NFC: dos puertas, una placa

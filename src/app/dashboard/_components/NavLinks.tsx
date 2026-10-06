@@ -13,6 +13,7 @@ const SECCIONES = [
 const SOLO_DUENO = [
   { href: "/dashboard/historial", label: "Historial" },
   { href: "/dashboard/usuarios", label: "Usuarios" },
+  { href: "/dashboard/whatsapp", label: "WhatsApp" },
 ];
 
 /** Navegacion de la barra de marca, con la seccion actual marcada. */

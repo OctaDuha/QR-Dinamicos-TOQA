@@ -6,6 +6,9 @@ import { fechaArgentina, rangoPorDefecto } from "@/lib/estadisticas";
 import { formatQrCode, parseQrId } from "@/lib/qr";
 import { sesionActual } from "@/lib/roles";
 import type { QrCodeWithStats } from "@/lib/types";
+import { configWhatsapp, linkEstadisticas } from "@/lib/whatsapp";
+
+import { CopyButton } from "../../_components/CopyButton";
 
 import { AgregarPlacasForm, BorrarClienteForm, ClienteForm } from "../Formularios";
 import { PlacaDelCliente } from "./PlacaDelCliente";
@@ -43,6 +46,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
   const placas = (placasData ?? []) as QrCodeWithStats[];
   const escaneos = placas.reduce((total, placa) => total + Number(placa.total_scans), 0);
   const ultimos30 = rangoPorDefecto(fechaArgentina(new Date()));
+  const numeroBot = configWhatsapp().numero;
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,6 +71,28 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
               }}
             />
           </div>
+          {numeroBot ? (
+            <div className="card p-5">
+              <p className="label">Estadísticas por WhatsApp</p>
+              {(telefonos ?? []).length === 0 ? (
+                <p className="text-sm" style={{ color: "var(--danger)" }}>
+                  Cargale arriba su WhatsApp: el bot reconoce a cada cliente por su número.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-ink-2">
+                    Mandale este link: al tocarlo se abre el chat con “Estadísticas” ya escrito, y el bot le
+                    contesta con el reporte de sus placas.
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <code className="font-mono text-xs break-all text-ink-2">{linkEstadisticas(numeroBot)}</code>
+                    <CopyButton value={linkEstadisticas(numeroBot)} />
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
+
           {sesion.rol === "dueno" ? (
             <div className="card p-5">
               <p className="label">Zona peligrosa</p>

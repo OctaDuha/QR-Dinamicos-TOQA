@@ -84,6 +84,12 @@ export default function PrivacidadPage() {
           atenderlo e informarle sus estadísticas. Hacemos copias de seguridad de la lista de placas
           para no perderla.
         </p>
+        <p>
+          Si un comercio nos pide sus estadísticas por WhatsApp, un asistente automático reconoce su
+          número entre los teléfonos que nos dio y le responde con el reporte de sus placas. De esas
+          consultas guardamos el número, la fecha y el período pedido. El asistente solo responde a
+          los mensajes que piden estadísticas: el resto los lee y los contesta una persona.
+        </p>
       </Seccion>
 
       <Seccion titulo="Con quién trabajamos">
@@ -107,6 +113,10 @@ export default function PrivacidadPage() {
             <strong className="text-ink-1">Google</strong>: el inicio de sesión con Google, para quien
             lo elige.
           </li>
+          <li>
+            <strong className="text-ink-1">Meta (WhatsApp)</strong>: los mensajes del asistente de
+            estadísticas por WhatsApp.
+          </li>
         </ul>
         <p>Estos servicios pueden guardar los datos en servidores fuera de la Argentina.</p>
       </Seccion>
@@ -119,7 +129,8 @@ export default function PrivacidadPage() {
           queda 30 días en una papelera, con sus escaneos, por si hay que recuperarla, y después se
           elimina definitivamente. Las copias de
           seguridad de la lista de placas guardan versiones anteriores, así que una placa eliminada
-          puede seguir figurando en copias viejas hasta que se borren. El registro de quién hizo
+          puede seguir figurando en copias viejas hasta que se borren. Las consultas al asistente de
+          WhatsApp, mientras el comercio tenga el servicio. El registro de quién hizo
           cada cosa en el panel se conserva aunque la placa se elimine, para que quede constancia de
           quién la eliminó.
         </p>

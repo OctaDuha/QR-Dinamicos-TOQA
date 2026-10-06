@@ -62,6 +62,8 @@ function sinCeroNi15(numero: string): string {
  * área puede tener 3 o 4 cifras y no se sabe dónde cortar: va de corrido.
  */
 export function mostrarTelefono(telefono: string): string {
+  // WhatsApp a veces informa los celulares argentinos sin el 9.
+  if (/^54[1-8]\d{9}$/.test(telefono)) telefono = `549${telefono.slice(2)}`;
   if (/^54911\d{8}$/.test(telefono)) return `+54 9 11 ${telefono.slice(5, 9)}-${telefono.slice(9)}`;
   if (telefono.startsWith("549")) return `+54 9 ${telefono.slice(3)}`;
   return `+${telefono}`;
