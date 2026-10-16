@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import QRCode from "qrcode";
 
 /**
  * La página pública de TOQA: lo que ve quien entra a toqaqr.com.ar sin estar
@@ -154,9 +155,9 @@ export function Inicio() {
             <h2 className="text-3xl font-bold">¿Querés el tuyo?</h2>
             <p className="mt-2 text-white/80">Escribinos y te pasamos opciones y precios.</p>
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              <Contacto titulo="WhatsApp" valor={WHATSAPP_VISIBLE} href={linkWhatsapp} />
-              <Contacto titulo="Mail" valor={MAIL} href={`mailto:${MAIL}`} />
-              <Contacto titulo="Instagram" valor={`@${INSTAGRAM}`} href={linkInstagram} />
+              <Contacto titulo="WhatsApp" valor={WHATSAPP_VISIBLE} href={linkWhatsapp} icono="whatsapp" />
+              <Contacto titulo="Mail" valor={MAIL} href={`mailto:${MAIL}`} icono="gmail" />
+              <Contacto titulo="Instagram" valor={`@${INSTAGRAM}`} href={linkInstagram} icono="instagram" />
             </div>
           </div>
         </section>
@@ -224,60 +225,109 @@ function Ventaja({ titulo, children }: { titulo: string; children: React.ReactNo
   );
 }
 
-function Contacto({ titulo, valor, href }: { titulo: string; valor: string; href: string }) {
+function Contacto({
+  titulo,
+  valor,
+  href,
+  icono,
+}: {
+  titulo: string;
+  valor: string;
+  href: string;
+  icono: keyof typeof ICONOS;
+}) {
+  const { color, d } = ICONOS[icono];
   return (
     <a
       href={href}
       target={href.startsWith("http") ? "_blank" : undefined}
       rel="noreferrer noopener"
-      className="rounded-2xl border border-white/15 p-5 transition-colors hover:bg-white/5"
+      aria-label={`${titulo}: ${valor}`}
+      className="flex items-center gap-4 rounded-2xl border border-white/15 p-5 transition-colors hover:bg-white/5"
     >
-      <span className="block text-sm text-white/60">{titulo}</span>
-      <span className="mt-1 block font-semibold break-all">{valor}</span>
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill={color}>
+          <path d={d} />
+        </svg>
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm text-white/60">{titulo}</span>
+        <span className="mt-0.5 block font-semibold break-all">{valor}</span>
+      </span>
     </a>
   );
 }
 
-/** Ilustración de un cartel TOQA de mostrador (no es una foto). */
+/** Logos de cada medio, de Simple Icons (licencia CC0), con el color de su marca. */
+const ICONOS = {
+  whatsapp: { color: "#25D366", d: "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" },
+  gmail: { color: "#EA4335", d: "M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" },
+  instagram: { color: "#E4405F", d: "M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077" },
+};
+
+/** Los cuadraditos de un QR real (lleva a toqaqr.com.ar), como un solo trazo SVG. */
+function caminoQr(texto: string, lado: number): string {
+  const qr = QRCode.create(texto, { errorCorrectionLevel: "M" });
+  const n = qr.modules.size;
+  const m = lado / n;
+  let d = "";
+  for (let fila = 0; fila < n; fila++) {
+    for (let col = 0; col < n; col++) {
+      if (qr.modules.data[fila * n + col] === 1) {
+        d += `M${(col * m).toFixed(2)} ${(fila * m).toFixed(2)}h${m.toFixed(2)}v${m.toFixed(2)}h-${m.toFixed(2)}z`;
+      }
+    }
+  }
+  return d;
+}
+
+/**
+ * Ilustración de un cartel TOQA de mostrador, como los que se imprimen:
+ * QR con su número debajo y la indicación del chip NFC. No es una foto; el
+ * QR es real y lleva a toqaqr.com.ar.
+ */
 function Cartel() {
+  const LADO_QR = 132;
   return (
-    <svg viewBox="0 0 320 380" className="h-auto w-64 sm:w-72" role="img" aria-label="Ilustración de un cartel TOQA para mostrador">
-      <ellipse cx="160" cy="356" rx="120" ry="12" fill="#d9deea" />
+    <svg viewBox="0 0 320 450" className="h-auto w-64 sm:w-72" role="img" aria-label="Ilustración de un cartel TOQA para mostrador, con código QR y chip NFC">
+      <ellipse cx="160" cy="428" rx="125" ry="12" fill="#d9deea" />
       {/* Pie del atril */}
-      <path d="M70 330 L250 330 L262 352 L58 352 Z" fill="#e7ebf3" stroke="#cfd6e6" />
+      <path d="M68 400 L252 400 L264 422 L56 422 Z" fill="#e7ebf3" stroke="#cfd6e6" />
       {/* Placa */}
-      <rect x="62" y="30" width="196" height="304" rx="18" fill="#ffffff" stroke="#cfd6e6" strokeWidth="2" />
-      <path d="M62 48 a18 18 0 0 1 18 -18 h160 a18 18 0 0 1 18 18 v42 H62 Z" fill={AZUL} />
-      <text x="160" y="70" textAnchor="middle" fill="#ffffff" fontSize="22" fontWeight="700" letterSpacing="6">
+      <rect x="58" y="16" width="204" height="390" rx="18" fill="#ffffff" stroke="#cfd6e6" strokeWidth="2" />
+      <path d="M58 34 a18 18 0 0 1 18 -18 h168 a18 18 0 0 1 18 18 v40 H58 Z" fill={AZUL} />
+      <text x="160" y="54" textAnchor="middle" fill="#ffffff" fontSize="21" fontWeight="700" letterSpacing="6">
         TOQA
       </text>
-      <circle cx="207" cy="64" r="3" fill={NARANJA} />
-      <text x="160" y="122" textAnchor="middle" fill={TINTA} fontSize="15" fontWeight="600">
+      <circle cx="205" cy="49" r="3" fill={NARANJA} />
+      <text x="160" y="104" textAnchor="middle" fill={TINTA} fontSize="16" fontWeight="700">
         Dejanos tu reseña
       </text>
-      {/* Celular con ondas */}
-      <g transform="translate(160 190)">
-        <path d="M-46 -40 v-10 h12 M46 -40 v-10 h-12 M-46 40 v10 h12 M46 40 v10 h-12" stroke={TINTA} strokeWidth="3" fill="none" strokeLinecap="round" />
-        <rect x="-14" y="-30" width="34" height="58" rx="7" fill="none" stroke={TINTA} strokeWidth="3" />
-        <path d="M-24 -12 a16 16 0 0 0 0 22 M-32 -20 a28 28 0 0 0 0 38" stroke={NARANJA} strokeWidth="3" fill="none" strokeLinecap="round" />
-      </g>
-      <text x="160" y="268" textAnchor="middle" fill={TINTA} fontSize="16" fontWeight="700">
-        Apoyá tu celular
+      <text x="160" y="122" textAnchor="middle" fill={TINTA_2} fontSize="11">
+        ¡Tu opinión nos importa!
       </text>
-      <text x="160" y="290" textAnchor="middle" fill={TINTA_2} fontSize="12">
-        o escaneá el código
-      </text>
-      {/* Mini QR decorativo */}
-      <g transform="translate(140 300)" fill={TINTA}>
-        <rect x="0" y="0" width="8" height="8" />
-        <rect x="32" y="0" width="8" height="8" />
-        <rect x="0" y="16" width="8" height="8" />
-        <rect x="12" y="6" width="4" height="4" />
-        <rect x="20" y="2" width="4" height="4" />
-        <rect x="24" y="14" width="4" height="4" />
-        <rect x="16" y="18" width="4" height="4" />
-        <rect x="32" y="18" width="4" height="4" />
+      {/* QR con su número, como en las placas */}
+      <g transform={`translate(${160 - LADO_QR / 2} 142)`}>
+        <rect x="-8" y="-8" width={LADO_QR + 16} height={LADO_QR + 16} rx="6" fill="#ffffff" stroke="#e3e7f0" />
+        <path d={caminoQr("https://toqaqr.com.ar", LADO_QR)} fill={TINTA} />
       </g>
+      <text x="160" y="306" textAnchor="middle" fill={TINTA} fontSize="13" fontWeight="700" fontFamily="ui-monospace, monospace" letterSpacing="2">
+        0001
+      </text>
+      {/* Chip NFC: celular con ondas */}
+      <g transform="translate(140 344)">
+        <rect x="-36" y="-17" width="20" height="34" rx="4" fill="none" stroke={TINTA} strokeWidth="2.5" />
+        <path d="M-10 -8 a10 10 0 0 1 0 16 M-4 -14 a18 18 0 0 1 0 28" stroke={NARANJA} strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        <text x="6" y="-2" fill={TINTA} fontSize="14" fontWeight="700">
+          Apoyá tu
+        </text>
+        <text x="6" y="14" fill={TINTA} fontSize="14" fontWeight="700">
+          celular
+        </text>
+      </g>
+      <text x="160" y="390" textAnchor="middle" fill={TINTA_2} fontSize="11">
+        o escaneá el código con la cámara
+      </text>
     </svg>
   );
 }
