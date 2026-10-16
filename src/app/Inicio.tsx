@@ -13,8 +13,8 @@ const NARANJA = "#fa8632";
 const TINTA = "#16213f";
 const TINTA_2 = "#4a5577";
 
-const WHATSAPP = "5491122544691";
-const WHATSAPP_VISIBLE = "+54 9 11 2254-4691";
+const WHATSAPP = "5491122434691";
+const WHATSAPP_VISIBLE = "+54 9 11 2243-4691";
 const MAIL = "toqa.nfc@gmail.com";
 const INSTAGRAM = "toqa.nfc";
 
@@ -118,6 +118,10 @@ export function Inicio() {
             </div>
             <div>
               <h2 className="text-3xl font-bold">Productos</h2>
+              <p className="mt-3 leading-relaxed" style={{ color: TINTA_2 }}>
+                Cada producto se diseña <strong style={{ color: TINTA }}>a la medida de tu negocio, marca o empresa</strong>:
+                con tu logo, tus colores y tu estilo, para que se vea como parte de tu local y no como un cartel más.
+              </p>
               <ul className="mt-6 flex flex-col gap-5">
                 <Producto titulo="Placas para mostrador y mesas">
                   Para sumar reseñas en Google, seguidores en Instagram o mostrar tu menú.
@@ -125,8 +129,8 @@ export function Inicio() {
                 <Producto titulo="Vinilos y stickers">
                   Para vidrieras, mesas, cajas o donde tus clientes miren.
                 </Producto>
-                <Producto titulo="A medida">
-                  Con tu marca y tus colores. Contanos qué necesitás y lo armamos.
+                <Producto titulo="Otros formatos">
+                  ¿Tenés otra idea, otro tamaño o un pedido para varias sucursales? Contanos qué necesitás y lo armamos.
                 </Producto>
               </ul>
             </div>
