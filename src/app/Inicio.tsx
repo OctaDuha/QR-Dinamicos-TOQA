@@ -283,50 +283,68 @@ function caminoQr(texto: string, lado: number): string {
 
 /**
  * Ilustración de un cartel TOQA de mostrador, como los que se imprimen:
- * QR con su número debajo y la indicación del chip NFC. No es una foto; el
+ * el chip NFC de un lado y el QR con su número del otro. No es una foto; el
  * QR es real y lleva a toqaqr.com.ar.
  */
 function Cartel() {
-  const LADO_QR = 132;
+  const LADO_QR = 96;
   return (
-    <svg viewBox="0 0 320 450" className="h-auto w-64 sm:w-72" role="img" aria-label="Ilustración de un cartel TOQA para mostrador, con código QR y chip NFC">
-      <ellipse cx="160" cy="428" rx="125" ry="12" fill="#d9deea" />
+    <svg
+      viewBox="0 0 320 390"
+      className="h-auto w-64 sm:w-80"
+      role="img"
+      aria-label="Ilustración de un cartel TOQA para dejar reseñas, con chip NFC y código QR"
+    >
+      <ellipse cx="160" cy="370" rx="130" ry="11" fill="#d9deea" />
       {/* Pie del atril */}
-      <path d="M68 400 L252 400 L264 422 L56 422 Z" fill="#e7ebf3" stroke="#cfd6e6" />
+      <path d="M56 342 L264 342 L276 362 L44 362 Z" fill="#e7ebf3" stroke="#cfd6e6" />
       {/* Placa */}
-      <rect x="58" y="16" width="204" height="390" rx="18" fill="#ffffff" stroke="#cfd6e6" strokeWidth="2" />
-      <path d="M58 34 a18 18 0 0 1 18 -18 h168 a18 18 0 0 1 18 18 v40 H58 Z" fill={AZUL} />
+      <rect x="40" y="16" width="240" height="332" rx="18" fill="#ffffff" stroke="#cfd6e6" strokeWidth="2" />
+      <path d="M40 34 a18 18 0 0 1 18 -18 h204 a18 18 0 0 1 18 18 v40 H40 Z" fill={AZUL} />
       <text x="160" y="54" textAnchor="middle" fill="#ffffff" fontSize="21" fontWeight="700" letterSpacing="6">
         TOQA
       </text>
       <circle cx="205" cy="49" r="3" fill={NARANJA} />
-      <text x="160" y="104" textAnchor="middle" fill={TINTA} fontSize="16" fontWeight="700">
+      <text x="160" y="106" textAnchor="middle" fill={TINTA} fontSize="18" fontWeight="700">
         Dejanos tu reseña
       </text>
-      <text x="160" y="122" textAnchor="middle" fill={TINTA_2} fontSize="11">
+      <text x="160" y="126" textAnchor="middle" fill={TINTA_2} fontSize="12">
         ¡Tu opinión nos importa!
       </text>
-      {/* QR con su número, como en las placas */}
-      <g transform={`translate(${160 - LADO_QR / 2} 142)`}>
-        <rect x="-8" y="-8" width={LADO_QR + 16} height={LADO_QR + 16} rx="6" fill="#ffffff" stroke="#e3e7f0" />
+
+      {/* Izquierda: el chip NFC */}
+      <g transform="translate(106 206)">
+        <path
+          d="M-44 -34 v-12 h14 M44 -34 v-12 h-14 M-44 34 v12 h14 M44 34 v12 h-14"
+          stroke={TINTA}
+          strokeWidth="3"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <circle r="30" fill="none" stroke={TINTA} strokeWidth="2" />
+        <rect x="-4" y="-21" width="24" height="40" rx="5" fill="#ffffff" stroke={TINTA} strokeWidth="2.5" />
+        <path d="M-11 -9 a10 10 0 0 0 0 16 M-18 -15 a18 18 0 0 0 0 28" stroke={NARANJA} strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        <text x="8" y="3" textAnchor="middle" fill={TINTA} fontSize="7.5" fontWeight="700">
+          NFC
+        </text>
+      </g>
+      <text x="106" y="286" textAnchor="middle" fill={TINTA} fontSize="12.5" fontWeight="700">
+        Apoyá tu celular
+      </text>
+
+      {/* Derecha: el QR con su número, como en las placas */}
+      <g transform={`translate(${222 - LADO_QR / 2} 152)`}>
         <path d={caminoQr("https://toqaqr.com.ar", LADO_QR)} fill={TINTA} />
       </g>
-      <text x="160" y="306" textAnchor="middle" fill={TINTA} fontSize="13" fontWeight="700" fontFamily="ui-monospace, monospace" letterSpacing="2">
+      <text x="222" y="266" textAnchor="middle" fill={TINTA} fontSize="10" fontWeight="700" fontFamily="ui-monospace, monospace" letterSpacing="1.5">
         0001
       </text>
-      {/* Chip NFC: celular con ondas */}
-      <g transform="translate(140 344)">
-        <rect x="-36" y="-17" width="20" height="34" rx="4" fill="none" stroke={TINTA} strokeWidth="2.5" />
-        <path d="M-10 -8 a10 10 0 0 1 0 16 M-4 -14 a18 18 0 0 1 0 28" stroke={NARANJA} strokeWidth="2.5" fill="none" strokeLinecap="round" />
-        <text x="6" y="-2" fill={TINTA} fontSize="14" fontWeight="700">
-          Apoyá tu
-        </text>
-        <text x="6" y="14" fill={TINTA} fontSize="14" fontWeight="700">
-          celular
-        </text>
-      </g>
-      <text x="160" y="390" textAnchor="middle" fill={TINTA_2} fontSize="11">
-        o escaneá el código con la cámara
+      <text x="222" y="286" textAnchor="middle" fill={TINTA} fontSize="12.5" fontWeight="700">
+        Escaneá
+      </text>
+
+      <text x="160" y="326" textAnchor="middle" fill={TINTA_2} fontSize="9" fontWeight="600" letterSpacing="1">
+        by TOQA.NFC
       </text>
     </svg>
   );
