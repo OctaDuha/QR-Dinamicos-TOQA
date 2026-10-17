@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { detectarCorte } from "@/lib/detect-corte";
+import { detectarCirculo } from "@/lib/detect-circulo";
 import { detectQrInPdf } from "@/lib/detect-qr";
-import { SANGRADO_MM, esCircular, suggestedSizeMm } from "@/lib/page-size";
+import { FRANJA_MM, SANGRADO_MM, esCircular, escalaVinilo, suggestedSizeMm } from "@/lib/page-size";
 import { numberDefaults, type PlacaLayout } from "@/lib/placa";
 
 import { PdfPreview } from "./PdfPreview";
@@ -43,11 +43,11 @@ export function PlacaStudio({
     setDesigns((list) => list.map((d) => (d.id === id ? { ...d, ...patch } : d)));
   }, []);
 
-  // Los vinilos de 10x10 cargados antes de que existiera el corte circular
-  // todavía no lo tienen medido: se mide una vez y queda guardado.
+  // Los vinilos de 10x10 cargados antes de que existiera el ajuste circular
+  // todavía no tienen medido su círculo: se mide una vez y queda guardado.
   useEffect(() => {
     const pendientes = initialDesigns.filter(
-      (d) => esCircular(d.page_width_mm, d.page_height_mm) && d.layout.cutDiameterMm == null,
+      (d) => esCircular(d.page_width_mm, d.page_height_mm) && d.layout.circuloMm == null,
     );
     if (pendientes.length === 0) return;
     let cancelado = false;
@@ -56,9 +56,9 @@ export function PlacaStudio({
         try {
           const archivo = await fetch(`/api/placa/designs/${design.id}/file`);
           if (!archivo.ok || cancelado) continue;
-          const corte = await detectarCorte(await archivo.arrayBuffer(), design.layout.qrPage);
-          if (!corte || cancelado) continue;
-          const layout = { ...design.layout, cutDiameterMm: corte };
+          const circulo = await detectarCirculo(await archivo.arrayBuffer(), design.layout.qrPage);
+          if (!circulo || cancelado) continue;
+          const layout = { ...design.layout, circuloMm: circulo };
           const guardado = await fetch(`/api/placa/designs/${design.id}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -242,14 +242,16 @@ function NewDesign({
       // pdf.js se queda con el buffer que recibe: cada búsqueda lleva su copia.
       const detection = archivo ? await detectQrInPdf(archivo.slice(0)) : null;
 
-      // Los diseños cuadrados son vinilos circulares: además se busca el
-      // borde del círculo, para la línea de corte.
+      // Los diseños cuadrados son vinilos circulares: además se mide el
+      // círculo de color, para llevarlo al tamaño justo.
       const circular = esCircular(design.page_width_mm, design.page_height_mm);
-      const corte = archivo && circular ? await detectarCorte(archivo.slice(0), detection?.page ?? 1).catch(() => null) : null;
-      const textoCorte = corte ? ` Es un vinilo circular: corte de ${corte} mm de diámetro con ${SANGRADO_MM} mm de sangrado.` : "";
+      const corte = archivo && circular ? await detectarCirculo(archivo.slice(0), detection?.page ?? 1).catch(() => null) : null;
+      const textoCorte = circular
+        ? ` Es un vinilo circular: sale de ${design.page_width_mm} mm con una franja blanca de ${FRANJA_MM} mm.`
+        : "";
 
       if (corte && !detection) {
-        const conCorte: PlacaLayout = { ...design.layout, cutDiameterMm: corte };
+        const conCorte: PlacaLayout = { ...design.layout, circuloMm: corte };
         await fetch(`/api/placa/designs/${design.id}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -274,7 +276,7 @@ function NewDesign({
         sizeMm: detection.sizeMm,
         // El número acompaña el tamaño del QR de cada diseño.
         ...numberDefaults(detection.xMm, detection.yMm, detection.sizeMm, detection.freeBandYMm, detection.sampleNumber),
-        ...(corte ? { cutDiameterMm: corte } : {}),
+        ...(corte ? { circuloMm: corte } : {}),
       };
 
       await fetch(`/api/placa/designs/${design.id}`, {
@@ -414,7 +416,7 @@ function DesignEditor({
   const [nonce, setNonce] = useState(0);
   const [name, setName] = useState(design.name);
   const circular = esCircular(design.page_width_mm, design.page_height_mm);
-  const corteMm = Math.min(layout.cutDiameterMm ?? design.page_width_mm ?? 100, design.page_width_mm ?? 500);
+  const ladoMm = design.page_width_mm ?? 100;
 
   // Cuando la detección automática guarda una posición nueva, los campos
   // tienen que mostrarla: si no, seguirían con los valores por defecto.
@@ -444,7 +446,7 @@ function DesignEditor({
       numberXMm: String(debounced.numberXMm),
       numberYMm: String(debounced.numberYMm),
       numberBackdrop: String(debounced.numberBackdrop),
-      ...(debounced.cutDiameterMm != null ? { cutDiameterMm: String(debounced.cutDiameterMm) } : {}),
+      ...(debounced.circuloMm != null ? { circuloMm: String(debounced.circuloMm) } : {}),
       v: String(nonce),
     });
     return `/api/placa/preview?${params}`;
@@ -464,8 +466,8 @@ function DesignEditor({
       }
       const archivo = await response.arrayBuffer();
       const detection = await detectQrInPdf(archivo.slice(0));
-      const corte = circular ? await detectarCorte(archivo.slice(0), detection?.page ?? layout.qrPage).catch(() => null) : null;
-      if (corte) set("cutDiameterMm", corte);
+      const corte = circular ? await detectarCirculo(archivo.slice(0), detection?.page ?? layout.qrPage).catch(() => null) : null;
+      if (corte) set("circuloMm", corte);
       if (!detection) {
         setNote({
           kind: "error",
@@ -480,14 +482,14 @@ function DesignEditor({
         yMm: detection.yMm,
         sizeMm: detection.sizeMm,
         ...numberDefaults(detection.xMm, detection.yMm, detection.sizeMm, detection.freeBandYMm, detection.sampleNumber),
-        ...(corte ? { cutDiameterMm: corte } : {}),
+        ...(corte ? { circuloMm: corte } : {}),
       };
       setLayout(next);
       setNote({
         kind: "ok",
         text:
           `Encontrado: página ${detection.page}, X ${detection.xMm} mm, Y ${detection.yMm} mm, lado ${detection.sizeMm} mm.` +
-          `${corte ? ` Corte circular de ${corte} mm.` : ""} Tocá “Guardar” para fijarlo.`,
+          `${corte ? ` Círculo del diseño: ${corte} mm.` : ""} Tocá “Guardar” para fijarlo.`,
       });
     } finally {
       setBusy(false);
@@ -563,18 +565,20 @@ function DesignEditor({
 
           {circular ? (
             <div className="flex flex-col gap-2 rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
-              <p className="text-sm font-medium">Vinilo circular</p>
+              <p className="text-sm font-medium">Vinilo circular de {ladoMm / 10} cm</p>
+              <p className="text-xs text-ink-3">
+                Todos salen del mismo tamaño, con una franja blanca de {FRANJA_MM} mm alrededor y la
+                línea de corte (CutContour). El diseño se ajusta solo para que entre justo.
+              </p>
               <Field
-                label="Diámetro de corte mm"
-                value={corteMm}
-                onChange={(v) => set("cutDiameterMm", v)}
+                label="Círculo de color del diseño mm"
+                value={layout.circuloMm ?? ladoMm - 2 * FRANJA_MM}
+                onChange={(v) => set("circuloMm", v)}
                 step={0.1}
                 min={10}
-                max={design.page_width_mm ?? undefined}
               />
               <p className="text-xs text-ink-3">
-                Se detecta solo al cargar el diseño. El PDF sale con la línea de corte (CutContour) y{" "}
-                {SANGRADO_MM} mm de sangrado alrededor.
+                Se mide solo. Cambialo únicamente si la franja blanca no queda pareja.
               </p>
             </div>
           ) : null}
@@ -683,9 +687,9 @@ function DesignEditor({
             url={previewUrl}
             page={debounced.qrPage}
             // Un pelo adentro del corte, para no mostrar la línea magenta.
-            circulo={circular ? (corteMm - 0.3) / (corteMm + 2 * SANGRADO_MM) : undefined}
+            circulo={circular ? (ladoMm - 0.3) / (ladoMm + 2 * SANGRADO_MM) : undefined}
           />
-          {circular ? <AvisoBorde layout={layout} lado={design.page_width_mm ?? 100} corte={corteMm} /> : null}
+          {circular ? <AvisoBorde layout={layout} lado={ladoMm} /> : null}
         </div>
       </div>
     </div>
@@ -696,10 +700,12 @@ function DesignEditor({
  * En un vinilo circular, el QR y el número tienen que quedar lejos del corte:
  * si el plotter se corre un poco, no puede llevarse un pedazo del QR.
  */
-function AvisoBorde({ layout, lado, corte }: { layout: PlacaLayout; lado: number; corte: number }) {
+function AvisoBorde({ layout, lado }: { layout: PlacaLayout; lado: number }) {
   const centro = lado / 2;
-  const radio = corte / 2 - 3;
-  const lejos = (x: number, y: number) => Math.hypot(x - centro, y - centro);
+  const radio = lado / 2 - 3;
+  // El diseño se escala desde el centro: las distancias, también.
+  const escala = escalaVinilo(lado, layout.circuloMm);
+  const lejos = (x: number, y: number) => Math.hypot(x - centro, y - centro) * escala;
   const esquinas = [
     [layout.xMm, layout.yMm],
     [layout.xMm + layout.sizeMm, layout.yMm],

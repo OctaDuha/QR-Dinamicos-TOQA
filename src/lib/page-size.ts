@@ -26,8 +26,27 @@ export function suggestedSizeMm(widthMm: number, heightMm: number) {
   return null;
 }
 
-/** Sangrado de los vinilos circulares: el color sigue 2 mm por fuera del corte. */
+/** Margen de la hoja de los vinilos circulares, por fuera del corte. */
 export const SANGRADO_MM = 2;
+
+/**
+ * Franja blanca entre el aro de color y el corte. Es igual en todos los
+ * vinilos, este como este dibujado cada diseno en Canva.
+ */
+export const FRANJA_MM = 1;
+
+/**
+ * Cuanto se agranda o achica un diseno circular para que su circulo de color
+ * termine justo a FRANJA_MM del corte. El corte es el lado de la hoja (10 cm
+ * en los vinilos de 10x10). Sin medir todavia, el diseno queda como esta.
+ *
+ * Tope de +/-15 %: si la medicion diera algo mas lejos, mejor no deformar.
+ */
+export function escalaVinilo(ladoMm: number, circuloMm: number | null | undefined) {
+  if (!circuloMm) return 1;
+  const escala = (ladoMm - 2 * FRANJA_MM) / circuloMm;
+  return escala >= 0.85 && escala <= 1.15 ? escala : 1;
+}
 
 /**
  * Los disenos cuadrados (los vinilos de 10x10) se imprimen redondos: van con

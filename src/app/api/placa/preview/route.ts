@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       "numberSizeMm",
       "numberXMm",
       "numberYMm",
-      "cutDiameterMm",
+      "circuloMm",
     ]),
     ...booleans(url, ["whiteBackdrop", "showNumber", "numberBackdrop"]),
   });

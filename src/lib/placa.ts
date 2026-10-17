@@ -24,7 +24,7 @@ import {
 } from "pdf-lib";
 import QRCode from "qrcode";
 
-import { SANGRADO_MM, esCircular } from "./page-size";
+import { FRANJA_MM, SANGRADO_MM, esCircular, escalaVinilo } from "./page-size";
 
 export { suggestedSizeMm } from "./page-size";
 
@@ -74,11 +74,11 @@ export type PlacaLayout = {
   /** Recuadro blanco detras del numero, para que se lea sobre cualquier fondo. */
   numberBackdrop: boolean;
   /**
-   * Solo disenos cuadrados (vinilos circulares): diametro de la linea de
-   * corte, en mm. Se detecta al cargar el diseno; null = el circulo que entra
-   * justo en la pagina.
+   * Solo disenos cuadrados (vinilos circulares): diametro del circulo de color
+   * dibujado en el diseno, hasta el borde de afuera del aro, en mm. Se mide al
+   * cargar el diseno y sirve para llevarlo al tamano justo; null = sin medir.
    */
-  cutDiameterMm: number | null;
+  circuloMm: number | null;
 };
 
 export const DEFAULT_LAYOUT: PlacaLayout = {
@@ -93,7 +93,7 @@ export const DEFAULT_LAYOUT: PlacaLayout = {
   numberXMm: 50,
   numberYMm: 165,
   numberBackdrop: true,
-  cutDiameterMm: null,
+  circuloMm: null,
 };
 
 export function normalizeLayout(raw: unknown): PlacaLayout {
@@ -115,10 +115,10 @@ export function normalizeLayout(raw: unknown): PlacaLayout {
     numberXMm: num(value.numberXMm, DEFAULT_LAYOUT.numberXMm, -500, 2000),
     numberYMm: num(value.numberYMm, DEFAULT_LAYOUT.numberYMm, -500, 2000),
     numberBackdrop: value.numberBackdrop !== false,
-    cutDiameterMm:
-      value.cutDiameterMm == null || !Number.isFinite(Number(value.cutDiameterMm))
+    circuloMm:
+      value.circuloMm == null || !Number.isFinite(Number(value.circuloMm))
         ? null
-        : num(value.cutDiameterMm, 0, 10, 500),
+        : num(value.circuloMm, 0, 10, 500),
   };
 }
 
@@ -343,9 +343,7 @@ export async function renderPlacas({
     const qrPageIndex = Math.min(design.layout.qrPage, pages.length) - 1;
 
     pages.forEach((background, index) => {
-      const corte = diametroDeCorte(background, design.layout);
-
-      if (corte === null) {
+      if (!esCircular(background.width / MM, background.height / MM)) {
         const page = output.addPage([background.width, background.height]);
         page.drawPage(background, { x: 0, y: 0, width: background.width, height: background.height });
         if (index === qrPageIndex) {
@@ -354,11 +352,9 @@ export async function renderPlacas({
         return;
       }
 
-      const page = paginaCircular(output, background, corte);
+      const { page, layout, corte } = paginaCircular(output, background, design.layout);
       if (index === qrPageIndex) {
-        const lado = page.getWidth();
-        const marco = { left: (lado - background.width) / 2, top: (lado + background.height) / 2 };
-        drawQr(page, target, design.layout, marco, numberLabel, font);
+        drawQr(page, target, layout, { left: 0, top: page.getHeight() }, numberLabel, font);
       }
       // La linea de corte va al final, arriba de todo.
       cutContour ??= espacioCutContour(output);
@@ -370,18 +366,6 @@ export async function renderPlacas({
 }
 
 /* ------------------------------------------------------ vinilos circulares */
-
-/**
- * Diametro de corte en puntos, o null si el fondo no es cuadrado (las placas
- * rectangulares no cambian). Nunca mas grande que el fondo: por fuera no hay
- * diseno.
- */
-function diametroDeCorte(background: PDFEmbeddedPage, layout: PlacaLayout): number | null {
-  if (!esCircular(background.width / MM, background.height / MM)) return null;
-  const lado = Math.min(background.width, background.height);
-  const pedido = layout.cutDiameterMm == null ? lado : layout.cutDiameterMm * MM;
-  return Math.min(pedido, lado);
-}
 
 /** Un circulo como cuatro curvas: asi lo dibujan todos los programas de diseno. */
 function circulo(cx: number, cy: number, r: number) {
@@ -397,29 +381,47 @@ function circulo(cx: number, cy: number, r: number) {
 }
 
 /**
- * La hoja de un vinilo circular: el diametro de corte mas el sangrado de cada
- * lado, con el fondo centrado y nada impreso fuera del circulo.
+ * La hoja de un vinilo circular. El corte es siempre el lado del diseno (10 cm
+ * en los de 10x10), y adentro va:
+ *   - el diseno agrandado o achicado desde el centro para que su circulo de
+ *     color termine a FRANJA_MM del corte;
+ *   - recortado justo ahi: lo que el diseno tenga por fuera del aro (fondos,
+ *     contornos, una franja propia) no se imprime;
+ *   - la franja blanca y el margen de la hoja, sin nada impreso.
+ * Asi todos salen del mismo tamano y con la misma franja, sin importar como
+ * se dibujo cada uno en Canva.
  *
- * El sangrado sale del mismo diseno agrandado desde el centro: lo que hay
- * justo antes del borde (el aro de color) sigue hacia afuera, asi que si el
- * corte se corre un poco no aparece una rayita blanca.
+ * Devuelve tambien la posicion del QR y del numero pasada a la hoja: se
+ * mueven y escalan junto con el diseno.
  */
-function paginaCircular(output: PDFDocument, background: PDFEmbeddedPage, corte: number): PDFPage {
+function paginaCircular(output: PDFDocument, background: PDFEmbeddedPage, layout: PlacaLayout) {
+  const corte = Math.min(background.width, background.height);
   const lado = corte + 2 * SANGRADO_MM * MM;
   const page = output.addPage([lado, lado]);
   const centro = lado / 2;
 
-  const recortado = (radio: number, factor: number) => {
-    const width = background.width * factor;
-    const height = background.height * factor;
-    page.pushOperators(pushGraphicsState(), ...circulo(centro, centro, radio), clip(), endPath());
-    page.drawPage(background, { x: centro - width / 2, y: centro - height / 2, width, height });
-    page.pushOperators(popGraphicsState());
+  const escala = escalaVinilo(corte / MM, layout.circuloMm);
+  const width = background.width * escala;
+  const height = background.height * escala;
+  page.pushOperators(pushGraphicsState(), ...circulo(centro, centro, corte / 2 - FRANJA_MM * MM), clip(), endPath());
+  page.drawPage(background, { x: centro - width / 2, y: centro - height / 2, width, height });
+  page.pushOperators(popGraphicsState());
+
+  // Del diseno (mm desde su esquina) a la hoja (mm desde la suya).
+  const centroMm = centro / MM;
+  const x = (v: number) => centroMm + (v - background.width / MM / 2) * escala;
+  const y = (v: number) => centroMm + (v - background.height / MM / 2) * escala;
+  const enHoja: PlacaLayout = {
+    ...layout,
+    xMm: x(layout.xMm),
+    yMm: y(layout.yMm),
+    sizeMm: layout.sizeMm * escala,
+    numberXMm: x(layout.numberXMm),
+    numberYMm: y(layout.numberYMm),
+    numberSizeMm: layout.numberSizeMm * escala,
   };
 
-  recortado(lado / 2, lado / corte);
-  recortado(corte / 2, 1);
-  return page;
+  return { page, layout: enHoja, corte };
 }
 
 /**

@@ -564,14 +564,21 @@ páginas se incrustan con su caja explícita.
 Un diseño cuadrado (los vinilos de 10×10) se imprime redondo; los
 rectangulares, como las placas de 10×15, no cambian.
 
-- **Corte.** Al cargar el diseño se mide hasta dónde llega el color del
-  círculo (en las diagonales, donde el aro no tiene cortes) y la línea de corte
-  queda 0,3 mm adentro. Se puede corregir a mano en *Diámetro de corte*.
-- **PDF.** La hoja mide el corte más 2 mm de sangrado por lado. Fuera del
-  círculo no se imprime nada; el sangrado sale del mismo diseño agrandado desde
-  el centro, así el aro sigue por fuera del corte. La línea va en el color
-  especial `CutContour` (separación, 100 % magenta, sobreimpresión), que el
-  plotter corta y no imprime.
+Todos salen **iguales**, sin importar cómo esté dibujado cada uno en Canva:
+corte de 10 cm (el lado del diseño) y una franja blanca de 1 mm entre el aro de
+color y el corte.
+
+- **Medición.** Al cargar el diseño se mide el círculo de color: el primer tramo
+  ancho de color mirando desde el borde por las diagonales (donde el aro no
+  tiene cortes). Los fondos de color en las esquinas o los contornos finos no
+  cuentan. Se guarda como *Círculo de color del diseño* y se puede corregir a
+  mano.
+- **PDF.** El diseño se agranda o achica desde el centro (hasta ±15 %) para que
+  ese círculo termine a 1 mm del corte, y se recorta ahí: lo de afuera no se
+  imprime. El QR y el número se mueven y escalan con el diseño. La hoja mide el
+  corte más 2 mm por lado. La línea de corte va en el color especial
+  `CutContour` (separación, 100 % magenta, sobreimpresión), que el plotter corta
+  y no imprime.
 - **Preview.** Muestra solo el círculo, como queda cortado, y avisa si el QR o
   el número quedan a menos de 3 mm del corte.
 - Un PDF por vinilo: los botones de **ZIP**.
