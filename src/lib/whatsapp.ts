@@ -130,3 +130,64 @@ export async function enviarImagen(para: string, png: ArrayBuffer, nombre: strin
   if (!subida.ok) return subida;
   return mandar(para, { type: "image", image: { id: subida.datos.id, caption: pie.slice(0, 1024) } });
 }
+
+/* ------------------------------------------- conectar el número de la app */
+
+/**
+ * La app de Meta y la configuración del "registro insertado": la ventanita
+ * de Meta con la que se conecta un WhatsApp Business que ya se usa en el
+ * celular, sin dejar de usarlo. No son secretos: el navegador los necesita.
+ */
+export const META_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID?.trim() || "1138106575564279";
+export const META_CONFIG_ID = process.env.NEXT_PUBLIC_META_CONFIG_ID?.trim() || "2363042957797849";
+export const META_VERSION = VERSION;
+
+async function graph(ruta: string, token: string | null, metodo: "GET" | "POST" = "GET"): Promise<Respuesta> {
+  try {
+    const respuesta = await fetch(`${BASE}/${VERSION}/${ruta}`, {
+      method: metodo,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal: AbortSignal.timeout(15_000),
+    });
+    const datos = (await respuesta.json().catch(() => ({}))) as Record<string, unknown> & {
+      error?: { message?: string; code?: number };
+    };
+    if (!respuesta.ok) {
+      return { ok: false, error: `${respuesta.status} ${datos.error?.code ?? ""} ${datos.error?.message ?? ""}`.trim() };
+    }
+    return { ok: true, datos };
+  } catch (error) {
+    return { ok: false, error: (error as Error).message };
+  }
+}
+
+/**
+ * Lo que hay que hacer cuando la ventanita de Meta termina bien: canjear el
+ * código por un permiso de un solo uso, anotar la app en la cuenta de
+ * WhatsApp para que los mensajes lleguen al bot, y leer el número.
+ *
+ * No se registra el número: en la conexión con la app del celular ya está
+ * registrado, y hacerlo lo sacaría de la app.
+ */
+export async function conectarCuenta(codigo: string, wabaId: string, phoneId: string) {
+  const { appSecret } = configWhatsapp();
+  if (!appSecret) return { ok: false as const, error: "Falta WHATSAPP_APP_SECRET en Vercel." };
+
+  const params = new URLSearchParams({ client_id: META_APP_ID, client_secret: appSecret, code: codigo });
+  const canje = await graph(`oauth/access_token?${params}`, null);
+  if (!canje.ok) return { ok: false as const, error: `Meta no aceptó la conexión: ${canje.error}` };
+  const token = String(canje.datos.access_token ?? "");
+  if (!token) return { ok: false as const, error: "Meta no devolvió el permiso." };
+
+  const suscripcion = await graph(`${wabaId}/subscribed_apps`, token, "POST");
+  if (!suscripcion.ok) {
+    return { ok: false as const, error: `No pude anotar el bot en la cuenta de WhatsApp: ${suscripcion.error}` };
+  }
+
+  const numero = await graph(`${phoneId}?fields=display_phone_number,verified_name`, token);
+  return {
+    ok: true as const,
+    numero: numero.ok ? String(numero.datos.display_phone_number ?? "").replace(/\D/g, "") : "",
+    nombre: numero.ok ? String(numero.datos.verified_name ?? "") : "",
+  };
+}

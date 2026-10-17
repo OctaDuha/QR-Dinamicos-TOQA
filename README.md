@@ -302,6 +302,24 @@ tiene un asistente que comparte el número con la persona que atiende:
 - Variables: `WHATSAPP_TOKEN` y `WHATSAPP_APP_SECRET` (Secret),
   `WHATSAPP_PHONE_ID` y `WHATSAPP_NUMERO` (el del link `wa.me`), y
   `BOT_LLAVE` (Secret).
+- El bot solo atiende los avisos del número de `WHATSAPP_PHONE_ID`: los de
+  otro número de la misma app se ignoran.
+
+#### Conectar el número de la app WhatsApp Business (coexistencia)
+
+En *WhatsApp → Conectar tu WhatsApp Business* hay un botón que abre el
+registro insertado de Meta (`featureType: whatsapp_business_app_onboarding`)
+para sumar al bot el número que ya se usa en la app del celular, sin dejar
+de usarla. Requiere que la app de Meta sea proveedor de tecnología.
+
+- App y configuración (no son secretos): `NEXT_PUBLIC_META_APP_ID` y
+  `NEXT_PUBLIC_META_CONFIG_ID`, con los de TOQA como valor por defecto.
+- Al terminar, el servidor canjea el código (con `WHATSAPP_APP_SECRET`),
+  suscribe la app a la cuenta de WhatsApp (`subscribed_apps`) y lee el
+  número. **No registra el número**: ya está registrado en la app, y
+  registrarlo lo sacaría de ella. No se guarda nada: el panel muestra los
+  datos para cargar en Vercel y los pasos que faltan (asignar la cuenta al
+  usuario del sistema, suscribir `smb_message_echoes`, Redeploy).
 
 ---
 

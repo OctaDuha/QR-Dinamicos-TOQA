@@ -37,12 +37,20 @@ export type MensajeEntrante = {
  * que la persona del negocio les escribió desde la app (los "ecos", que
  * llegan con el número en coexistencia). Los estados de entrega se ignoran.
  */
-export function leerAviso(aviso: unknown): { mensajes: MensajeEntrante[]; respondidos: string[] } {
+export function leerAviso(
+  aviso: unknown,
+  phoneId?: string | null,
+): { mensajes: MensajeEntrante[]; respondidos: string[] } {
   const mensajes: MensajeEntrante[] = [];
   const respondidos: string[] = [];
   const entradas = (aviso as { entry?: unknown[] })?.entry ?? [];
   for (const entrada of entradas as { changes?: { field?: string; value?: Record<string, unknown> }[] }[]) {
     for (const cambio of entrada.changes ?? []) {
+      // Solo lo que llega al número del bot. Al conectar otro número (el de
+      // la app del celular), sus mensajes empiezan a llegar acá antes de que
+      // se cambie WHATSAPP_PHONE_ID en Vercel: hasta entonces, no se tocan.
+      const destino = (cambio.value?.metadata as { phone_number_id?: string } | undefined)?.phone_number_id;
+      if (phoneId && destino && destino !== phoneId) continue;
       if (cambio.field === "smb_message_echoes") {
         for (const eco of (cambio.value?.message_echoes ?? []) as { to?: string }[]) {
           if (eco.to) respondidos.push(eco.to.replace(/\D/g, ""));

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionState } from "@/lib/action-state";
 import { LARGO_MAXIMO, TEXTOS } from "@/lib/bot-textos";
 import { sesionActual } from "@/lib/roles";
+import { conectarCuenta } from "@/lib/whatsapp";
 
 /**
  * Genera la llave del bot. Se muestra una sola vez: la base guarda solo su
@@ -62,4 +63,29 @@ export async function guardarTextos(_prev: ActionState, formData: FormData): Pro
 
   revalidatePath("/dashboard/whatsapp");
   return { ok: true, message: "Textos guardados. El bot ya usa los nuevos." };
+}
+
+export type Conexion =
+  | { ok: true; phoneId: string; wabaId: string; numero: string; nombre: string }
+  | { ok: false; error: string };
+
+/**
+ * Termina la conexión del WhatsApp Business del celular, después de la
+ * ventanita de Meta. No guarda nada: devuelve los datos para cargar en Vercel.
+ */
+export async function conectarWhatsapp(datos: { codigo: string; wabaId: string; phoneId: string }): Promise<Conexion> {
+  const sesion = await sesionActual();
+  if (!sesion) return { ok: false, error: "Tu sesión se cerró. Volvé a entrar y probá de nuevo." };
+  if (sesion.rol !== "dueno") return { ok: false, error: "Solo el dueño puede conectar el WhatsApp del bot." };
+
+  const codigo = String(datos.codigo ?? "").trim();
+  const wabaId = String(datos.wabaId ?? "").trim();
+  const phoneId = String(datos.phoneId ?? "").trim();
+  if (!codigo || !/^\d{5,25}$/.test(wabaId) || !/^\d{5,25}$/.test(phoneId)) {
+    return { ok: false, error: "Meta no mandó los datos de la cuenta. Probá de nuevo." };
+  }
+
+  const resultado = await conectarCuenta(codigo, wabaId, phoneId);
+  if (!resultado.ok) return resultado;
+  return { ok: true, phoneId, wabaId, numero: resultado.numero, nombre: resultado.nombre };
 }

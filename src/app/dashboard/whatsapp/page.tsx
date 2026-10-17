@@ -6,9 +6,10 @@ import { fechaCorta } from "@/lib/estadisticas";
 import { siteUrl } from "@/lib/qr";
 import { sesionActual } from "@/lib/roles";
 import { textosDelBot } from "@/lib/bot-textos";
-import { configWhatsapp, tokenVerificacion } from "@/lib/whatsapp";
+import { META_APP_ID, META_CONFIG_ID, META_VERSION, configWhatsapp, tokenVerificacion } from "@/lib/whatsapp";
 
 import { CopyButton } from "../_components/CopyButton";
+import { ConectarWhatsapp } from "./ConectarWhatsapp";
 import { GenerarLlave } from "./GenerarLlave";
 import { TextosBot } from "./TextosBot";
 
@@ -122,10 +123,31 @@ export default async function WhatsappPage() {
           <h2 className="text-sm font-semibold">Para pegar en Meta</h2>
           <p className="mt-1 mb-3 text-sm text-ink-2">
             En tu app de Meta → WhatsApp → Configuración → Webhook. Después, en “Campos del webhook”, suscribite a{" "}
-            <code>messages</code>.
+            <code>messages</code> y, para cuando el bot use el número de la app del celular,{" "}
+            <code>smb_message_echoes</code>.
           </p>
           <Dato titulo="URL de devolución de llamada" valor={webhook} />
           <Dato titulo="Token de verificación" valor={verificar} />
+        </div>
+      ) : null}
+
+      {datosMeta && llaveOk ? (
+        <div className="card p-5">
+          <h2 className="text-sm font-semibold">Conectar tu WhatsApp Business</h2>
+          <p className="mt-1 text-sm text-ink-2">
+            Para que el bot atienda en el número que ya usás en la app WhatsApp Business del celular, sin dejar de
+            usarla. {config.numero ? <>Hoy el bot usa el <strong>+{config.numero}</strong>.</> : null}
+          </p>
+          <ul className="mt-3 mb-4 ml-4 flex list-disc flex-col gap-1 text-xs text-ink-2">
+            <li>Tené a mano el celular con la app WhatsApp Business actualizada: vas a escanear un código QR.</li>
+            <li>Se hace una sola vez. Después de conectar, dejá la app abierta un rato mientras se sincroniza.</li>
+            <li>La app del celular sigue igual, pero hay que abrirla al menos una vez cada 14 días.</li>
+            <li>
+              Algunas funciones de la app dejan de estar, como las listas de difusión y los mensajes “ver una
+              vez”.
+            </li>
+          </ul>
+          <ConectarWhatsapp appId={META_APP_ID} configId={META_CONFIG_ID} version={META_VERSION} />
         </div>
       ) : null}
 

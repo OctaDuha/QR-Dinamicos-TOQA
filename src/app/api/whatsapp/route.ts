@@ -28,7 +28,7 @@ export function GET(request: NextRequest) {
  * enseguida (Meta reintenta si tardamos) y el mensaje se atiende después.
  */
 export async function POST(request: NextRequest) {
-  const { appSecret, completa } = configWhatsapp();
+  const { appSecret, completa, phoneId } = configWhatsapp();
   if (!completa || !appSecret) return new NextResponse("Bot sin configurar", { status: 503 });
 
   const cuerpo = await request.text();
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse("JSON inválido", { status: 400 });
   }
 
-  const { mensajes, respondidos } = leerAviso(aviso);
+  const { mensajes, respondidos } = leerAviso(aviso, phoneId);
   if (mensajes.length > 0 || respondidos.length > 0) {
     after(async () => {
       // Si la persona del negocio contestó desde la app, el bot se corre.
