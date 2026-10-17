@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { detectarCorte } from "@/lib/detect-corte";
 import { detectQrInPdf } from "@/lib/detect-qr";
-import { suggestedSizeMm } from "@/lib/page-size";
+import { SANGRADO_MM, esCircular, suggestedSizeMm } from "@/lib/page-size";
 import { numberDefaults, type PlacaLayout } from "@/lib/placa";
 
 import { PdfPreview } from "./PdfPreview";
@@ -41,6 +42,38 @@ export function PlacaStudio({
   const patchDesign = useCallback((id: number, patch: Partial<Design>) => {
     setDesigns((list) => list.map((d) => (d.id === id ? { ...d, ...patch } : d)));
   }, []);
+
+  // Los vinilos de 10x10 cargados antes de que existiera el corte circular
+  // todavía no lo tienen medido: se mide una vez y queda guardado.
+  useEffect(() => {
+    const pendientes = initialDesigns.filter(
+      (d) => esCircular(d.page_width_mm, d.page_height_mm) && d.layout.cutDiameterMm == null,
+    );
+    if (pendientes.length === 0) return;
+    let cancelado = false;
+    (async () => {
+      for (const design of pendientes) {
+        try {
+          const archivo = await fetch(`/api/placa/designs/${design.id}/file`);
+          if (!archivo.ok || cancelado) continue;
+          const corte = await detectarCorte(await archivo.arrayBuffer(), design.layout.qrPage);
+          if (!corte || cancelado) continue;
+          const layout = { ...design.layout, cutDiameterMm: corte };
+          const guardado = await fetch(`/api/placa/designs/${design.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ layout }),
+          });
+          if (guardado.ok && !cancelado) patchDesign(design.id, { layout });
+        } catch {
+          // Si falla, queda el círculo que entra justo en la página.
+        }
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [initialDesigns, patchDesign]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -205,12 +238,30 @@ function NewDesign({
       // tienen que salir de la versión ajustada.
       setNote({ kind: "info", text: "Buscando el QR dentro del diseño…" });
       const guardado = await fetch(`/api/placa/designs/${design.id}/file`);
-      const detection = guardado.ok ? await detectQrInPdf(await guardado.arrayBuffer()) : null;
+      const archivo = guardado.ok ? await guardado.arrayBuffer() : null;
+      // pdf.js se queda con el buffer que recibe: cada búsqueda lleva su copia.
+      const detection = archivo ? await detectQrInPdf(archivo.slice(0)) : null;
+
+      // Los diseños cuadrados son vinilos circulares: además se busca el
+      // borde del círculo, para la línea de corte.
+      const circular = esCircular(design.page_width_mm, design.page_height_mm);
+      const corte = archivo && circular ? await detectarCorte(archivo.slice(0), detection?.page ?? 1).catch(() => null) : null;
+      const textoCorte = corte ? ` Es un vinilo circular: corte de ${corte} mm de diámetro con ${SANGRADO_MM} mm de sangrado.` : "";
+
+      if (corte && !detection) {
+        const conCorte: PlacaLayout = { ...design.layout, cutDiameterMm: corte };
+        await fetch(`/api/placa/designs/${design.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ layout: conCorte }),
+        });
+        onDetected(design.id, { layout: conCorte });
+      }
 
       if (!detection) {
         setNote({
           kind: "info",
-          text: `“${design.name}” quedó cargado.${ajuste} No encontré un QR adentro: ubicalo a mano abajo, o volvé a exportar el diseño con el QR de ejemplo puesto y usá “Detectar el QR automáticamente”.`,
+          text: `“${design.name}” quedó cargado.${ajuste}${textoCorte} No encontré un QR adentro: ubicalo a mano abajo, o volvé a exportar el diseño con el QR de ejemplo puesto y usá “Detectar el QR automáticamente”.`,
         });
         return;
       }
@@ -223,6 +274,7 @@ function NewDesign({
         sizeMm: detection.sizeMm,
         // El número acompaña el tamaño del QR de cada diseño.
         ...numberDefaults(detection.xMm, detection.yMm, detection.sizeMm, detection.freeBandYMm, detection.sampleNumber),
+        ...(corte ? { cutDiameterMm: corte } : {}),
       };
 
       await fetch(`/api/placa/designs/${design.id}`, {
@@ -236,7 +288,7 @@ function NewDesign({
         kind: "ok",
         text:
           `Listo: encontré el QR en la página ${detection.page}, a ${detection.xMm} mm del borde izquierdo ` +
-          `y ${detection.yMm} mm del superior, de ${detection.sizeMm} mm de lado.${ajuste} Ya quedó guardado.`,
+          `y ${detection.yMm} mm del superior, de ${detection.sizeMm} mm de lado.${ajuste}${textoCorte} Ya quedó guardado.`,
       });
     } catch (error) {
       setNote({ kind: "error", text: `Algo falló: ${(error as Error).message}` });
@@ -361,6 +413,8 @@ function DesignEditor({
   const [previewId, setPreviewId] = useState("1");
   const [nonce, setNonce] = useState(0);
   const [name, setName] = useState(design.name);
+  const circular = esCircular(design.page_width_mm, design.page_height_mm);
+  const corteMm = Math.min(layout.cutDiameterMm ?? design.page_width_mm ?? 100, design.page_width_mm ?? 500);
 
   // Cuando la detección automática guarda una posición nueva, los campos
   // tienen que mostrarla: si no, seguirían con los valores por defecto.
@@ -390,6 +444,7 @@ function DesignEditor({
       numberXMm: String(debounced.numberXMm),
       numberYMm: String(debounced.numberYMm),
       numberBackdrop: String(debounced.numberBackdrop),
+      ...(debounced.cutDiameterMm != null ? { cutDiameterMm: String(debounced.cutDiameterMm) } : {}),
       v: String(nonce),
     });
     return `/api/placa/preview?${params}`;
@@ -407,7 +462,10 @@ function DesignEditor({
         setNote({ kind: "error", text: "Ese diseño no tiene el PDF guardado." });
         return;
       }
-      const detection = await detectQrInPdf(await response.arrayBuffer());
+      const archivo = await response.arrayBuffer();
+      const detection = await detectQrInPdf(archivo.slice(0));
+      const corte = circular ? await detectarCorte(archivo.slice(0), detection?.page ?? layout.qrPage).catch(() => null) : null;
+      if (corte) set("cutDiameterMm", corte);
       if (!detection) {
         setNote({
           kind: "error",
@@ -422,11 +480,14 @@ function DesignEditor({
         yMm: detection.yMm,
         sizeMm: detection.sizeMm,
         ...numberDefaults(detection.xMm, detection.yMm, detection.sizeMm, detection.freeBandYMm, detection.sampleNumber),
+        ...(corte ? { cutDiameterMm: corte } : {}),
       };
       setLayout(next);
       setNote({
         kind: "ok",
-        text: `Encontrado: página ${detection.page}, X ${detection.xMm} mm, Y ${detection.yMm} mm, lado ${detection.sizeMm} mm. Tocá “Guardar” para fijarlo.`,
+        text:
+          `Encontrado: página ${detection.page}, X ${detection.xMm} mm, Y ${detection.yMm} mm, lado ${detection.sizeMm} mm.` +
+          `${corte ? ` Corte circular de ${corte} mm.` : ""} Tocá “Guardar” para fijarlo.`,
       });
     } finally {
       setBusy(false);
@@ -499,6 +560,24 @@ function DesignEditor({
           <Field label="Lado del QR (parte negra) mm" value={layout.sizeMm} onChange={(v) => set("sizeMm", v)} step={0.5} min={5} />
           <Field label="Página del fondo" value={layout.qrPage} onChange={(v) => set("qrPage", Math.round(v))} step={1} min={1} />
           <Field label="Margen blanco (módulos)" value={layout.quietModules} onChange={(v) => set("quietModules", Math.round(v))} step={1} min={0} max={8} />
+
+          {circular ? (
+            <div className="flex flex-col gap-2 rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
+              <p className="text-sm font-medium">Vinilo circular</p>
+              <Field
+                label="Diámetro de corte mm"
+                value={corteMm}
+                onChange={(v) => set("cutDiameterMm", v)}
+                step={0.1}
+                min={10}
+                max={design.page_width_mm ?? undefined}
+              />
+              <p className="text-xs text-ink-3">
+                Se detecta solo al cargar el diseño. El PDF sale con la línea de corte (CutContour) y{" "}
+                {SANGRADO_MM} mm de sangrado alrededor.
+              </p>
+            </div>
+          ) : null}
 
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -599,9 +678,45 @@ function DesignEditor({
           ) : null}
         </div>
 
-        <PdfPreview url={previewUrl} page={debounced.qrPage} />
+        <div className="flex flex-col gap-2">
+          <PdfPreview
+            url={previewUrl}
+            page={debounced.qrPage}
+            // Un pelo adentro del corte, para no mostrar la línea magenta.
+            circulo={circular ? (corteMm - 0.3) / (corteMm + 2 * SANGRADO_MM) : undefined}
+          />
+          {circular ? <AvisoBorde layout={layout} lado={design.page_width_mm ?? 100} corte={corteMm} /> : null}
+        </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * En un vinilo circular, el QR y el número tienen que quedar lejos del corte:
+ * si el plotter se corre un poco, no puede llevarse un pedazo del QR.
+ */
+function AvisoBorde({ layout, lado, corte }: { layout: PlacaLayout; lado: number; corte: number }) {
+  const centro = lado / 2;
+  const radio = corte / 2 - 3;
+  const lejos = (x: number, y: number) => Math.hypot(x - centro, y - centro);
+  const esquinas = [
+    [layout.xMm, layout.yMm],
+    [layout.xMm + layout.sizeMm, layout.yMm],
+    [layout.xMm, layout.yMm + layout.sizeMm],
+    [layout.xMm + layout.sizeMm, layout.yMm + layout.sizeMm],
+  ];
+  const qrAfuera = esquinas.some(([x, y]) => lejos(x, y) > radio);
+  const numeroAfuera = layout.showNumber && lejos(layout.numberXMm, layout.numberYMm + layout.numberSizeMm) > radio;
+
+  if (!qrAfuera && !numeroAfuera) {
+    return <p className="text-xs text-ink-3">Así queda el vinilo una vez cortado.</p>;
+  }
+  return (
+    <p className="text-xs font-medium text-danger">
+      Ojo: {qrAfuera ? "el QR" : "el número"} queda a menos de 3 mm del corte. Movelo hacia el centro para que
+      el plotter no se lleve un pedazo.
+    </p>
   );
 }
 

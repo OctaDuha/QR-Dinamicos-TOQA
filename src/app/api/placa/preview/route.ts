@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       "numberSizeMm",
       "numberXMm",
       "numberYMm",
+      "cutDiameterMm",
     ]),
     ...booleans(url, ["whiteBackdrop", "showNumber", "numberBackdrop"]),
   });

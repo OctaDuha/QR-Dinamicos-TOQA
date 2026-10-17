@@ -1,5 +1,30 @@
-import { PDFDocument, StandardFonts, rgb, type PDFEmbeddedPage, type PDFFont, type PDFPage } from "pdf-lib";
+import {
+  PDFDict,
+  PDFDocument,
+  PDFName,
+  PDFNumber,
+  PDFOperator,
+  PDFOperatorNames,
+  StandardFonts,
+  appendBezierCurve,
+  clip,
+  closePath,
+  endPath,
+  moveTo,
+  popGraphicsState,
+  pushGraphicsState,
+  rgb,
+  setGraphicsState,
+  setLineWidth,
+  stroke,
+  type PDFEmbeddedPage,
+  type PDFFont,
+  type PDFPage,
+  type PDFRef,
+} from "pdf-lib";
 import QRCode from "qrcode";
+
+import { SANGRADO_MM, esCircular } from "./page-size";
 
 export { suggestedSizeMm } from "./page-size";
 
@@ -48,6 +73,12 @@ export type PlacaLayout = {
   numberYMm: number;
   /** Recuadro blanco detras del numero, para que se lea sobre cualquier fondo. */
   numberBackdrop: boolean;
+  /**
+   * Solo disenos cuadrados (vinilos circulares): diametro de la linea de
+   * corte, en mm. Se detecta al cargar el diseno; null = el circulo que entra
+   * justo en la pagina.
+   */
+  cutDiameterMm: number | null;
 };
 
 export const DEFAULT_LAYOUT: PlacaLayout = {
@@ -62,6 +93,7 @@ export const DEFAULT_LAYOUT: PlacaLayout = {
   numberXMm: 50,
   numberYMm: 165,
   numberBackdrop: true,
+  cutDiameterMm: null,
 };
 
 export function normalizeLayout(raw: unknown): PlacaLayout {
@@ -83,6 +115,10 @@ export function normalizeLayout(raw: unknown): PlacaLayout {
     numberXMm: num(value.numberXMm, DEFAULT_LAYOUT.numberXMm, -500, 2000),
     numberYMm: num(value.numberYMm, DEFAULT_LAYOUT.numberYMm, -500, 2000),
     numberBackdrop: value.numberBackdrop !== false,
+    cutDiameterMm:
+      value.cutDiameterMm == null || !Number.isFinite(Number(value.cutDiameterMm))
+        ? null
+        : num(value.cutDiameterMm, 0, 10, 500),
   };
 }
 
@@ -125,11 +161,19 @@ export function numberDefaults(
  * Une modulos negros contiguos en una sola barra horizontal: un QR de 29x29
  * pasa de ~450 rectangulos a ~120, y eso se multiplica por cada placa del lote.
  */
+/**
+ * Donde cae el fondo en la hoja, en puntos PDF: borde izquierdo y borde
+ * superior. Las coordenadas del diseno se miden desde ahi. En las placas es
+ * la hoja entera; en los vinilos circulares el fondo queda corrido hacia
+ * adentro por el sangrado.
+ */
+type Marco = { left: number; top: number };
+
 function drawQr(
   page: PDFPage,
   text: string,
   layout: PlacaLayout,
-  pageHeight: number,
+  marco: Marco,
   numberLabel: string,
   font: PDFFont,
 ) {
@@ -143,11 +187,11 @@ function drawQr(
   const moduleSize = side / modules;
   const margin = layout.quietModules * moduleSize;
 
-  const originX = layout.xMm * MM;
+  const originX = marco.left + layout.xMm * MM;
   // El usuario piensa desde arriba; el PDF mide desde abajo.
-  const originY = pageHeight - layout.yMm * MM;
+  const originY = marco.top - layout.yMm * MM;
 
-  drawNumber(page, numberLabel, layout, pageHeight, font);
+  drawNumber(page, numberLabel, layout, marco, font);
 
   if (layout.whiteBackdrop) {
     const box = side + margin * 2;
@@ -187,15 +231,15 @@ function drawNumber(
   page: PDFPage,
   label: string,
   layout: PlacaLayout,
-  pageHeight: number,
+  marco: Marco,
   font: PDFFont,
 ) {
   if (!layout.showNumber) return;
 
   const size = layout.numberSizeMm * MM;
   const width = font.widthOfTextAtSize(label, size);
-  const left = layout.numberXMm * MM - width / 2;
-  const top = pageHeight - layout.numberYMm * MM;
+  const left = marco.left + layout.numberXMm * MM - width / 2;
+  const top = marco.top - layout.numberYMm * MM;
 
   if (layout.numberBackdrop) {
     const pad = size * 0.25;
@@ -274,6 +318,8 @@ export async function renderPlacas({
   // Cada fondo se incrusta una sola vez aunque lo usen 100 placas: por eso
   // un lote de 1000 pesa poco mas de un megabyte.
   const embedded = new Map<number, PDFEmbeddedPage[]>();
+  // El color de la linea de corte, uno solo para todo el archivo.
+  let cutContour: PDFRef | undefined;
 
   for (const { design } of items) {
     if (embedded.has(design.id) || !design.backgroundPdf) continue;
@@ -290,22 +336,130 @@ export async function renderPlacas({
     if (pages.length === 0) {
       // Sin fondo cargado: hoja A6 en blanco, solo para no fallar en seco.
       const page = output.addPage([105 * MM, 148 * MM]);
-      drawQr(page, target, design.layout, 148 * MM, numberLabel, font);
+      drawQr(page, target, design.layout, { left: 0, top: 148 * MM }, numberLabel, font);
       continue;
     }
 
     const qrPageIndex = Math.min(design.layout.qrPage, pages.length) - 1;
 
     pages.forEach((background, index) => {
-      const page = output.addPage([background.width, background.height]);
-      page.drawPage(background, { x: 0, y: 0, width: background.width, height: background.height });
-      if (index === qrPageIndex) {
-        drawQr(page, target, design.layout, background.height, numberLabel, font);
+      const corte = diametroDeCorte(background, design.layout);
+
+      if (corte === null) {
+        const page = output.addPage([background.width, background.height]);
+        page.drawPage(background, { x: 0, y: 0, width: background.width, height: background.height });
+        if (index === qrPageIndex) {
+          drawQr(page, target, design.layout, { left: 0, top: background.height }, numberLabel, font);
+        }
+        return;
       }
+
+      const page = paginaCircular(output, background, corte);
+      if (index === qrPageIndex) {
+        const lado = page.getWidth();
+        const marco = { left: (lado - background.width) / 2, top: (lado + background.height) / 2 };
+        drawQr(page, target, design.layout, marco, numberLabel, font);
+      }
+      // La linea de corte va al final, arriba de todo.
+      cutContour ??= espacioCutContour(output);
+      lineaDeCorte(output, page, corte, cutContour);
     });
   }
 
   return output.save();
+}
+
+/* ------------------------------------------------------ vinilos circulares */
+
+/**
+ * Diametro de corte en puntos, o null si el fondo no es cuadrado (las placas
+ * rectangulares no cambian). Nunca mas grande que el fondo: por fuera no hay
+ * diseno.
+ */
+function diametroDeCorte(background: PDFEmbeddedPage, layout: PlacaLayout): number | null {
+  if (!esCircular(background.width / MM, background.height / MM)) return null;
+  const lado = Math.min(background.width, background.height);
+  const pedido = layout.cutDiameterMm == null ? lado : layout.cutDiameterMm * MM;
+  return Math.min(pedido, lado);
+}
+
+/** Un circulo como cuatro curvas: asi lo dibujan todos los programas de diseno. */
+function circulo(cx: number, cy: number, r: number) {
+  const k = 0.5522847498 * r;
+  return [
+    moveTo(cx + r, cy),
+    appendBezierCurve(cx + r, cy + k, cx + k, cy + r, cx, cy + r),
+    appendBezierCurve(cx - k, cy + r, cx - r, cy + k, cx - r, cy),
+    appendBezierCurve(cx - r, cy - k, cx - k, cy - r, cx, cy - r),
+    appendBezierCurve(cx + k, cy - r, cx + r, cy - k, cx + r, cy),
+    closePath(),
+  ];
+}
+
+/**
+ * La hoja de un vinilo circular: el diametro de corte mas el sangrado de cada
+ * lado, con el fondo centrado y nada impreso fuera del circulo.
+ *
+ * El sangrado sale del mismo diseno agrandado desde el centro: lo que hay
+ * justo antes del borde (el aro de color) sigue hacia afuera, asi que si el
+ * corte se corre un poco no aparece una rayita blanca.
+ */
+function paginaCircular(output: PDFDocument, background: PDFEmbeddedPage, corte: number): PDFPage {
+  const lado = corte + 2 * SANGRADO_MM * MM;
+  const page = output.addPage([lado, lado]);
+  const centro = lado / 2;
+
+  const recortado = (radio: number, factor: number) => {
+    const width = background.width * factor;
+    const height = background.height * factor;
+    page.pushOperators(pushGraphicsState(), ...circulo(centro, centro, radio), clip(), endPath());
+    page.drawPage(background, { x: centro - width / 2, y: centro - height / 2, width, height });
+    page.pushOperators(popGraphicsState());
+  };
+
+  recortado(lado / 2, lado / corte);
+  recortado(corte / 2, 1);
+  return page;
+}
+
+/**
+ * El color especial "CutContour": el plotter de corte lo reconoce como la
+ * linea por donde cortar y no lo imprime. En pantalla se ve magenta.
+ */
+function espacioCutContour(output: PDFDocument): PDFRef {
+  const { context } = output;
+  const tinta = context.obj({ FunctionType: 2, Domain: [0, 1], C0: [0, 0, 0, 0], C1: [0, 1, 0, 0], N: 1 });
+  return context.register(
+    context.obj([PDFName.of("Separation"), PDFName.of("CutContour"), PDFName.of("DeviceCMYK"), tinta]),
+  );
+}
+
+/** Linea de corte fina, en sobreimpresion para no dejar un hueco en el diseno. */
+function lineaDeCorte(output: PDFDocument, page: PDFPage, corte: number, cutContour: PDFRef) {
+  const { Resources } = page.node.normalizedEntries();
+  let espacios = Resources.lookupMaybe(PDFName.of("ColorSpace"), PDFDict);
+  if (!espacios) {
+    espacios = output.context.obj({});
+    Resources.set(PDFName.of("ColorSpace"), espacios);
+  }
+  espacios.set(PDFName.of("CutContour"), cutContour);
+
+  const sobreimpresion = page.node.newExtGState(
+    "GS",
+    output.context.obj({ Type: "ExtGState", OP: true, op: true, OPM: 1 }),
+  );
+
+  const centro = page.getWidth() / 2;
+  page.pushOperators(
+    pushGraphicsState(),
+    setGraphicsState(sobreimpresion),
+    PDFOperator.of(PDFOperatorNames.StrokingColorspace, [PDFName.of("CutContour")]),
+    PDFOperator.of(PDFOperatorNames.StrokingColorN, [PDFNumber.of(1)]),
+    setLineWidth(0.25),
+    ...circulo(centro, centro, corte / 2),
+    stroke(),
+    popGraphicsState(),
+  );
 }
 
 export function placaFileName(ids: number[], designName?: string): string {

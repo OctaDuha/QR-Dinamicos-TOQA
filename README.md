@@ -559,6 +559,23 @@ offset (por ejemplo `y = 8,67 pt`). Si se incrusta sin declarar el bounding box,
 el fondo queda corrido esos milímetros respecto del QR y del número. Por eso las
 páginas se incrustan con su caja explícita.
 
+### Vinilos circulares (diseños cuadrados)
+
+Un diseño cuadrado (los vinilos de 10×10) se imprime redondo; los
+rectangulares, como las placas de 10×15, no cambian.
+
+- **Corte.** Al cargar el diseño se mide hasta dónde llega el color del
+  círculo (en las diagonales, donde el aro no tiene cortes) y la línea de corte
+  queda 0,3 mm adentro. Se puede corregir a mano en *Diámetro de corte*.
+- **PDF.** La hoja mide el corte más 2 mm de sangrado por lado. Fuera del
+  círculo no se imprime nada; el sangrado sale del mismo diseño agrandado desde
+  el centro, así el aro sigue por fuera del corte. La línea va en el color
+  especial `CutContour` (separación, 100 % magenta, sobreimpresión), que el
+  plotter corta y no imprime.
+- **Preview.** Muestra solo el círculo, como queda cortado, y avisa si el QR o
+  el número quedan a menos de 3 mm del corte.
+- Un PDF por vinilo: los botones de **ZIP**.
+
 ## Canva Connect API (sólo Enterprise)
 
 `/dashboard/canva` implementa la Opción A del brief —subir el QR como asset,

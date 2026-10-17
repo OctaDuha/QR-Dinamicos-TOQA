@@ -8,7 +8,11 @@ import { useEffect, useRef, useState } from "react";
  * agrega peso, y se ve igual en todos lados: sin barra de herramientas,
  * sin depender del plugin de PDF de cada navegador.
  */
-export function PdfPreview({ url, page }: { url: string; page: number }) {
+/**
+ * `circulo`: en los vinilos circulares, el radio del corte como fracción de
+ * la hoja. El preview muestra solo el círculo, como queda una vez cortado.
+ */
+export function PdfPreview({ url, page, circulo }: { url: string; page: number; circulo?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"cargando" | "listo" | "error">("cargando");
@@ -77,8 +81,12 @@ export function PdfPreview({ url, page }: { url: string; page: number }) {
     >
       <canvas
         ref={canvasRef}
-        className="rounded shadow-sm"
-        style={{ display: state === "listo" ? "block" : "none" }}
+        className={circulo ? undefined : "rounded shadow-sm"}
+        style={{
+          display: state === "listo" ? "block" : "none",
+          // circle() en % se mide sobre el lado de la hoja cuadrada.
+          ...(circulo ? { clipPath: `circle(${(circulo * 50).toFixed(3)}% at 50% 50%)` } : {}),
+        }}
       />
       {state !== "listo" ? (
         <p className="text-sm text-ink-3">

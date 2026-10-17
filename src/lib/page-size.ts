@@ -25,3 +25,15 @@ export function suggestedSizeMm(widthMm: number, heightMm: number) {
   }
   return null;
 }
+
+/** Sangrado de los vinilos circulares: el color sigue 2 mm por fuera del corte. */
+export const SANGRADO_MM = 2;
+
+/**
+ * Los disenos cuadrados (los vinilos de 10x10) se imprimen redondos: van con
+ * linea de corte circular y sangrado. Los rectangulares, como las placas de
+ * 10x15, quedan como siempre.
+ */
+export function esCircular(widthMm: number | null | undefined, heightMm: number | null | undefined) {
+  return Boolean(widthMm && heightMm && Math.abs(widthMm - heightMm) <= 0.5);
+}
