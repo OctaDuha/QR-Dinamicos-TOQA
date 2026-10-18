@@ -1,6 +1,6 @@
 # Estado del proyecto TOQA
 
-Resumen de lo decidido y lo pendiente, para retomar sin tener que releer meses de conversación. El *cómo* funciona cada cosa está en el [README](../README.md); acá va el *qué*, el *por qué* y *dónde estamos*.
+Resumen de lo decidido y lo pendiente, para retomar sin tener que releer meses de conversación. Para qué sirve cada pantalla del sitio está en el [MANUAL](MANUAL.md), y el *cómo* funciona por dentro, en el [README](../README.md). Acá va el *qué*, el *por qué* y *dónde estamos*.
 
 Última actualización: 18/10/2026.
 

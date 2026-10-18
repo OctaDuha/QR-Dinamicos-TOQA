@@ -100,5 +100,6 @@ A printed plaque can't be corrected, so every URL form that was ever printed kee
 ## Docs
 
 - `docs/ESTADO.md`: status, pending tasks and decisions. Start here.
+- `docs/MANUAL.md`: what each screen of the site and panel is for, in the owner's words. Keep it in sync when screens change.
 - `README.md` (Spanish): detailed reference for each feature and why it works the way it does.
 - `PROBAR.md`: browser-only setup guide written for the owner.
