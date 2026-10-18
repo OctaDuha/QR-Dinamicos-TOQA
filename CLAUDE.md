@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 TOQA (toqaqr.com.ar) sells plaques and vinyls with a printed QR code and an NFC chip. This repo is the whole product: the public redirect that every printed plaque points to, a private panel to manage plaques, clients and print-ready PDFs, a public landing page, and a WhatsApp bot. Stack: Next.js 15 (App Router, React 19), Supabase (Postgres + Auth), Vercel, Tailwind 4.
 
+**Read `docs/ESTADO.md` first.** It holds the current state of the project: what is in progress (the Meta / WhatsApp Tech Provider process), pending tasks, account IDs, product decisions and the owner's working rules. Update it whenever any of that changes.
+
 ## Commands
 
 ```bash
@@ -13,6 +15,8 @@ npm run build       # production build (prebuild copies the pdf.js worker into p
 ```
 
 There is no test suite and no lint script. Verify changes with `typecheck` and `build`, and for UI changes drive the built app with Playwright. Chromium lives at `/opt/pw-browsers/chromium`.
+
+Never test against production data. `docs/ESTADO.md` §7 describes the local stack used before: Postgres + PostgREST + a fake Supabase Auth + a fake Graph API through `WHATSAPP_API_BASE`.
 
 `NEXT_PUBLIC_*` variables are baked in at build time. See `.env.example` for the full list.
 
@@ -95,4 +99,6 @@ A printed plaque can't be corrected, so every URL form that was ever printed kee
 
 ## Docs
 
-`README.md` (Spanish) is the detailed reference for each feature and why it works the way it does. `PROBAR.md` is the browser-only setup guide written for the owner.
+- `docs/ESTADO.md`: status, pending tasks and decisions. Start here.
+- `README.md` (Spanish): detailed reference for each feature and why it works the way it does.
+- `PROBAR.md`: browser-only setup guide written for the owner.
