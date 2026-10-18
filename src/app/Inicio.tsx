@@ -55,7 +55,7 @@ export function Inicio() {
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-white/85">
                 Placas y productos con <strong className="text-white">código QR</strong> y{" "}
                 <strong className="text-white">chip NFC</strong> para tu negocio: tus clientes apoyan el celular o
-                escanean, y llegan a tus reseñas de Google, tu Instagram, tu menú o tu WhatsApp.
+                escanean, y llegan a tus reseñas de Google, tu Instagram, tu WhatsApp, tu menú y mucho más.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <a
@@ -95,7 +95,7 @@ export function Inicio() {
         <section id="como-funciona" className="mx-auto max-w-6xl px-5 py-16 md:py-20">
           <h2 className="text-3xl font-bold">Cómo funciona</h2>
           <p className="mt-2 max-w-2xl" style={{ color: TINTA_2 }}>
-            Sin apps ni complicaciones: funciona con cualquier celular.
+            Sin apps ni complicaciones, el sistema de TOQA se encarga de todo.
           </p>
           <ol className="mt-10 grid gap-6 md:grid-cols-3">
             <Paso numero={1} titulo="Elegís a dónde lleva">
@@ -120,8 +120,9 @@ export function Inicio() {
             <div>
               <h2 className="text-3xl font-bold">Productos</h2>
               <p className="mt-3 leading-relaxed" style={{ color: TINTA_2 }}>
-                Cada producto se diseña <strong style={{ color: TINTA }}>a la medida de tu negocio, marca o empresa</strong>:
-                con tu logo, tus colores y tu estilo, para que se vea como parte de tu local y no como un cartel más.
+                Tenemos <strong style={{ color: TINTA }}>modelos listos para usar</strong> y también los{" "}
+                <strong style={{ color: TINTA }}>diseñamos a la medida de tu negocio, marca o empresa</strong>: con tu logo,
+                tus colores y tu estilo, para que se vea como parte de tu local y no como un cartel más.
               </p>
               <ul className="mt-6 flex flex-col gap-5">
                 <Producto titulo="Placas para mostrador y mesas">
