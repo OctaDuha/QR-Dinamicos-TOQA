@@ -120,9 +120,9 @@ export function Inicio() {
             <div>
               <h2 className="text-3xl font-bold">Productos</h2>
               <p className="mt-3 leading-relaxed" style={{ color: TINTA_2 }}>
-                Tenemos <strong style={{ color: TINTA }}>modelos listos para usar</strong> y también los{" "}
-                <strong style={{ color: TINTA }}>diseñamos a la medida de tu negocio, marca o empresa</strong>: con tu logo,
-                tus colores y tu estilo, para que se vea como parte de tu local y no como un cartel más.
+                Tenemos <strong style={{ color: TINTA }}>modelos listos para usar</strong> y también hacemos{" "}
+                <strong style={{ color: TINTA }}>diseños personalizados a la medida para tu negocio, marca o empresa</strong>:
+                con tu logo, tus colores y tu estilo, para que se vea como parte de tu local y no como un cartel más.
               </p>
               <ul className="mt-6 flex flex-col gap-5">
                 <Producto titulo="Placas para mostrador y mesas">
