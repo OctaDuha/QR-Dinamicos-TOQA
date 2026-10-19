@@ -41,7 +41,9 @@ No hay secretos en este archivo. Los identificadores de abajo no son claves.
 | Base | Supabase, proyecto `qr-toqa`, región **sa-east-1 (São Paulo)**, plan gratuito. El dueño corre a mano las migraciones de `supabase/migraciones/` en el SQL Editor. |
 | Login | Usuario/contraseña y Google. El registro público está apagado en Supabase. Las cuentas nuevas entran solo por invitación del dueño y quedan "pendientes" hasta que las aprueba. |
 | Respaldo | CSV en Vercel Blob en cada cambio, más un mail diario con el CSV adjunto (Resend → Gmail del dueño, con un filtro que lo etiqueta). Si la copia o el mail tienen más de 7 días, el panel los marca en rojo. |
-| Doble factor (autenticador) | El dueño **decidió postergarlo**. No insistir. Meta puede pedir 2FA en algún paso: en ese caso, por SMS. |
+| Verificación en dos pasos | **Activada** (19/10/2026) en todas las cuentas clave: Gmail, Facebook/Meta, GitHub, Vercel y Supabase. |
+| Monitor | UptimeRobot revisa `https://toqaqr.com.ar/api/health` y avisa por mail si la página no responde. |
+| Dominio | `toqaqr.com.ar` en NIC Argentina, con renovación anual. Si se vence, todas las placas dejan de funcionar. Hay que renovarlo en los 30 días previos al vencimiento. |
 
 Las variables de entorno están documentadas en `.env.example`.
 
@@ -107,6 +109,8 @@ Las variables de entorno están documentadas en `.env.example`.
 - La tarjeta "QR y NFC en uno" de la página de inicio sigue diciendo "funciona con cualquier celular". El dueño pidió **no cambiarla** por ahora, aunque el NFC funciona en alrededor del 90 % de los celulares.
 
 ## 6. Decisiones de producto, y por qué
+
+- **El bot no manda estadísticas por su cuenta.** Los clientes las piden si les interesan. El dueño decidió no hacer envíos automáticos, que además se cobran.
 
 - **Las URLs impresas no cambian nunca.**
   - `/0001` en vez de `/r/0001` achica el QR de 29×29 a 25×25 módulos.
