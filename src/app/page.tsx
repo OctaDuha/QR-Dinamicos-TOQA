@@ -8,12 +8,13 @@ import { Inicio } from "./Inicio";
 export const metadata: Metadata = {
   title: "TOQA · Un toque. Una acción.",
   description:
-    "Placas y productos con código QR y chip NFC para tu negocio: reseñas de Google, Instagram, menú o WhatsApp con un toque.",
+    "Placas y productos con código QR y chip NFC para tu negocio: reseñas de Google, Instagram, WhatsApp, menú y mucho más.",
   // La página pública sí se puede encontrar en buscadores; el panel no.
   robots: { index: true, follow: true },
   openGraph: {
     title: "TOQA · Un toque. Una acción.",
-    description: "Placas y productos con código QR y chip NFC para tu negocio.",
+    description:
+      "Placas y productos con código QR y chip NFC para tu negocio: reseñas de Google, Instagram, WhatsApp, menú y mucho más.",
     images: ["/marca/toqa-logo.jpg"],
   },
 };
