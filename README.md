@@ -281,6 +281,11 @@ tiene un asistente que comparte el número con la persona que atiende:
   número 12 horas (`bot_silencios`): sigue una persona. Con el número en
   coexistencia, también se calla si la persona responde desde la app (llegan
   como `smb_message_echoes`).
+- Después de producto o problema, el primer mensaje en que el cliente cuenta
+  qué quiere (texto, foto o audio, dentro de 15 minutos) recibe una sola vez
+  el aviso "¡Perfecto! En breve te responderá una persona del equipo 🙌"
+  (texto `recibido`, editable). Se guarda como espera `aviso` en
+  `bot_esperas`; si la persona ya respondió desde la app, se borra y no sale.
 - En medio de una charla no se mete. Lo explícito se contesta siempre:
   sus opciones, "menú" y "estadísticas".
 - Los textos se editan en *WhatsApp* → Textos del bot (`bot_textos`); los

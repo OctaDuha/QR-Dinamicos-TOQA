@@ -19,6 +19,10 @@ import { configWhatsapp, enviarImagen, enviarLista, enviarTexto, type Opcion } f
  *     "Problema con mi producto" o "Hablar con una persona" se calla con ese
  *     número por 12 horas: sigue una persona. Si la persona responde desde
  *     la app (con el número conectado en coexistencia), también se calla.
+ *   - Después de "Quiero un producto" o "Tengo un problema", al primer
+ *     mensaje en que el cliente cuenta qué quiere le avisa una vez que lo
+ *     leyeron, para que no quede hablando solo. Si ya respondió una persona,
+ *     no.
  */
 
 const HORAS_SILENCIO = 12;
@@ -191,12 +195,17 @@ type Recibido = {
   textos: Record<string, string>;
 };
 
-/** La persona del negocio le escribió a ese número desde la app: el bot se corre. */
+/**
+ * La persona del negocio le escribió a ese número desde la app: el bot se
+ * corre, y ya no espera nada de ese número (ni fechas ni el aviso de "lo
+ * leímos", que después de una respuesta de verdad quedaría raro).
+ */
 export async function respondioUnaPersona(telefono: string): Promise<void> {
   const { llave } = configWhatsapp();
   const supabase = clienteBase();
   if (!llave || !supabase) return;
   await supabase.rpc("bot_silenciar", { p_llave: llave, p_telefono: telefono, p_horas: HORAS_SILENCIO });
+  await supabase.rpc("bot_esperar", { p_llave: llave, p_telefono: telefono, p_espera: "" });
 }
 
 /** Atiende un mensaje. Nunca lanza: lo que falla queda en el registro. */
@@ -230,6 +239,8 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
       p_resultado: resultado,
     });
   const callarse = () => rpc("bot_silenciar", { p_horas: HORAS_SILENCIO });
+  // Al próximo mensaje (dentro de 15 minutos) le avisa que lo leyeron.
+  const esperarPedido = () => rpc("bot_esperar", { p_espera: "aviso" });
   const decir = async (clave: ClaveTexto, extra = "") => {
     const enviado = await enviarTexto(de, textos[clave] + extra);
     if (!enviado.ok) console.error(`[bot] no pude mandar "${clave}":`, enviado.error);
@@ -246,12 +257,12 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
     if (!enviado.ok) console.error("[bot] no pude mandar el menú:", enviado.error);
   };
   const ofrecerPeriodos = async () => {
+    await rpc("bot_esperar", { p_espera: "" });
     if (!esCliente) {
       await decir("no_cliente");
       await anotar("no-registrado");
       return;
     }
-    await rpc("bot_esperar", { p_espera: "" });
     const enviado = await enviarLista(de, "¿De qué período querés ver los escaneos?", "Elegir período", "Período", PERIODOS);
     if (!enviado.ok) console.error("[bot] no pude mandar los períodos:", enviado.error);
   };
@@ -262,6 +273,7 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
       case "toqa:producto":
         await decir("producto");
         await callarse();
+        await esperarPedido();
         await anotar("producto");
         return;
       case "toqa:estadisticas":
@@ -273,11 +285,14 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
       case "toqa:problema":
         await decir("problema");
         await callarse();
+        await esperarPedido();
         await anotar("problema");
         return;
       case "toqa:persona":
         await decir("persona");
         await callarse();
+        // "En breve te respondemos" ya avisa: no hace falta el otro aviso.
+        await rpc("bot_esperar", { p_espera: "" });
         await anotar("persona");
         return;
       case "toqa:fechas":
@@ -301,11 +316,21 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
   }
   if (esPedidoDeMenu(mensaje.texto)) {
     await rpc("bot_silenciar", { p_horas: 0 });
+    await rpc("bot_esperar", { p_espera: "" });
     await mostrarMenu();
     return;
   }
 
-  // 2. Las fechas, si se las acaba de pedir.
+  // 2. Acaba de pedir un producto o de elegir "tengo un problema", y ahora
+  //    cuenta qué quiere (texto, foto o audio): se le avisa una sola vez
+  //    que lo leyeron. Sigue callado para lo demás.
+  if (r.espera === "aviso") {
+    await rpc("bot_esperar", { p_espera: "" });
+    await decir("recibido");
+    return;
+  }
+
+  // 3. Las fechas, si se las acaba de pedir.
   if (r.espera === "fechas" && mensaje.texto !== null && esCliente) {
     const rango = leerFechas(mensaje.texto, fechaArgentina(new Date()));
     if (rango) {
@@ -320,10 +345,10 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
     return;
   }
 
-  // 3. Callado, o en medio de una charla: no se mete.
+  // 4. Callado, o en medio de una charla: no se mete.
   if (r.silencio || !r.conversacion_nueva) return;
 
-  // 4. Primer mensaje de una conversación nueva, diga lo que diga: el menú.
+  // 5. Primer mensaje de una conversación nueva, diga lo que diga: el menú.
   await mostrarMenu();
 }
 

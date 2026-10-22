@@ -137,6 +137,7 @@ Las variables de entorno están documentadas en `.env.example`.
   - En medio de una charla no se mete. "menú" o "estadísticas" lo llaman siempre.
   - Los textos se editan desde el panel.
   - Si piden hablar con una persona, o si el dueño responde desde el celular, se calla 12 horas con ese número.
+  - Después de "Quiero un producto" o "Tengo un problema", al primer mensaje del cliente le avisa una vez "¡Perfecto! En breve te responderá una persona del equipo 🙌" (pedido del dueño el 22/10), salvo que el dueño ya haya respondido.
 - **Página de inicio:**
   - Pública y permanente. Quien tiene sesión iniciada va directo al panel.
   - Colores: azul `#223f84` y naranja `#fa8632`.

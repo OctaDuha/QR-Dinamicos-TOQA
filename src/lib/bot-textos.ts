@@ -2,7 +2,15 @@
  * Los textos que manda el bot. El dueño los cambia en el panel (WhatsApp →
  * Textos del bot); los que no cambió usan estos.
  */
-export type ClaveTexto = "saludo_cliente" | "saludo" | "producto" | "como" | "problema" | "persona" | "no_cliente";
+export type ClaveTexto =
+  | "saludo_cliente"
+  | "saludo"
+  | "producto"
+  | "como"
+  | "problema"
+  | "recibido"
+  | "persona"
+  | "no_cliente";
 
 export const TEXTOS: { clave: ClaveTexto; titulo: string; ayuda: string; porDefecto: string }[] = [
   {
@@ -20,7 +28,7 @@ export const TEXTOS: { clave: ClaveTexto; titulo: string; ayuda: string; porDefe
   {
     clave: "producto",
     titulo: "🛒 Quiero un producto",
-    ayuda: "Después de este mensaje el bot se calla con ese número y seguís vos.",
+    ayuda: "Cuando el cliente cuenta qué quiere, el bot le avisa que lo leyó y se calla con ese número: seguís vos.",
     porDefecto:
       "¡Qué bueno! 🙌 En TOQA hacemos placas y otros productos con código QR y chip NFC: tus clientes " +
       "escanean o apoyan el celular y llegan a tu Instagram, tu menú, tus reseñas o lo que quieras.\n\n" +
@@ -39,10 +47,18 @@ export const TEXTOS: { clave: ClaveTexto; titulo: string; ayuda: string; porDefe
   {
     clave: "problema",
     titulo: "🔧 Tengo un problema",
-    ayuda: "Solo lo ven los clientes. Después de este mensaje el bot se calla con ese número y seguís vos.",
+    ayuda:
+      "Solo lo ven los clientes. Cuando cuenta qué pasa, el bot le avisa que lo leyó y se calla con ese número: seguís vos.",
     porDefecto:
       "Lamentamos el inconveniente 🙏 Contanos qué pasa (por ejemplo: no abre, abre otra cosa o el NFC no " +
       "responde) y, si podés, mandanos una foto del producto. En breve lo revisamos.",
+  },
+  {
+    clave: "recibido",
+    titulo: "Aviso de que lo leímos",
+    ayuda:
+      "Después de 🛒 Quiero un producto o 🔧 Tengo un problema, cuando el cliente responde. Sale una sola vez, y no sale si ya le respondiste vos.",
+    porDefecto: "¡Perfecto! En breve te responderá una persona del equipo 🙌",
   },
   {
     clave: "persona",

@@ -116,6 +116,7 @@ Para generar diseños directo en Canva. **Requiere Canva Enterprise**: con el pl
 - Al que escribe por primera vez, o después de 12 horas sin hablar, le muestra el menú: 🛒 Quiero un producto · 📊 Estadísticas · ❓ ¿Cómo funciona TOQA? · 🔧 Tengo un problema · 💬 Hablar con nosotros.
 - Estadísticas y "Tengo un problema" solo les aparecen a los clientes cargados.
 - En medio de una charla no se mete. Escribiendo "menú" o "estadísticas" se lo llama cuando se quiera.
+- Después de 🛒 Quiero un producto o 🔧 Tengo un problema, cuando el cliente cuenta qué necesita, le responde una sola vez "¡Perfecto! En breve te responderá una persona del equipo 🙌". Si ya le respondiste vos, no lo manda.
 - Si piden hablar con una persona, o si respondés vos desde el celular, se calla 12 horas con ese número.
 
 ---
