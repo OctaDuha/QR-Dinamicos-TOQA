@@ -106,7 +106,7 @@ Las variables de entorno están documentadas en `.env.example`.
 
 - **Teléfono del negocio en Meta:** el portfolio muestra +54 11 4132-2221, que salió del registro público y no es de TOQA. Hay que corregirlo **después** de que aprueben las dos revisiones, porque editar datos del negocio verificado puede pedir verificar de nuevo.
 - **Nombres de usuario de WhatsApp (BSUID):** WhatsApp va a permitir chatear con un nombre de usuario sin mostrar el número. En ese caso llega un identificador (BSUID) en vez del teléfono. El bot reconoce a los clientes por teléfono (`bot_telefono_comparable`), así que cuando esté disponible en Argentina hay que sumar el BSUID. Además, reservar **@toqa** una vez conectado el número real.
-- Aviso amarillo "WhatsApp needs more information" en el portfolio (24/10): todavía no se sabe qué pide.
+- Aviso amarillo "WhatsApp needs more information" en el portfolio (24/10): **resuelto, no hay que hacer nada.** Es la invitación de Meta a subir el límite de conversaciones **iniciadas por la empresa** (250 por día; para pasar a 2000 hay que iniciar conversaciones de calidad). TOQA no inicia conversaciones: el bot solo responde a quien escribe primero, y eso no cuenta para ese límite.
 
 - **Fotos reales de productos** para la página de inicio. El dueño las va a mandar; hoy hay ilustraciones.
 - **Domicilio fiscal en ARCA:** el dueño se mudó y el domicilio fiscal quedó viejo. Actualizarlo es trámite suyo, y conviene hacerlo **después** de que Meta termine las revisiones, para no generar diferencias mientras revisan.
