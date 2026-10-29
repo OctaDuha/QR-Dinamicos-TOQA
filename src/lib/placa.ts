@@ -191,8 +191,6 @@ function drawQr(
   // El usuario piensa desde arriba; el PDF mide desde abajo.
   const originY = marco.top - layout.yMm * MM;
 
-  drawNumber(page, numberLabel, layout, marco, font);
-
   if (layout.whiteBackdrop) {
     const box = side + margin * 2;
     page.drawRectangle({
@@ -203,6 +201,12 @@ function drawQr(
       color: rgb(1, 1, 1),
     });
   }
+
+  // El número va encima del recuadro blanco del QR y debajo de los módulos.
+  // Si va antes, el margen blanco del QR le come la parte de arriba cuando
+  // el diseño lo pone pegado (pasó con los vinilos de Google). Y los
+  // módulos van últimos para que el número nunca tape el QR.
+  drawNumber(page, numberLabel, layout, marco, font);
 
   for (let row = 0; row < modules; row++) {
     let runStart = -1;
