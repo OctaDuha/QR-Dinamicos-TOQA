@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { listDesigns } from "@/lib/placa-designs";
+import { disenosQueCoinciden, listDesigns } from "@/lib/placa-designs";
 import { sesionActual } from "@/lib/roles";
 import { siteUrl } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
@@ -29,6 +29,9 @@ export default async function DashboardPage({
   const sesion = await sesionActual();
   const puedeBorrar = sesion?.rol === "dueno";
 
+  // Los diseños van primero: el buscador también encuentra por diseño y medida.
+  const designs = await listDesigns(supabase);
+
   let listQuery = supabase
     .from("qr_codes_with_stats")
     .select("*", { count: "exact" })
@@ -37,15 +40,22 @@ export default async function DashboardPage({
 
   if (query) {
     const asId = Number(query.replace(/^#/, ""));
-    listQuery = Number.isInteger(asId) && asId > 0
-      ? listQuery.eq("id", asId)
-      : listQuery.or(`label.ilike.%${query}%,destination_url.ilike.%${query}%`);
+    if (Number.isInteger(asId) && asId > 0) {
+      listQuery = listQuery.eq("id", asId);
+    } else {
+      // Entre comillas, para que una coma o un paréntesis en lo que se
+      // escribió no rompa el filtro.
+      const texto = `"%${query.replace(/["\\]/g, "")}%"`;
+      const filtros = [`label.ilike.${texto}`, `destination_url.ilike.${texto}`];
+      const ids = disenosQueCoinciden(designs, query);
+      if (ids.length > 0) filtros.push(`design_id.in.(${ids.join(",")})`);
+      listQuery = listQuery.or(filtros.join(","));
+    }
   }
 
-  const [{ data, count, error }, { count: totalScans }, designs] = await Promise.all([
+  const [{ data, count, error }, { count: totalScans }] = await Promise.all([
     listQuery,
     supabase.from("scans").select("id", { count: "exact", head: true }),
-    listDesigns(supabase),
   ]);
 
   const codes = (data ?? []) as QrCodeWithStats[];
@@ -80,7 +90,7 @@ export default async function DashboardPage({
           name="q"
           defaultValue={query}
           className="input max-w-sm"
-          placeholder="Buscar por número, etiqueta o destino…"
+          placeholder="Buscar por número, etiqueta, destino o diseño…"
         />
         <button type="submit" className="btn btn-secondary">
           Buscar
@@ -107,7 +117,7 @@ export default async function DashboardPage({
           </p>
           <p className="mt-1 text-sm text-ink-3">
             {query
-              ? "Probá con otro número o etiqueta."
+              ? "Probá con otro número, etiqueta o diseño."
               : "Creá un lote nuevo o importá el CSV de la herramienta vieja."}
           </p>
         </div>

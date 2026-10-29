@@ -37,6 +37,7 @@ Arriba están las secciones: **QRs · Clientes · Placas · Canva · Historial �
 ### QRs: la lista de todos los productos
 
 - La tabla tiene el número, la etiqueta, el destino, el cliente y el total de escaneos, con buscador y páginas.
+- **Buscador:** encuentra por número, etiqueta, destino o **diseño y medida**. Las palabras pueden ir en cualquier orden, y no importan las tildes ni las mayúsculas: "google 10x10" encuentra todos los del diseño "Google Reseñas VINILO 10x10", y "10x15" encuentra todas las placas de esa medida.
 - **Nuevo QR / lote**: crea uno o muchos números nuevos de una vez. Se numeran solos, a continuación del último. Los números **nunca se reutilizan**, aunque se borre uno.
 - **Importar CSV**: carga muchos de una vez desde una planilla. También sirve para reconstruir todo desde una copia de respaldo.
 - **Exportar ZIP (PNG + CSV)**: baja la imagen de cada QR y la planilla completa.

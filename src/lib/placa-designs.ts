@@ -88,3 +88,41 @@ export async function designNames(supabase: SupabaseClient): Promise<Map<number,
   const { data } = await supabase.from("placa_designs").select("id, name");
   return new Map((data ?? []).map((row) => [(row as { id: number }).id, (row as { name: string }).name]));
 }
+
+/** Sin tildes, en minúsculas y con las medidas juntas: "10 × 10" → "10x10". */
+function paraBuscar(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/(\d+(?:[.,]\d+)?)\s*[x×*]\s*(\d+(?:[.,]\d+)?)/g, "$1x$2")
+    .replace(/,/g, ".")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Los diseños que coinciden con lo que se escribió en el buscador de QRs:
+ * cada palabra tiene que aparecer en el nombre o en la medida, en cualquier
+ * orden. Así "google 10x10" encuentra "Google Reseñas VINILO 10x10", y
+ * "10x15" encuentra las placas de esa medida aunque el nombre no la diga.
+ */
+export function disenosQueCoinciden(
+  designs: Pick<DesignSummary, "id" | "name" | "page_width_mm" | "page_height_mm">[],
+  busqueda: string,
+): number[] {
+  const palabras = paraBuscar(busqueda).split(" ").filter(Boolean);
+  if (palabras.length === 0) return [];
+
+  return designs
+    .filter((d) => {
+      const medidas =
+        d.page_width_mm && d.page_height_mm
+          ? `${+(d.page_width_mm / 10).toFixed(1)}x${+(d.page_height_mm / 10).toFixed(1)} ` +
+            `${Math.round(d.page_width_mm)}x${Math.round(d.page_height_mm)}`
+          : "";
+      const texto = paraBuscar(`${d.name} ${medidas}`);
+      return palabras.every((palabra) => texto.includes(palabra));
+    })
+    .map((d) => d.id);
+}
