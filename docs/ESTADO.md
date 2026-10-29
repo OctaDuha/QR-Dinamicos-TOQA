@@ -70,8 +70,8 @@ Las variables de entorno están documentadas en `.env.example`.
 | Verificación del negocio | ✅ 16/10 |
 | Proveedor de tecnología (marcado) | ✅ |
 | Pruebas de los permisos (llamadas a la API) | ✅ Valen 30 días: hay que enviar y aprobar antes de mediados de noviembre o rehacerlas con el explorador (`GET 2110399713184006/phone_numbers` con permiso `whatsapp_business_management`). |
-| Verificación de acceso | ⏳ Enviada el 17/10. Plazo de unos 5 días hábiles. |
-| Revisión de la app | ⏳ Enviada el 18/10. Plazo de hasta 20 días. |
+| Verificación de acceso | ✅ Aprobada (avisado el 29/10). Se había enviado el 17/10. |
+| Revisión de la app | ⏳ Enviada el 18/10. Plazo de hasta 20 días (vence alrededor del 7/11). Hay un recordatorio agendado en la sesión para el 7/11. |
 | Publicar la app | Pendiente de las dos aprobaciones. |
 | Conectar el número real | Pendiente. El botón ya está en Panel → WhatsApp. |
 
