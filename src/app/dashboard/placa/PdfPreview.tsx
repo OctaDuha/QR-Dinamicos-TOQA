@@ -10,9 +10,21 @@ import { useEffect, useRef, useState } from "react";
  */
 /**
  * `circulo`: en los vinilos circulares, el radio del corte como fracción de
- * la hoja. El preview muestra solo el círculo, como queda una vez cortado.
+ * la hoja. `margen`: en las placas, cuánto de la hoja queda fuera del corte
+ * de cada lado (fracción del ancho y del alto). El preview muestra la pieza
+ * como queda una vez cortada.
  */
-export function PdfPreview({ url, page, circulo }: { url: string; page: number; circulo?: number }) {
+export function PdfPreview({
+  url,
+  page,
+  circulo,
+  margen,
+}: {
+  url: string;
+  page: number;
+  circulo?: number;
+  margen?: { x: number; y: number };
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"cargando" | "listo" | "error">("cargando");
@@ -86,6 +98,9 @@ export function PdfPreview({ url, page, circulo }: { url: string; page: number; 
           display: state === "listo" ? "block" : "none",
           // circle() en % se mide sobre el lado de la hoja cuadrada.
           ...(circulo ? { clipPath: `circle(${(circulo * 50).toFixed(3)}% at 50% 50%)` } : {}),
+          ...(margen
+            ? { clipPath: `inset(${(margen.y * 100).toFixed(3)}% ${(margen.x * 100).toFixed(3)}%)` }
+            : {}),
         }}
       />
       {state !== "listo" ? (

@@ -75,10 +75,13 @@ Arriba están las secciones: **QRs · Clientes · Placas · Canva · Historial �
 ### Placas: hacer los archivos para la imprenta
 
 - **Antes de imprimir** (el semáforo de arriba): revisa que el dominio impreso sea el definitivo, que exista el destino de respaldo y que haya diseños cargados. En verde dice "Listo para imprimir".
-- **Agregar un diseño**:
+- **Agregar un diseño** (exportalo de Canva como **"PDF para imprimir"**, para que los logos salgan nítidos):
   - Se sube el PDF exportado de Canva **con un QR y un número de ejemplo puestos**. La página detecta sola dónde van y después los reemplaza por los reales.
   - Si Canva exportó en píxeles (con una medida gigante), la página ofrece corregir la medida.
+- **Aplanar para imprenta** (tildado de entrada): al subir el diseño, la página lo convierte en una imagen de 400 dpi con su medida exacta. Así la imprenta no necesita las tipografías de Canva, que sus máquinas no reconocen. El QR y el número se agregan aparte, en vector, y el número va en curvas.
 - **Tus diseños**: para elegir uno y ajustar a mano la posición y el tamaño del QR y del número, con vista previa.
+- **Reemplazar el PDF del diseño**: dentro de cada diseño, para cambiar el fondo por una versión nueva (por ejemplo, exportada otra vez desde Canva). Mantiene los números ya asignados y la posición del QR y del número. Después, revisá la vista previa.
+- **Placas de 10×15**: siguen midiendo 10×15. El PDF lleva **3 mm en blanco alrededor** (la hoja mide 106 × 156 mm) y la **línea de corte CutContour** en el borde de la placa.
 - **Vinilos circulares**: todo diseño **cuadrado** (los vinilos de 10×10) sale **redondo, de 10 cm**, con una franja blanca de 1 mm y la línea de corte **CutContour** para el plotter. El sistema lo ajusta solo. Los rectangulares (10×15) salen tal cual.
 - **Generar placas**:
   - **Nuevas**: cantidad, diseño y destino. Crea los números y baja el PDF de una.

@@ -84,12 +84,16 @@ A printed plaque can't be corrected, so every URL form that was ever printed kee
   - the design is scaled so its colour ring ends 1 mm inside a cut equal to the page side;
   - a `CutContour` spot-colour cut line;
   - a 2 mm sheet margin.
-- Rectangular plaques are left untouched.
+- Rectangular plaques (10×15) keep their size: the sheet gets a 3 mm white margin (`DEMASIA_MM`) and a rectangular `CutContour` line at the design edge.
+- The plaque number is drawn as glyph outlines (Noto Sans Bold via `@pdf-lib/fontkit`), never as text, because the printer's machines don't recognise fonts. Output PDFs must contain no fonts.
+- Uploaded or replaced backgrounds are flattened in the browser by default (`src/lib/aplanar-pdf.ts`): each page becomes a 400 dpi JPEG at the design's exact size, so no Canva fonts reach the printer. Flattening can't sharpen low-res logos: the source must be Canva's "PDF para imprimir".
+- A design's background can be replaced in place (`POST /api/placa/designs/[id]/file`), keeping its id, layout and the numbers already tied to it.
+- `placa-layout.ts` holds the layout type and helpers that the browser uses. `placa.ts` reads fonts from disk, so it is server-only.
 - One PDF per plaque is the ZIP option.
 
 ### Statistics images
 
-`src/lib/reporte-imagen.tsx` renders the PNG report with `next/og`, using fonts read from `src/assets/fuentes`. Every route that renders it must be listed in `outputFileTracingIncludes` in `next.config.ts`.
+`src/lib/reporte-imagen.tsx` renders the PNG report with `next/og`, using fonts read from `src/assets/fuentes`. Every route that renders it, or that renders plaques (the number outlines read the same fonts), must be listed in `outputFileTracingIncludes` in `next.config.ts`.
 
 ### Gotchas
 

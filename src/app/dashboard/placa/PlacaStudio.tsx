@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { DPI_APLANADO, aplanarPdf } from "@/lib/aplanar-pdf";
 import { detectarCirculo } from "@/lib/detect-circulo";
 import { detectQrInPdf } from "@/lib/detect-qr";
-import { FRANJA_MM, SANGRADO_MM, esCircular, escalaVinilo, suggestedSizeMm } from "@/lib/page-size";
-import { numberDefaults, type PlacaLayout } from "@/lib/placa";
+import { DEMASIA_MM, FRANJA_MM, SANGRADO_MM, esCircular, escalaVinilo, suggestedSizeMm } from "@/lib/page-size";
+import { numberDefaults, type PlacaLayout } from "@/lib/placa-layout";
 
 import { PdfPreview } from "./PdfPreview";
 
@@ -123,6 +124,7 @@ export function PlacaStudio({
           setNote={setNote}
           onChange={(layout) => patchDesign(selected.id, { layout })}
           onRenamed={(name) => patchDesign(selected.id, { name })}
+          onFondo={(patch) => patchDesign(selected.id, patch)}
           puedeBorrar={puedeBorrar}
           onDeleted={() => {
             setDesigns((list) => list.filter((d) => d.id !== selected.id));
@@ -160,6 +162,7 @@ function NewDesign({
   const [medida, setMedida] = useState<{ w: number; h: number } | null>(null);
   const [objetivo, setObjetivo] = useState<{ w: string; h: string }>({ w: "", h: "" });
   const [aviso, setAviso] = useState<string | null>(null);
+  const [aplanar, setAplanar] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
   /** Al elegir el archivo miramos cuánto mide, antes de subir nada. */
@@ -203,21 +206,42 @@ function NewDesign({
     }
 
     setBusy(true);
-    setNote({ kind: "info", text: "Subiendo el diseño…" });
 
     try {
+      let subir: Blob = file;
+      if (aplanar) {
+        setNote({ kind: "info", text: "Aplanando el diseño para imprenta…" });
+        // Se aplana ya con la medida final: si Canva exportó en píxeles, la
+        // imagen sale directamente en milímetros de verdad.
+        const final =
+          objetivo.w && objetivo.h
+            ? { widthMm: Number(objetivo.w), heightMm: Number(objetivo.h) }
+            : medida
+              ? { widthMm: medida.w, heightMm: medida.h }
+              : null;
+        subir = new Blob([(await aplanarPdf(await file.arrayBuffer(), final)) as BlobPart], { type: "application/pdf" });
+      }
+      setNote({ kind: "info", text: "Subiendo el diseño…" });
+
       const body = new FormData();
       body.append("name", name.trim());
-      body.append("file", file);
+      body.append("file", subir, file.name);
       if (objetivo.w && objetivo.h) {
         body.append("width_mm", objetivo.w);
         body.append("height_mm", objetivo.h);
       }
 
       const response = await fetch("/api/placa/designs", { method: "POST", body });
-      const payload = await response.json();
+      const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setNote({ kind: "error", text: payload.error ?? "No pude guardar el diseño." });
+        setNote({
+          kind: "error",
+          text:
+            payload.error ??
+            (response.status === 413
+              ? "El PDF es muy pesado para subirlo. Tildá “Aplanar para imprenta” y probá de nuevo."
+              : "No pude guardar el diseño."),
+        });
         return;
       }
 
@@ -303,9 +327,9 @@ function NewDesign({
     <div className="card p-5">
       <h2 className="text-sm font-semibold">Agregar un diseño</h2>
       <p className="mt-1 text-sm text-ink-2">
-        Exportá el diseño de Canva en PDF <strong>con el QR y el número de ejemplo puestos</strong>:
-        los uso para saber exactamente dónde van, y después los reemplazo por los reales de cada
-        placa.
+        Exportá el diseño de Canva como <strong>“PDF para imprimir”</strong>, con el QR y el número
+        de ejemplo puestos: los uso para saber exactamente dónde van, y después los reemplazo por los
+        reales de cada placa.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1.2fr_auto] sm:items-end">
@@ -338,6 +362,8 @@ function NewDesign({
           {busy ? "Procesando…" : "Agregar"}
         </button>
       </div>
+
+      <CasillaAplanar valor={aplanar} cambiar={setAplanar} id="aplanar-nuevo" />
 
       {medida ? (
         <p className="mt-3 text-sm text-ink-2">
@@ -399,6 +425,7 @@ function DesignEditor({
   setNote,
   onChange,
   onRenamed,
+  onFondo,
   onDeleted,
   puedeBorrar,
 }: {
@@ -408,6 +435,7 @@ function DesignEditor({
   setNote: (n: Note) => void;
   onChange: (layout: PlacaLayout) => void;
   onRenamed: (name: string) => void;
+  onFondo: (patch: Partial<Design>) => void;
   onDeleted: () => void;
   puedeBorrar: boolean;
 }) {
@@ -417,6 +445,8 @@ function DesignEditor({
   const [name, setName] = useState(design.name);
   const circular = esCircular(design.page_width_mm, design.page_height_mm);
   const ladoMm = design.page_width_mm ?? 100;
+  const reemplazoRef = useRef<HTMLInputElement>(null);
+  const [aplanarReemplazo, setAplanarReemplazo] = useState(true);
 
   // Cuando la detección automática guarda una posición nueva, los campos
   // tienen que mostrarla: si no, seguirían con los valores por defecto.
@@ -517,6 +547,75 @@ function DesignEditor({
     }
   };
 
+  /** Cambia el PDF de fondo por una versión nueva del mismo diseño. */
+  const reemplazar = async () => {
+    const file = reemplazoRef.current?.files?.[0];
+    if (!file) {
+      setNote({ kind: "error", text: "Elegí el PDF nuevo del diseño." });
+      return;
+    }
+    setBusy(true);
+    try {
+      let subir: Blob = file;
+      if (aplanarReemplazo) {
+        setNote({ kind: "info", text: "Aplanando el diseño para imprenta…" });
+        const medida =
+          design.page_width_mm && design.page_height_mm
+            ? { widthMm: design.page_width_mm, heightMm: design.page_height_mm }
+            : null;
+        subir = new Blob([(await aplanarPdf(await file.arrayBuffer(), medida)) as BlobPart], { type: "application/pdf" });
+      }
+      setNote({ kind: "info", text: "Subiendo el PDF nuevo…" });
+      const body = new FormData();
+      body.append("file", subir, file.name);
+      const response = await fetch(`/api/placa/designs/${design.id}/file`, { method: "POST", body });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setNote({
+          kind: "error",
+          text:
+            payload.error ??
+            (response.status === 413
+              ? "El PDF es muy pesado para subirlo. Tildá “Aplanar para imprenta” y probá de nuevo."
+              : "No pude reemplazar el PDF."),
+        });
+        return;
+      }
+      onFondo({ background_name: payload.background_name, page_count: payload.page_count });
+
+      // En los vinilos se vuelve a medir el círculo sobre el PDF nuevo.
+      if (circular) {
+        const guardado = await fetch(`/api/placa/designs/${design.id}/file`);
+        const corte = guardado.ok
+          ? await detectarCirculo(await guardado.arrayBuffer(), design.layout.qrPage).catch(() => null)
+          : null;
+        if (corte) {
+          const conCorte: PlacaLayout = { ...design.layout, circuloMm: corte };
+          await fetch(`/api/placa/designs/${design.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ layout: conCorte }),
+          });
+          onChange(conCorte);
+        }
+      }
+
+      if (reemplazoRef.current) reemplazoRef.current.value = "";
+      setNonce((n) => n + 1);
+      setNote({
+        kind: "ok",
+        text:
+          `Listo: “${design.name}” ya usa el PDF nuevo.${payload.ajustado ? " Lo ajusté a la medida del diseño." : ""} ` +
+          "Los números ya asignados y la posición del QR siguen igual. Revisá la vista previa: si algo quedó corrido, " +
+          "tocá “Detectar el QR automáticamente”.",
+      });
+    } catch (error) {
+      setNote({ kind: "error", text: `Algo falló: ${(error as Error).message}` });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const remove = async () => {
     if (!window.confirm(`¿Borrar el diseño “${design.name}”?\n\nLos QR ya creados no se borran, sólo quedan sin diseño asignado.`)) {
       return;
@@ -550,6 +649,27 @@ function DesignEditor({
           {design.page_height_mm} mm
         </p>
       </div>
+
+      <details className="mt-4 rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
+        <summary className="cursor-pointer text-sm font-medium">Reemplazar el PDF del diseño</summary>
+        <p className="mt-2 text-xs text-ink-3">
+          Para cambiar el fondo por una versión nueva del mismo diseño, por ejemplo exportada de Canva como
+          “PDF para imprimir”. Los números ya asignados y la posición del QR y del número se mantienen.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            ref={reemplazoRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            aria-label="PDF nuevo del diseño"
+            className="input max-w-sm file:mr-3 file:rounded-md file:border-0 file:bg-[var(--surface)] file:px-3 file:py-1 file:text-sm file:text-[var(--ink-1)]"
+          />
+          <button type="button" className="btn btn-secondary" onClick={reemplazar} disabled={busy}>
+            Reemplazar
+          </button>
+        </div>
+        <CasillaAplanar valor={aplanarReemplazo} cambiar={setAplanarReemplazo} id={`aplanar-${design.id}`} />
+      </details>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[280px_1fr]">
         <div className="flex flex-col gap-3">
@@ -688,10 +808,42 @@ function DesignEditor({
             page={debounced.qrPage}
             // Un pelo adentro del corte, para no mostrar la línea magenta.
             circulo={circular ? (ladoMm - 0.3) / (ladoMm + 2 * SANGRADO_MM) : undefined}
+            margen={
+              circular
+                ? undefined
+                : {
+                    x: (DEMASIA_MM + 0.6) / ((design.page_width_mm ?? 100) + 2 * DEMASIA_MM),
+                    y: (DEMASIA_MM + 0.6) / ((design.page_height_mm ?? 150) + 2 * DEMASIA_MM),
+                  }
+            }
           />
-          {circular ? <AvisoBorde layout={layout} lado={ladoMm} /> : null}
+          {circular ? (
+            <AvisoBorde layout={layout} lado={ladoMm} />
+          ) : (
+            <p className="text-xs text-ink-3">
+              Así queda la placa una vez cortada. El PDF para la imprenta lleva {DEMASIA_MM} mm en blanco alrededor y
+              la línea de corte (CutContour).
+            </p>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** La casilla para aplanar el PDF al subirlo, con su explicación. */
+function CasillaAplanar({ valor, cambiar, id }: { valor: boolean; cambiar: (v: boolean) => void; id: string }) {
+  return (
+    <div className="mt-3">
+      <label className="flex items-center gap-2 text-sm" htmlFor={id}>
+        <input id={id} type="checkbox" checked={valor} onChange={(event) => cambiar(event.target.checked)} />
+        Aplanar para imprenta (recomendado)
+      </label>
+      <p className="mt-1 text-xs text-ink-3">
+        Convierte el diseño en una imagen de {DPI_APLANADO} dpi con su medida exacta: la imprenta ya no necesita
+        las tipografías de Canva. El QR y el número se agregan aparte, en vector. Para que los logos salgan nítidos,
+        exportá de Canva como “PDF para imprimir”.
+      </p>
     </div>
   );
 }

@@ -582,6 +582,26 @@ offset (por ejemplo `y = 8,67 pt`). Si se incrusta sin declarar el bounding box,
 el fondo queda corrido esos milímetros respecto del QR y del número. Por eso las
 páginas se incrustan con su caja explícita.
 
+### Para la imprenta: sin tipografías, con demasía
+
+Pedidos de la imprenta (octubre 2026):
+
+- **Sin tipografías.** El número de cada placa se dibuja con los contornos
+  de Noto Sans Bold (`@pdf-lib/fontkit`), no como texto. Los fondos de Canva
+  se **aplanan** en el navegador al subirlos (casilla "Aplanar para
+  imprenta", tildada de entrada, `src/lib/aplanar-pdf.ts`): cada página pasa
+  a ser un JPEG de 400 dpi con la medida exacta. Aplanar no mejora un logo
+  borroso: el diseño tiene que salir de Canva como **"PDF para imprimir"**.
+- **Reemplazar el fondo.** Cada diseño tiene "Reemplazar el PDF del diseño"
+  (`POST /api/placa/designs/[id]/file`). El diseño sigue siendo el mismo, así
+  que los números ya atados a él se pueden volver a generar. Si el PDF nuevo
+  mide distinto, se ajusta a la medida del diseño.
+- **Demasía en las placas.** Las rectangulares (10×15) conservan su medida.
+  La hoja suma 3 mm en blanco por lado (106 × 156 mm) y la línea de corte
+  `CutContour` va en el borde del diseño.
+- El número va encima del recuadro blanco del QR. Si va antes, el margen
+  blanco le tapa la parte de arriba cuando el diseño lo pone pegado.
+
 ### Vinilos circulares (diseños cuadrados)
 
 Un diseño cuadrado (los vinilos de 10×10) se imprime redondo; los

@@ -1,6 +1,6 @@
 "use client";
 
-import type { PlacaLayout } from "./placa";
+import type { PlacaLayout } from "./placa-layout";
 
 /**
  * Encuentra el QR de ejemplo dentro del PDF del diseno y devuelve donde

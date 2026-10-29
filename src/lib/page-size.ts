@@ -56,3 +56,9 @@ export function escalaVinilo(ladoMm: number, circuloMm: number | null | undefine
 export function esCircular(widthMm: number | null | undefined, heightMm: number | null | undefined) {
   return Boolean(widthMm && heightMm && Math.abs(widthMm - heightMm) <= 0.5);
 }
+
+/**
+ * Margen en blanco alrededor de las placas rectangulares (las de 10x15): la
+ * hoja mide 3 mm más por lado y la línea de corte va en el borde del diseño.
+ */
+export const DEMASIA_MM = 3;

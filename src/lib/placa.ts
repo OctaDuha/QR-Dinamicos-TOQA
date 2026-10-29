@@ -1,3 +1,8 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
+import * as fontkitModulo from "@pdf-lib/fontkit";
+import type { Font } from "@pdf-lib/fontkit";
 import {
   PDFDict,
   PDFDocument,
@@ -5,28 +10,35 @@ import {
   PDFNumber,
   PDFOperator,
   PDFOperatorNames,
-  StandardFonts,
   appendBezierCurve,
+  appendQuadraticCurve,
   clip,
   closePath,
+  concatTransformationMatrix,
   endPath,
+  fill,
+  lineTo,
   moveTo,
   popGraphicsState,
   pushGraphicsState,
+  rectangle,
   rgb,
+  setFillingRgbColor,
   setGraphicsState,
   setLineWidth,
   stroke,
   type PDFEmbeddedPage,
-  type PDFFont,
+  type PDFOperator as Operador,
   type PDFPage,
   type PDFRef,
 } from "pdf-lib";
 import QRCode from "qrcode";
 
-import { FRANJA_MM, SANGRADO_MM, esCircular, escalaVinilo } from "./page-size";
+import { DEMASIA_MM, FRANJA_MM, SANGRADO_MM, esCircular, escalaVinilo } from "./page-size";
+import type { PlacaLayout } from "./placa-layout";
 
 export { suggestedSizeMm } from "./page-size";
+export { DEFAULT_LAYOUT, normalizeLayout, numberDefaults, type PlacaLayout } from "./placa-layout";
 
 import { formatQrCode, qrTargetUrl } from "./qr";
 
@@ -40,127 +52,24 @@ import { formatQrCode, qrTargetUrl } from "./qr";
 
 export const MM = 72 / 25.4; // milimetros -> puntos PDF
 
-export type PlacaLayout = {
-  /** Pagina del fondo donde va el QR (1 = primera). */
-  qrPage: number;
-  /**
-   * Esquina superior izquierda del AREA DE MODULOS (la parte negra visible),
-   * en mm desde el borde superior izquierdo de la pagina.
-   */
-  xMm: number;
-  yMm: number;
-  /**
-   * Lado del area de modulos, en mm. Es lo que se mide con una regla sobre la
-   * placa impresa. A proposito NO incluye el margen blanco: asi dos QR de
-   * versiones distintas (mas o menos modulos) ocupan el mismo espacio visible.
-   */
-  sizeMm: number;
-  /** Margen de silencio, en modulos, dibujado POR FUERA del area de modulos. */
-  quietModules: number;
-  /** Recuadro blanco detras del QR, por si el fondo no es liso ahi. */
-  whiteBackdrop: boolean;
-  /** Imprimir el numero (0001) para poder identificar la placa fisica. */
-  showNumber: boolean;
-  /** Altura del numero en mm. */
-  numberSizeMm: number;
-  /**
-   * Posicion propia del numero: centro horizontal y borde superior del texto,
-   * en mm desde arriba a la izquierda de la pagina. Tiene coordenadas propias
-   * y no cuelga del QR porque "debajo del QR" no siempre esta libre: en varias
-   * placas ahi ya hay texto del diseno.
-   */
-  numberXMm: number;
-  numberYMm: number;
-  /** Recuadro blanco detras del numero, para que se lea sobre cualquier fondo. */
-  numberBackdrop: boolean;
-  /**
-   * Solo disenos cuadrados (vinilos circulares): diametro del circulo de color
-   * dibujado en el diseno, hasta el borde de afuera del aro, en mm. Se mide al
-   * cargar el diseno y sirve para llevarlo al tamano justo; null = sin medir.
-   */
-  circuloMm: number | null;
-};
+/**
+ * La tipografia del numero (Noto Sans Bold, la misma del reporte). No se
+ * incrusta como tipografia: se leen las formas de cada cifra y se dibujan
+ * como curvas, porque las maquinas de la imprenta no reconocen tipografias.
+ */
+// El paquete se publica como CommonJS y como módulo con export por defecto:
+// según cómo lo empaquete Next llega de una forma o de la otra.
+const fontkit =
+  (fontkitModulo as unknown as { default?: typeof fontkitModulo }).default ?? fontkitModulo;
 
-export const DEFAULT_LAYOUT: PlacaLayout = {
-  qrPage: 1,
-  xMm: 30,
-  yMm: 120,
-  sizeMm: 40,
-  quietModules: 2,
-  whiteBackdrop: true,
-  showNumber: true,
-  numberSizeMm: 5,
-  numberXMm: 50,
-  numberYMm: 165,
-  numberBackdrop: true,
-  circuloMm: null,
-};
-
-export function normalizeLayout(raw: unknown): PlacaLayout {
-  const value = (raw ?? {}) as Partial<PlacaLayout>;
-  const num = (input: unknown, fallback: number, min: number, max: number) => {
-    const parsed = Number(input);
-    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
-  };
-
-  return {
-    qrPage: Math.round(num(value.qrPage, DEFAULT_LAYOUT.qrPage, 1, 50)),
-    xMm: num(value.xMm, DEFAULT_LAYOUT.xMm, -500, 2000),
-    yMm: num(value.yMm, DEFAULT_LAYOUT.yMm, -500, 2000),
-    sizeMm: num(value.sizeMm, DEFAULT_LAYOUT.sizeMm, 5, 500),
-    quietModules: Math.round(num(value.quietModules, DEFAULT_LAYOUT.quietModules, 0, 8)),
-    whiteBackdrop: value.whiteBackdrop !== false,
-    showNumber: value.showNumber !== false,
-    numberSizeMm: num(value.numberSizeMm, DEFAULT_LAYOUT.numberSizeMm, 1, 50),
-    numberXMm: num(value.numberXMm, DEFAULT_LAYOUT.numberXMm, -500, 2000),
-    numberYMm: num(value.numberYMm, DEFAULT_LAYOUT.numberYMm, -500, 2000),
-    numberBackdrop: value.numberBackdrop !== false,
-    circuloMm:
-      value.circuloMm == null || !Number.isFinite(Number(value.circuloMm))
-        ? null
-        : num(value.circuloMm, 0, 10, 500),
-  };
+let tipografia: Promise<Font> | null = null;
+function cargarTipografia(): Promise<Font> {
+  tipografia ??= readFile(join(process.cwd(), "src/assets/fuentes/noto-sans-700.woff")).then((datos) =>
+    fontkit.create(datos),
+  );
+  return tipografia;
 }
 
-/**
- * Numero por defecto: centrado justo debajo del QR y proporcional a el. Es un
- * punto de partida razonable; si ahi el diseno ya tiene algo, se mueve con el
- * preview a la vista.
- */
-export function numberDefaults(
-  xMm: number,
-  yMm: number,
-  sizeMm: number,
-  freeBandYMm?: number | null,
-  sample?: { xMm: number; yMm: number; sizeMm: number } | null,
-) {
-  const redondo = (v: number) => Math.round(v * 10) / 10;
-
-  // 1) Si el diseno ya trae un numero de ejemplo, el nuestro va justo ahi:
-  //    queda donde el diseno lo previo y lo tapa el recuadro blanco.
-  if (sample) {
-    return {
-      numberSizeMm: redondo(sample.sizeMm),
-      numberXMm: redondo(sample.xMm),
-      numberYMm: redondo(sample.yMm),
-    };
-  }
-
-  // 2) Si no, la primera franja blanca debajo del QR.
-  // 3) Y si tampoco hay, pegado al QR, para que el usuario lo corra.
-  return {
-    numberSizeMm: redondo(sizeMm * 0.13),
-    numberXMm: redondo(xMm + sizeMm / 2),
-    numberYMm:
-      freeBandYMm != null ? redondo(freeBandYMm) : redondo(yMm + sizeMm + sizeMm * 0.08),
-  };
-}
-
-/**
- * Dibuja el QR como rectangulos vectoriales.
- * Une modulos negros contiguos en una sola barra horizontal: un QR de 29x29
- * pasa de ~450 rectangulos a ~120, y eso se multiplica por cada placa del lote.
- */
 /**
  * Donde cae el fondo en la hoja, en puntos PDF: borde izquierdo y borde
  * superior. Las coordenadas del diseno se miden desde ahi. En las placas es
@@ -169,13 +78,18 @@ export function numberDefaults(
  */
 type Marco = { left: number; top: number };
 
+/**
+ * Dibuja el QR como rectangulos vectoriales.
+ * Une modulos negros contiguos en una sola barra horizontal: un QR de 29x29
+ * pasa de ~450 rectangulos a ~120, y eso se multiplica por cada placa del lote.
+ */
 function drawQr(
   page: PDFPage,
   text: string,
   layout: PlacaLayout,
   marco: Marco,
   numberLabel: string,
-  font: PDFFont,
+  font: Font,
 ) {
   const qr = QRCode.create(text, { errorCorrectionLevel: "M" });
   const modules = qr.modules.size;
@@ -230,18 +144,20 @@ function drawQr(
   }
 }
 
-/** El numero identificatorio de la placa, en su propia posicion. */
+/** El numero identificatorio de la placa, en su propia posicion, en curvas. */
 function drawNumber(
   page: PDFPage,
   label: string,
   layout: PlacaLayout,
   marco: Marco,
-  font: PDFFont,
+  font: Font,
 ) {
   if (!layout.showNumber) return;
 
   const size = layout.numberSizeMm * MM;
-  const width = font.widthOfTextAtSize(label, size);
+  const escala = size / font.unitsPerEm;
+  const corrida = font.layout(label);
+  const width = corrida.positions.reduce((total, p) => total + p.xAdvance, 0) * escala;
   const left = marco.left + layout.numberXMm * MM - width / 2;
   const top = marco.top - layout.numberYMm * MM;
 
@@ -256,13 +172,34 @@ function drawNumber(
     });
   }
 
-  page.drawText(label, {
-    x: left,
-    // drawText toma la linea de base; el alto de una cifra es ~0,72 del cuerpo.
-    y: top - size * 0.78,
-    size,
-    font,
-    color: rgb(0, 0, 0),
+  // Cada cifra se dibuja con su contorno, en las unidades de la tipografia y
+  // llevada a su lugar con una transformacion. La linea de base queda donde
+  // la dejaba el texto de antes: el alto de una cifra es ~0,72 del cuerpo.
+  const base = top - size * 0.78;
+  let x = left;
+  corrida.glyphs.forEach((glifo, i) => {
+    const trazos: Operador[] = [];
+    (glifo.path.toFunction() as (ctx: unknown) => void)({
+      beginPath: () => {},
+      moveTo: (a: number, b: number) => trazos.push(moveTo(a, b)),
+      lineTo: (a: number, b: number) => trazos.push(lineTo(a, b)),
+      quadraticCurveTo: (a: number, b: number, c: number, d: number) => trazos.push(appendQuadraticCurve(a, b, c, d)),
+      bezierCurveTo: (a: number, b: number, c: number, d: number, e: number, f: number) =>
+        trazos.push(appendBezierCurve(a, b, c, d, e, f)),
+      closePath: () => trazos.push(closePath()),
+      fill: () => {},
+    });
+    if (trazos.length > 0) {
+      page.pushOperators(
+        pushGraphicsState(),
+        concatTransformationMatrix(escala, 0, 0, escala, x, base),
+        setFillingRgbColor(0, 0, 0),
+        ...trazos,
+        fill(),
+        popGraphicsState(),
+      );
+    }
+    x += corrida.positions[i].xAdvance * escala;
   });
 }
 
@@ -316,8 +253,8 @@ export async function renderPlacas({
   output.setTitle("Placas TOQA");
   output.setCreator("Panel de QR dinámicos TOQA");
 
-  // Helvetica es una fuente estandar del formato: no se incrusta, no pesa.
-  const font = await output.embedFont(StandardFonts.HelveticaBold);
+  // El numero va en curvas: no se incrusta ninguna tipografia.
+  const font = await cargarTipografia();
 
   // Cada fondo se incrusta una sola vez aunque lo usen 100 placas: por eso
   // un lote de 1000 pesa poco mas de un megabyte.
@@ -348,11 +285,16 @@ export async function renderPlacas({
 
     pages.forEach((background, index) => {
       if (!esCircular(background.width / MM, background.height / MM)) {
-        const page = output.addPage([background.width, background.height]);
-        page.drawPage(background, { x: 0, y: 0, width: background.width, height: background.height });
+        // Placa rectangular: el diseno tal cual, con DEMASIA_MM en blanco
+        // alrededor y la linea de corte en su borde.
+        const demasia = DEMASIA_MM * MM;
+        const page = output.addPage([background.width + 2 * demasia, background.height + 2 * demasia]);
+        page.drawPage(background, { x: demasia, y: demasia, width: background.width, height: background.height });
         if (index === qrPageIndex) {
-          drawQr(page, target, design.layout, { left: 0, top: background.height }, numberLabel, font);
+          drawQr(page, target, design.layout, { left: demasia, top: background.height + demasia }, numberLabel, font);
         }
+        cutContour ??= espacioCutContour(output);
+        lineaDeCorte(output, page, [rectangle(demasia, demasia, background.width, background.height)], cutContour);
         return;
       }
 
@@ -362,7 +304,8 @@ export async function renderPlacas({
       }
       // La linea de corte va al final, arriba de todo.
       cutContour ??= espacioCutContour(output);
-      lineaDeCorte(output, page, corte, cutContour);
+      const centro = page.getWidth() / 2;
+      lineaDeCorte(output, page, circulo(centro, centro, corte / 2), cutContour);
     });
   }
 
@@ -440,8 +383,11 @@ function espacioCutContour(output: PDFDocument): PDFRef {
   );
 }
 
-/** Linea de corte fina, en sobreimpresion para no dejar un hueco en el diseno. */
-function lineaDeCorte(output: PDFDocument, page: PDFPage, corte: number, cutContour: PDFRef) {
+/**
+ * Linea de corte fina, en sobreimpresion para no dejar un hueco en el diseno.
+ * `forma` es el contorno: un circulo en los vinilos, un rectangulo en las placas.
+ */
+function lineaDeCorte(output: PDFDocument, page: PDFPage, forma: Operador[], cutContour: PDFRef) {
   const { Resources } = page.node.normalizedEntries();
   let espacios = Resources.lookupMaybe(PDFName.of("ColorSpace"), PDFDict);
   if (!espacios) {
@@ -455,14 +401,13 @@ function lineaDeCorte(output: PDFDocument, page: PDFPage, corte: number, cutCont
     output.context.obj({ Type: "ExtGState", OP: true, op: true, OPM: 1 }),
   );
 
-  const centro = page.getWidth() / 2;
   page.pushOperators(
     pushGraphicsState(),
     setGraphicsState(sobreimpresion),
     PDFOperator.of(PDFOperatorNames.StrokingColorspace, [PDFName.of("CutContour")]),
     PDFOperator.of(PDFOperatorNames.StrokingColorN, [PDFNumber.of(1)]),
     setLineWidth(0.25),
-    ...circulo(centro, centro, corte / 2),
+    ...forma,
     stroke(),
     popGraphicsState(),
   );

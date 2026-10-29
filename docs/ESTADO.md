@@ -149,7 +149,9 @@ Las variables de entorno están documentadas en `.env.example`.
   - Los íconos de contacto son de Simple Icons (CC0).
   - Las imágenes de productos hechas con IA se descartaron.
 - **Placas para imprenta:**
-  - Las placas rectangulares (10×15) salen tal cual.
+  - Las placas rectangulares (10×15) mantienen su medida, con **3 mm en blanco alrededor** (hoja de 106 × 156 mm) y línea de corte `CutContour` rectangular, de esquinas rectas. Pedido de la imprenta (29/10).
+  - **Sin tipografías en los PDF** (pedido de la imprenta): el número va en curvas, y los fondos se aplanan a 400 dpi al subirlos ("Aplanar para imprenta"). Los diseños se exportan de Canva como **"PDF para imprimir"** y se cambian con "Reemplazar el PDF del diseño".
+  - El número va siempre encima del recuadro blanco del QR. Antes se cortaba en los vinilos de Google.
   - Los **diseños cuadrados (vinilos de 10×10) salen redondos**, todos de **10 cm**: el aro de color se ajusta solo para terminar a 1 mm del corte (una franja blanca pareja en todos), con línea de corte `CutContour` y 2 mm de margen.
   - Va un PDF por vinilo (opción ZIP).
   - Para la imprenta: "línea de corte en CutContour, con 2 mm de sangrado".
