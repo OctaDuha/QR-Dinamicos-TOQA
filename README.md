@@ -517,9 +517,54 @@ admite hasta 1000 PNG por vez).
 
 `/dashboard/placa` genera los diseños finales sin depender del plan de Canva.
 Cada modelo de placa —Google Reseñas, Instagram, WhatsApp— es un **diseño**:
-su PDF exportado de Canva va de fondo vectorial y el QR se **dibuja encima como
-vectores**, así que imprime nítido a cualquier tamaño y un lote de 1000 placas
-pesa poco más de un megabyte.
+su PDF va de fondo vectorial y el QR se **dibuja encima como vectores**, así que
+imprime nítido a cualquier tamaño y un lote de 1000 placas pesa poco más de un
+megabyte.
+
+### Plantillas de la imprenta (desde noviembre 2026)
+
+Desde el 4/11/2026 los diseños son las **plantillas que arma la imprenta** en
+Illustrator, y Canva ya no se usa. Son PDF en **CMYK**, todo vector, sin
+tipografías, con sangrado de color, marcas de corte y la pieza terminada
+marcada como caja de corte (`TrimBox`):
+
+| Plantilla | Pieza | Qué trae |
+|---|---|---|
+| Vinilos redondos (Google, WhatsApp, Instagram) | 10 × 10 cm | El círculo de corte de 10 cm en magenta |
+| Placas (Google, Instagram) | 10 × 20 cm | La placa de 10 × 15 y 5 cm en blanco abajo |
+
+La página las reconoce solas por esa caja de corte (`src/lib/plantilla-imprenta.ts`)
+y las trata distinto que a un PDF de Canva:
+
+- **Salen tal cual.** Misma hoja, mismo sangrado, mismas marcas y su propia
+  línea de corte. No se achican, no se recortan, no se les agrega margen ni
+  `CutContour`. La hoja de salida lleva las mismas cajas de corte, sangrado y
+  arte que la plantilla.
+- **No se aplanan.** Aplanarlas las pasaría a una imagen RGB y perderían el
+  vector y el CMYK. Al elegir el archivo, la casilla de aplanar desaparece.
+- **El QR y el número van en CMYK.** Negro K 100 % (no negro de cuatro tintas,
+  que sale con borde de colores) y los recuadros blancos al 0 %. Esto vale para
+  todos los diseños, también los viejos.
+- **El número sale igual que el de ejemplo.** La detección dibuja el número de
+  ejemplo bien grande, compara su primer "0" con las tipografías disponibles y
+  elige la que coincide, calcula el cuerpo exacto y copia el espacio entre
+  cifras. El número real queda encima del de ejemplo con menos de 0,05 mm de
+  diferencia. Tipografías (`src/lib/fuentes-numero.ts`, todas SIL OFL):
+  - **Calibri Bold** en los vinilos redondos. Calibri es de Microsoft y no se
+    puede distribuir, así que se usa **Carlito**, su copia libre con las mismas
+    formas y medidas.
+  - **Lato Semibold** en las placas.
+  - **Noto Sans Bold** para los diseños de Canva que queden.
+- **Vista previa.** Muestra la pieza cortada (el círculo o el rectángulo de la
+  caja de corte) o, con "Ver la hoja completa", el PDF entero como va a la
+  imprenta.
+- **Reemplazar.** "Reemplazar el PDF del diseño" con una plantilla la guarda con
+  su medida, sin ajustarla, y enseguida vuelve a ubicar el QR, el número y la
+  tipografía. Los números ya atados al diseño siguen atados.
+
+Si la plantilla de ejemplo de un diseño nuevo usa otra tipografía para el
+número, hay que sumarla a `fuentes-numero.ts` (con licencia libre) o elegir la
+más parecida en "Letra del número".
 
 ### Detección automática
 
@@ -582,12 +627,13 @@ offset (por ejemplo `y = 8,67 pt`). Si se incrusta sin declarar el bounding box,
 el fondo queda corrido esos milímetros respecto del QR y del número. Por eso las
 páginas se incrustan con su caja explícita.
 
-### Para la imprenta: sin tipografías, con demasía
+### Para la imprenta: sin tipografías, con demasía (diseños de Canva)
 
-Pedidos de la imprenta (octubre 2026):
+Pedidos de la imprenta (octubre 2026), para los diseños de Canva. Las plantillas
+de la imprenta ya vienen resueltas y no pasan por esto:
 
 - **Sin tipografías.** El número de cada placa se dibuja con los contornos
-  de Noto Sans Bold (`@pdf-lib/fontkit`), no como texto. Los fondos de Canva
+  de su tipografía (`@pdf-lib/fontkit`), no como texto. Los fondos de Canva
   se **aplanan** en el navegador al subirlos (casilla "Aplanar para
   imprenta", tildada de entrada, `src/lib/aplanar-pdf.ts`): cada página pasa
   a ser un JPEG de 400 dpi con la medida exacta. Aplanar no mejora un logo
@@ -602,10 +648,11 @@ Pedidos de la imprenta (octubre 2026):
 - El número va encima del recuadro blanco del QR. Si va antes, el margen
   blanco le tapa la parte de arriba cuando el diseño lo pone pegado.
 
-### Vinilos circulares (diseños cuadrados)
+### Vinilos circulares (diseños cuadrados de Canva)
 
-Un diseño cuadrado (los vinilos de 10×10) se imprime redondo; los
-rectangulares, como las placas de 10×15, no cambian.
+Un diseño cuadrado de Canva (los vinilos de 10×10) se imprime redondo; los
+rectangulares, como las placas de 10×15, no cambian. Las plantillas de la
+imprenta ya traen su círculo de corte y no pasan por esto.
 
 Todos salen **iguales**, sin importar cómo esté dibujado cada uno en Canva:
 corte de 10 cm (el lado del diseño) y una franja blanca de 1 mm entre el aro de

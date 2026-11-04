@@ -11,19 +11,25 @@ import { useEffect, useRef, useState } from "react";
 /**
  * `circulo`: en los vinilos circulares, el radio del corte como fracción de
  * la hoja. `margen`: en las placas, cuánto de la hoja queda fuera del corte
- * de cada lado (fracción del ancho y del alto). El preview muestra la pieza
- * como queda una vez cortada.
+ * de cada lado (fracción del ancho y del alto). `corte`: la pieza terminada
+ * de una plantilla de imprenta, en fracciones de la hoja, con su forma. El
+ * preview muestra la pieza como queda una vez cortada; sin ninguno de los
+ * tres, la hoja entera.
  */
+export type CortePreview = { forma: "circulo" | "rectangulo"; x: number; y: number; ancho: number; alto: number };
+
 export function PdfPreview({
   url,
   page,
   circulo,
   margen,
+  corte,
 }: {
   url: string;
   page: number;
   circulo?: number;
   margen?: { x: number; y: number };
+  corte?: CortePreview;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -85,6 +91,22 @@ export function PdfPreview({
     };
   }, [url, page]);
 
+  const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
+  let clipPath: string | undefined;
+  if (corte) {
+    clipPath =
+      corte.forma === "circulo"
+        ? // En una hoja cuadrada, el radio en % se mide sobre el lado.
+          `circle(${pct(corte.ancho / 2)} at ${pct(corte.x + corte.ancho / 2)} ${pct(corte.y + corte.alto / 2)})`
+        : `inset(${pct(corte.y)} ${pct(1 - corte.x - corte.ancho)} ${pct(1 - corte.y - corte.alto)} ${pct(corte.x)})`;
+  } else if (circulo) {
+    // circle() en % se mide sobre el lado de la hoja cuadrada.
+    clipPath = `circle(${(circulo * 50).toFixed(3)}% at 50% 50%)`;
+  } else if (margen) {
+    clipPath = `inset(${pct(margen.y)} ${pct(margen.x)})`;
+  }
+  const redondo = corte?.forma === "circulo" || Boolean(circulo);
+
   return (
     <div
       ref={boxRef}
@@ -93,14 +115,10 @@ export function PdfPreview({
     >
       <canvas
         ref={canvasRef}
-        className={circulo ? undefined : "rounded shadow-sm"}
+        className={redondo ? undefined : "rounded shadow-sm"}
         style={{
           display: state === "listo" ? "block" : "none",
-          // circle() en % se mide sobre el lado de la hoja cuadrada.
-          ...(circulo ? { clipPath: `circle(${(circulo * 50).toFixed(3)}% at 50% 50%)` } : {}),
-          ...(margen
-            ? { clipPath: `inset(${(margen.y * 100).toFixed(3)}% ${(margen.x * 100).toFixed(3)}%)` }
-            : {}),
+          ...(clipPath ? { clipPath } : {}),
         }}
       />
       {state !== "listo" ? (

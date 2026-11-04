@@ -1,5 +1,6 @@
 "use client";
 
+import { FUENTES_NUMERO, type FuenteNumero } from "./fuentes-numero";
 import type { PlacaLayout } from "./placa-layout";
 
 /**
@@ -34,7 +35,7 @@ export type Detection = {
    * traen uno puesto a mano en Canva. Se reemplaza igual que el QR, asi el
    * numero real queda exactamente donde el diseno lo previo.
    */
-  sampleNumber: { xMm: number; yMm: number; sizeMm: number } | null;
+  sampleNumber: { xMm: number; yMm: number; sizeMm: number; spacingMm?: number; font?: FuenteNumero } | null;
 };
 
 export async function detectQrInPdf(data: ArrayBuffer): Promise<Detection | null> {
@@ -78,7 +79,7 @@ export async function detectQrInPdf(data: ArrayBuffer): Promise<Detection | null
       const qrBottomPx = hit.tl.y + side / pxToMm;
       const qrWidthPx = side / pxToMm;
 
-      const sample = findSampleNumber(
+      const muestra = findSampleNumber(
         context,
         canvas.width,
         canvas.height,
@@ -87,6 +88,17 @@ export async function detectQrInPdf(data: ArrayBuffer): Promise<Detection | null
         qrBottomPx,
         qrWidthPx,
       );
+      // En los vinilos el número mide 1 mm: a la escala de la búsqueda del QR
+      // son 6 píxeles. Se vuelve a dibujar esa zona bien grande para medirlo
+      // al centésimo y reconocer la tipografía.
+      const sample = muestra
+        ? await afinarNumero(page, {
+            x: muestra.left / SCALE,
+            y: muestra.top / SCALE,
+            w: (muestra.right - muestra.left) / SCALE,
+            h: muestra.height / SCALE,
+          }).catch(() => null)
+        : null;
 
       // Alto que necesita el numero, en pixeles del render.
       const numberHeightPx = (side * 0.13 * 1.6) / pxToMm;
@@ -110,13 +122,14 @@ export async function detectQrInPdf(data: ArrayBuffer): Promise<Detection | null
         content: hit.content,
         freeBandYMm: freeBandPx === null ? null : round(freeBandPx * pxToMm),
         sampleNumber: sample
-          ? {
-              xMm: round(sample.centerX * pxToMm),
-              yMm: round(sample.top * pxToMm),
-              // La altura de una cifra es ~0,72 del cuerpo de la fuente.
-              sizeMm: round((sample.height * pxToMm) / 0.72),
-            }
-          : null,
+          ? sample
+          : muestra
+            ? {
+                xMm: round(muestra.centerX * pxToMm),
+                yMm: round(muestra.top * pxToMm),
+                sizeMm: round((muestra.height * pxToMm) / FUENTES_NUMERO.noto.alto0),
+              }
+            : null,
       };
     }
   } finally {
@@ -141,7 +154,7 @@ function findSampleNumber(
   qrRight: number,
   qrBottom: number,
   qrWidth: number,
-): { centerX: number; top: number; height: number } | null {
+): { centerX: number; left: number; right: number; top: number; height: number } | null {
   // Miramos un poco mas ancho que el QR: el numero puede sobresalir.
   const left = Math.max(0, Math.floor(qrLeft - qrWidth * 0.2));
   const right = Math.min(canvasWidth, Math.ceil(qrRight + qrWidth * 0.2));
@@ -192,6 +205,8 @@ function findSampleNumber(
 
   return {
     centerX: left + (minX + maxX) / 2,
+    left: left + minX,
+    right: left + maxX + 1,
     top: start + top,
     height: alto,
   };
@@ -248,6 +263,189 @@ function findFreeBandBelow(
   }
 
   return null;
+}
+
+type PaginaPdf = Awaited<ReturnType<Awaited<ReturnType<typeof import("pdfjs-dist").getDocument>["promise"]>["getPage"]>>;
+type Mapa = boolean[][];
+
+/**
+ * Mide el número de ejemplo en serio: dibuja solo esa zona a unos 160 píxeles
+ * de alto, toma la tinta y separa la primera cifra, que siempre es un "0"
+ * (los números van con ceros adelante). Con ese "0" elige la tipografía y
+ * calcula el cuerpo exacto. `caja` viene en puntos desde arriba a la izquierda.
+ */
+async function afinarNumero(
+  page: PaginaPdf,
+  caja: { x: number; y: number; w: number; h: number },
+): Promise<{ xMm: number; yMm: number; sizeMm: number; spacingMm?: number; font?: FuenteNumero } | null> {
+  const margen = caja.h * 0.35;
+  const region = { x: caja.x - margen, y: caja.y - margen, w: caja.w + 2 * margen, h: caja.h + 2 * margen };
+  const escala = Math.min(80, 160 / caja.h);
+  const ancho = Math.ceil(region.w * escala);
+  const alto = Math.ceil(region.h * escala);
+  if (ancho <= 0 || alto <= 0 || ancho * alto > 16_000_000) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = ancho;
+  canvas.height = alto;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return null;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, ancho, alto);
+  await page.render({
+    canvasContext: context,
+    viewport: page.getViewport({ scale: escala }),
+    transform: [1, 0, 0, 1, -region.x * escala, -region.y * escala],
+  }).promise;
+
+  const mapa = tinta(context.getImageData(0, 0, ancho, alto));
+
+  // La franja de tinta que pasa por el medio de la zona: lo que asome arriba
+  // (el QR) o abajo (un texto) queda afuera.
+  const conTinta = mapa.map((fila) => fila.some(Boolean));
+  let medio = Math.round(alto / 2);
+  if (!conTinta[medio]) {
+    const cerca = conTinta.findIndex((v, i) => v && Math.abs(i - medio) < margen * escala);
+    if (cerca === -1) return null;
+    medio = cerca;
+  }
+  let arriba = medio;
+  while (arriba > 0 && conTinta[arriba - 1]) arriba--;
+  let abajo = medio;
+  while (abajo < alto - 1 && conTinta[abajo + 1]) abajo++;
+  const franja = mapa.slice(arriba, abajo + 1);
+
+  const columnas = Array.from({ length: ancho }, (_, x) => franja.some((fila) => fila[x]));
+  const izquierda = columnas.indexOf(true);
+  const derecha = columnas.lastIndexOf(true);
+  if (izquierda === -1) return null;
+  let finPrimera = izquierda;
+  while (finPrimera + 1 <= derecha && columnas[finPrimera + 1]) finPrimera++;
+
+  const cero = recortar(franja.map((fila) => fila.slice(izquierda, finPrimera + 1)));
+  if (!cero) return null;
+
+  const pxAMm = 25.4 / 72 / escala;
+  const altoCeroMm = cero.alto * pxAMm;
+  const font = await reconocerTipografia(cero.mapa);
+  const fuente = FUENTES_NUMERO[font ?? "noto"];
+
+  const sizeMm = altoCeroMm / fuente.alto0;
+
+  // Espacio entre cifras: la segunda cifra también es un "0", así que de
+  // borde izquierdo a borde izquierdo tiene que haber justo lo que ocupa una
+  // cifra. Lo que sobre o falte es lo que la imprenta las separó o juntó.
+  let inicioSegunda = finPrimera + 1;
+  while (inicioSegunda <= derecha && !columnas[inicioSegunda]) inicioSegunda++;
+  const espaciado =
+    inicioSegunda <= derecha && font ? (inicioSegunda - izquierda) * pxAMm - fuente.avance0 * sizeMm : 0;
+
+  const centesimo = (v: number) => Math.round(v * 100) / 100;
+  return {
+    xMm: centesimo((region.x * escala + (izquierda + derecha + 1) / 2) * pxAMm),
+    yMm: centesimo((region.y * escala + arriba + cero.arriba) * pxAMm),
+    sizeMm: centesimo(sizeMm),
+    // Una diferencia de pocos centésimos es solo el redondeo de los píxeles.
+    spacingMm: Math.abs(espaciado) < 0.02 ? 0 : centesimo(espaciado),
+    ...(font ? { font } : {}),
+  };
+}
+
+/** Píxeles con tinta oscura (el número es negro). */
+function tinta(imagen: ImageData): Mapa {
+  const { data, width, height } = imagen;
+  return Array.from({ length: height }, (_, y) =>
+    Array.from({ length: width }, (_, x) => {
+      const i = (y * width + x) * 4;
+      return data[i] < 128 && data[i + 1] < 128 && data[i + 2] < 128;
+    }),
+  );
+}
+
+/** Lo recorta a la tinta. Devuelve además cuántas filas sacó de arriba. */
+function recortar(mapa: Mapa): { mapa: Mapa; arriba: number; alto: number } | null {
+  const filas = mapa.map((fila) => fila.some(Boolean));
+  const arriba = filas.indexOf(true);
+  const abajo = filas.lastIndexOf(true);
+  if (arriba === -1) return null;
+  const ancho = mapa[0]?.length ?? 0;
+  const cols = Array.from({ length: ancho }, (_, x) => mapa.some((fila) => fila[x]));
+  const izq = cols.indexOf(true);
+  const der = cols.lastIndexOf(true);
+  const recorte = mapa.slice(arriba, abajo + 1).map((fila) => fila.slice(izq, der + 1));
+  return { mapa: recorte, arriba, alto: abajo - arriba + 1 };
+}
+
+/** Lleva un mapa a un alto fijo, manteniendo la proporción. */
+function aAlto(mapa: Mapa, alto: number): Mapa {
+  const h = mapa.length;
+  const w = mapa[0].length;
+  const ancho = Math.max(1, Math.round((w * alto) / h));
+  return Array.from({ length: alto }, (_, y) =>
+    Array.from({ length: ancho }, (_, x) => mapa[Math.min(h - 1, Math.floor((y * h) / alto))][Math.min(w - 1, Math.floor((x * w) / ancho))]),
+  );
+}
+
+/** Cuánto se superponen dos formas (1 = idénticas). */
+function parecido(a: Mapa, b: Mapa): number {
+  const A = aAlto(a, 64);
+  const B = aAlto(b, 64);
+  const ancho = Math.max(A[0].length, B[0].length);
+  let comun = 0;
+  let total = 0;
+  for (let y = 0; y < 64; y++) {
+    for (let x = 0; x < ancho; x++) {
+      const p = A[y][x] ?? false;
+      const q = B[y][x] ?? false;
+      if (p && q) comun++;
+      if (p || q) total++;
+    }
+  }
+  return total ? comun / total : 0;
+}
+
+const ceros = new Map<FuenteNumero, Promise<Mapa | null>>();
+
+/** El "0" de una de nuestras tipografías, dibujado en el navegador. */
+function ceroDe(fuente: FuenteNumero): Promise<Mapa | null> {
+  let listo = ceros.get(fuente);
+  if (!listo) {
+    listo = (async () => {
+      const familia = `toqa-numero-${fuente}`;
+      const cara = new FontFace(familia, `url(/api/placa/fuente/${fuente})`);
+      await cara.load();
+      document.fonts.add(cara);
+      const canvas = document.createElement("canvas");
+      canvas.width = 300;
+      canvas.height = 300;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) return null;
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, 300, 300);
+      context.fillStyle = "#000000";
+      context.font = `200px "${familia}"`;
+      context.fillText("0", 40, 240);
+      return recortar(tinta(context.getImageData(0, 0, 300, 300)))?.mapa ?? null;
+    })().catch(() => null);
+    ceros.set(fuente, listo);
+  }
+  return listo;
+}
+
+/**
+ * Compara el "0" de la plantilla con el de cada tipografía y devuelve la que
+ * coincide. Si ninguna se parece lo suficiente (un diseño de Canva con otra
+ * letra), no elige: queda la que ya tenía el diseño.
+ */
+async function reconocerTipografia(cero: Mapa): Promise<FuenteNumero | null> {
+  let mejor: { fuente: FuenteNumero; valor: number } | null = null;
+  for (const fuente of Object.keys(FUENTES_NUMERO) as FuenteNumero[]) {
+    const referencia = await ceroDe(fuente);
+    if (!referencia) continue;
+    const valor = parecido(cero, referencia);
+    if (!mejor || valor > mejor.valor) mejor = { fuente, valor };
+  }
+  return mejor && mejor.valor >= 0.8 ? mejor.fuente : null;
 }
 
 type Hit = {

@@ -2,7 +2,8 @@ import { PDFDocument } from "pdf-lib";
 import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
-import { MM, resizeBackground } from "@/lib/placa";
+import { MM, normalizeLayout, resizeBackground } from "@/lib/placa";
+import { cajaDeCorte } from "@/lib/plantilla-imprenta";
 import { loadDesign } from "@/lib/placa-designs";
 
 export const runtime = "nodejs";
@@ -39,6 +40,10 @@ const MAX_BYTES = 12 * 1024 * 1024;
  * siendo el mismo: los números ya asignados siguen atados a él y la posición
  * del QR y del número no cambia. Si el PDF nuevo no mide lo mismo, se ajusta
  * a la medida del diseño.
+ *
+ * Una plantilla de la imprenta, en cambio, se guarda tal cual con su medida
+ * (trae sangrado y marcas, así que la hoja es más grande que la pieza). Como
+ * la posición del QR cambia, el navegador la vuelve a detectar enseguida.
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const { supabase, denied } = await requireAdmin();
@@ -51,9 +56,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const { data: actual } = await supabase
     .from("placa_designs")
-    .select("id, page_width_mm, page_height_mm")
+    .select("id, page_width_mm, page_height_mm, layout")
     .eq("id", designId)
-    .maybeSingle<{ id: number; page_width_mm: number | null; page_height_mm: number | null }>();
+    .maybeSingle<{ id: number; page_width_mm: number | null; page_height_mm: number | null; layout: unknown }>();
   if (!actual) return NextResponse.json({ error: "Ese diseño no existe." }, { status: 404 });
 
   const form = await request.formData();
@@ -69,18 +74,21 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   let pageCount: number;
   let widthMm: number;
   let heightMm: number;
+  let imprenta: ReturnType<typeof cajaDeCorte>;
   try {
     const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
     pageCount = pdf.getPageCount();
     if (pageCount === 0) throw new Error("El PDF no tiene páginas.");
     widthMm = pdf.getPage(0).getWidth() / MM;
     heightMm = pdf.getPage(0).getHeight() / MM;
+    imprenta = cajaDeCorte(pdf.getPage(0));
   } catch (error) {
     return NextResponse.json({ error: `No pude leer el PDF: ${(error as Error).message}` }, { status: 400 });
   }
 
   let ajustado = false;
   if (
+    !imprenta &&
     actual.page_width_mm &&
     actual.page_height_mm &&
     (Math.abs(widthMm - actual.page_width_mm) > 0.5 || Math.abs(heightMm - actual.page_height_mm) > 0.5)
@@ -93,16 +101,32 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
   }
 
+  const layout = { ...normalizeLayout(actual.layout), imprenta };
+  const medida = imprenta
+    ? { page_width_mm: round(widthMm), page_height_mm: round(heightMm) }
+    : {};
+
   const { error } = await supabase
     .from("placa_designs")
     .update({
       background_pdf: bytes.toString("base64"),
       background_name: file.name,
       page_count: pageCount,
+      layout,
+      ...medida,
       updated_at: new Date().toISOString(),
     })
     .eq("id", designId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, background_name: file.name, page_count: pageCount, ajustado });
+  return NextResponse.json({
+    ok: true,
+    background_name: file.name,
+    page_count: pageCount,
+    ajustado,
+    layout,
+    ...medida,
+  });
 }
+
+const round = (value: number) => Math.round(value * 10) / 10;

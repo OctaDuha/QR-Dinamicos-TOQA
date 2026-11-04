@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/canva-guard";
 import { listDesigns } from "@/lib/placa-designs";
 import { DEFAULT_LAYOUT, MM, resizeBackground, suggestedSizeMm } from "@/lib/placa";
+import { cajaDeCorte } from "@/lib/plantilla-imprenta";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export async function GET() {
   return NextResponse.json({ designs: await listDesigns(supabase) });
 }
 
-/** Diseño nuevo: nombre + el PDF exportado de Canva. */
+/** Diseño nuevo: nombre + el PDF (plantilla de la imprenta o exportado de Canva). */
 export async function POST(request: NextRequest) {
   const { supabase, denied } = await requireAdmin();
   if (denied) return denied;
@@ -41,12 +42,14 @@ export async function POST(request: NextRequest) {
   let pageCount: number;
   let widthMm: number;
   let heightMm: number;
+  let imprenta: ReturnType<typeof cajaDeCorte>;
   try {
     const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
     pageCount = pdf.getPageCount();
     if (pageCount === 0) throw new Error("El PDF no tiene páginas.");
     widthMm = round(pdf.getPage(0).getWidth() / MM);
     heightMm = round(pdf.getPage(0).getHeight() / MM);
+    imprenta = cajaDeCorte(pdf.getPage(0));
   } catch (error) {
     return NextResponse.json(
       { error: `No pude leer el PDF: ${(error as Error).message}` },
@@ -67,7 +70,8 @@ export async function POST(request: NextRequest) {
 
   let normalizado: { from: string; to: string } | null = null;
 
-  if (objetivo && (Math.abs(objetivo.widthMm - widthMm) > 0.5 || Math.abs(objetivo.heightMm - heightMm) > 0.5)) {
+  // Una plantilla de la imprenta ya viene en su medida: no se toca.
+  if (!imprenta && objetivo && (Math.abs(objetivo.widthMm - widthMm) > 0.5 || Math.abs(objetivo.heightMm - heightMm) > 0.5)) {
     try {
       bytes = await resizeBackground(bytes, objetivo.widthMm, objetivo.heightMm);
       normalizado = {
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest) {
       page_width_mm: widthMm,
       page_height_mm: heightMm,
       page_count: pageCount,
-      layout: DEFAULT_LAYOUT,
+      layout: { ...DEFAULT_LAYOUT, imprenta },
     })
     .select("id, name, background_name, page_width_mm, page_height_mm, page_count, layout, created_at")
     .single();
@@ -106,7 +110,7 @@ export async function POST(request: NextRequest) {
     design: data,
     normalizado,
     // Aviso: la página parece exportada en píxeles y saldría impresa enorme.
-    sugerido: normalizado ? null : sugerido,
+    sugerido: normalizado || imprenta ? null : sugerido,
   });
 }
 

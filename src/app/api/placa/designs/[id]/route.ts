@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { requireAdmin } from "@/lib/canva-guard";
+import { PDFDocument } from "pdf-lib";
+
 import { normalizeLayout } from "@/lib/placa";
+import { cajaDeCorte } from "@/lib/plantilla-imprenta";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +26,25 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (typeof body.name === "string" && body.name.trim()) patch.name = body.name.trim();
-  if (body.layout !== undefined) patch.layout = normalizeLayout(body.layout);
+  if (body.layout !== undefined) {
+    // Si es o no una plantilla de imprenta no lo decide el navegador: sale
+    // del PDF guardado. Así un guardado con datos viejos no la desarma.
+    const { data } = await supabase
+      .from("placa_designs")
+      .select("background_pdf")
+      .eq("id", designId)
+      .maybeSingle<{ background_pdf: string | null }>();
+    let imprenta = null;
+    if (data?.background_pdf) {
+      try {
+        const pdf = await PDFDocument.load(Buffer.from(data.background_pdf, "base64"), { ignoreEncryption: true });
+        imprenta = cajaDeCorte(pdf.getPage(0));
+      } catch {
+        // Un PDF que no se puede leer no es plantilla.
+      }
+    }
+    patch.layout = { ...normalizeLayout(body.layout), imprenta };
+  }
 
   const { error } = await supabase.from("placa_designs").update(patch).eq("id", designId);
 

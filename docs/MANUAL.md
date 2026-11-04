@@ -75,14 +75,19 @@ Arriba están las secciones: **QRs · Clientes · Placas · Canva · Historial �
 ### Placas: hacer los archivos para la imprenta
 
 - **Antes de imprimir** (el semáforo de arriba): revisa que el dominio impreso sea el definitivo, que exista el destino de respaldo y que haya diseños cargados. En verde dice "Listo para imprimir".
-- **Agregar un diseño** (exportalo de Canva como **"PDF para imprimir"**, para que los logos salgan nítidos):
-  - Se sube el PDF exportado de Canva **con un QR y un número de ejemplo puestos**. La página detecta sola dónde van y después los reemplaza por los reales.
-  - Si Canva exportó en píxeles (con una medida gigante), la página ofrece corregir la medida.
-- **Aplanar para imprenta** (tildado de entrada): al subir el diseño, la página lo convierte en una imagen de 400 dpi con su medida exacta. Así la imprenta no necesita las tipografías de Canva, que sus máquinas no reconocen. El QR y el número se agregan aparte, en vector, y el número va en curvas.
-- **Tus diseños**: para elegir uno y ajustar a mano la posición y el tamaño del QR y del número, con vista previa.
-- **Reemplazar el PDF del diseño**: dentro de cada diseño, para cambiar el fondo por una versión nueva (por ejemplo, exportada otra vez desde Canva). Mantiene los números ya asignados y la posición del QR y del número. Después, revisá la vista previa.
-- **Placas de 10×15**: siguen midiendo 10×15. El PDF lleva **3 mm en blanco alrededor** (la hoja mide 106 × 156 mm) y la **línea de corte CutContour** en el borde de la placa.
-- **Vinilos circulares**: todo diseño **cuadrado** (los vinilos de 10×10) sale **redondo, de 10 cm**, con una franja blanca de 1 mm y la línea de corte **CutContour** para el plotter. El sistema lo ajusta solo. Los rectangulares (10×15) salen tal cual.
+- **Los diseños son las plantillas de la imprenta.** La imprenta los arma en Illustrator, en CMYK y todo en vector, con sangrado, marcas de corte, y el QR y el número de ejemplo puestos. Canva ya no se usa.
+- **Agregar un diseño**: nombre + la plantilla. La página se da cuenta sola de que es una plantilla de imprenta y:
+  - la deja **tal cual**: no la aplana, no la achica y no le agrega márgenes ni línea de corte;
+  - encuentra el QR y el número de ejemplo y los reemplaza por los reales de cada placa;
+  - pone el número con la **misma letra, el mismo tamaño y el mismo espacio entre cifras** que el de ejemplo: Calibri Bold en los vinilos redondos y Lato Semibold en las placas;
+  - dibuja el QR y el número en **CMYK** (negro puro), como piden las máquinas de la imprenta.
+- **Tus diseños**: para elegir uno y ver la vista previa. Si hace falta, se puede ajustar a mano la posición del QR y del número, y la letra del número.
+- **Vista previa**: muestra la pieza ya cortada. Tildando **"Ver la hoja completa"** se ve el PDF entero, como va a la imprenta, con el sangrado y las marcas.
+- **Reemplazar el PDF del diseño**: dentro de cada diseño, para cambiar el fondo por una plantilla nueva. El diseño mantiene sus números ya asignados, y el QR y el número se vuelven a ubicar solos. Después, revisá la vista previa.
+- **Medidas de las plantillas**:
+  - **vinilos redondos de 10 cm**, con su línea de corte circular;
+  - **placas de 10 × 20 cm**: la placa de 10 × 15 más 5 cm en blanco abajo.
+- **Diseños viejos de Canva** (si quedara alguno): siguen saliendo como antes. Los cuadrados salen redondos con franja blanca de 1 mm y línea de corte CutContour, y las placas con 3 mm en blanco alrededor. Su fondo aplanado no sale en CMYK.
 - **Generar placas**:
   - **Nuevas**: cantidad, diseño y destino. Crea los números y baja el PDF de una.
   - **Existentes**: por rango de números o con los tildados en QRs.

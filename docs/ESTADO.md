@@ -133,7 +133,7 @@ Las variables de entorno están documentadas en `.env.example`.
 - **Nombres de usuario de WhatsApp (BSUID):** WhatsApp va a permitir chatear con un nombre de usuario sin mostrar el número. En ese caso llega un identificador (BSUID) en vez del teléfono. El bot reconoce a los clientes por teléfono (`bot_telefono_comparable`), así que cuando esté disponible en Argentina hay que sumar el BSUID. Además, reservar **@toqa** una vez conectado el número real.
 - Aviso amarillo "WhatsApp needs more information" en el portfolio (24/10): **resuelto, no hay que hacer nada.** Es la invitación de Meta a subir el límite de conversaciones **iniciadas por la empresa** (250 por día; para pasar a 2000 hay que iniciar conversaciones de calidad). TOQA no inicia conversaciones: el bot solo responde a quien escribe primero, y eso no cuenta para ese límite.
 
-- **Plantillas de la imprenta:** sigue viendo "serruchadas" las imágenes de Canva y va a mandar sus propias plantillas en vector. Cuando lleguen, se revisan y se suben con **"Aplanar" destildado**.
+- **Plantillas de la imprenta:** llegaron el 4/11 (5 PDF de Illustrator, en CMYK y en vector). La página ya las reconoce y las usa tal cual (ver §6). Falta que el dueño **reemplace los 5 diseños** con "Reemplazar el PDF del diseño" cuando se publique, y que la imprenta revise un PDF de prueba.
 - **Fotos reales de productos** para la página de inicio. El dueño las va a mandar; hoy hay ilustraciones.
 - **Domicilio fiscal en ARCA:** el dueño se mudó y el domicilio fiscal quedó viejo. Actualizarlo es trámite suyo, y conviene hacerlo **después** de que Meta termine las revisiones, para no generar diferencias mientras revisan.
 - La tarjeta "QR y NFC en uno" de la página de inicio sigue diciendo "funciona con cualquier celular". El dueño pidió **no cambiarla** por ahora, aunque el NFC funciona en alrededor del 90 % de los celulares.
@@ -175,6 +175,11 @@ Las variables de entorno están documentadas en `.env.example`.
   - Los íconos de contacto son de Simple Icons (CC0).
   - Las imágenes de productos hechas con IA se descartaron.
 - **Placas para imprenta:**
+  - **Desde el 4/11 los diseños son las plantillas de la imprenta** y Canva no se usa más. Vienen en CMYK, todo vector, con sangrado, marcas de corte y caja de corte (TrimBox). La página las reconoce y las deja **tal cual**: no las aplana, no las achica y no les agrega margen ni línea de corte propia. Solo cambia el QR y el número.
+  - Medidas: vinilos redondos de 10 cm (con su círculo de corte magenta) y placas de **10 × 20 cm** (la de 10 × 15 más 5 cm en blanco abajo, pedido de la imprenta).
+  - **Todo lo que agrega la página va en CMYK** (pedido de la imprenta, para que tomen bien los negros): QR y número en K 100 %, recuadros blancos al 0 %.
+  - El número sale **con la misma letra que el de ejemplo** (pedido del dueño): Calibri Bold en los vinilos (con Carlito, su copia libre) y Lato Semibold en las placas. Se reconoce sola, igual que el tamaño y el espacio entre cifras.
+  - Lo que sigue vale para los diseños viejos de Canva, si quedara alguno:
   - Las placas rectangulares (10×15) mantienen su medida, con **3 mm en blanco alrededor** (hoja de 106 × 156 mm) y línea de corte `CutContour` rectangular, de esquinas rectas. Pedido de la imprenta (29/10).
   - **Sin tipografías en los PDF** (pedido de la imprenta): el número va en curvas, y los fondos se aplanan a 400 dpi al subirlos ("Aplanar para imprenta"). Los diseños se exportan de Canva como **"PDF para imprimir"** y se cambian con "Reemplazar el PDF del diseño".
   - El número va siempre encima del recuadro blanco del QR. Antes se cortaba en los vinilos de Google.

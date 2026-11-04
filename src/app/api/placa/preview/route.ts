@@ -33,9 +33,11 @@ export async function GET(request: NextRequest) {
       "numberSizeMm",
       "numberXMm",
       "numberYMm",
+      "numberSpacingMm",
       "circuloMm",
     ]),
     ...booleans(url, ["whiteBackdrop", "showNumber", "numberBackdrop"]),
+    ...(url.searchParams.get("numberFont") ? { numberFont: url.searchParams.get("numberFont") } : {}),
   });
 
   const qrId = parseQrId(url.searchParams.get("id") ?? "1") ?? 1;

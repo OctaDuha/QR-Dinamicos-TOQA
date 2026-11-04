@@ -21,9 +21,9 @@ import {
   moveTo,
   popGraphicsState,
   pushGraphicsState,
+  cmyk,
   rectangle,
-  rgb,
-  setFillingRgbColor,
+  setFillingCmykColor,
   setGraphicsState,
   setLineWidth,
   stroke,
@@ -34,8 +34,10 @@ import {
 } from "pdf-lib";
 import QRCode from "qrcode";
 
+import { FUENTES_NUMERO, type FuenteNumero } from "./fuentes-numero";
 import { DEMASIA_MM, FRANJA_MM, SANGRADO_MM, esCircular, escalaVinilo } from "./page-size";
 import type { PlacaLayout } from "./placa-layout";
+import { cajaDeCorte } from "./plantilla-imprenta";
 
 export { suggestedSizeMm } from "./page-size";
 export { DEFAULT_LAYOUT, normalizeLayout, numberDefaults, type PlacaLayout } from "./placa-layout";
@@ -44,7 +46,8 @@ import { formatQrCode, qrTargetUrl } from "./qr";
 
 /**
  * Genera las placas listas para imprenta componiendo:
- *   fondo vectorial exportado de Canva  +  QR dibujado como vectores.
+ *   fondo vectorial (la plantilla de la imprenta, o un PDF de Canva)
+ *   +  QR y numero dibujados como vectores, en CMYK.
  *
  * El QR se dibuja con rectangulos, no como imagen: el PDF queda vectorial y
  * nitido a cualquier tamano de impresion, y pesa poco aun con 1000 paginas.
@@ -53,21 +56,34 @@ import { formatQrCode, qrTargetUrl } from "./qr";
 export const MM = 72 / 25.4; // milimetros -> puntos PDF
 
 /**
- * La tipografia del numero (Noto Sans Bold, la misma del reporte). No se
- * incrusta como tipografia: se leen las formas de cada cifra y se dibujan
- * como curvas, porque las maquinas de la imprenta no reconocen tipografias.
+ * Todo lo que agrega la pagina va en CMYK, nunca en RGB: las maquinas de la
+ * imprenta imprimen en CMYK, y un negro RGB lo convierten en negro de cuatro
+ * tintas, que sale con borde de colores. El negro es solo K al 100 %.
+ */
+const NEGRO = cmyk(0, 0, 0, 1);
+const BLANCO = cmyk(0, 0, 0, 0);
+
+/**
+ * La tipografia del numero (Noto Sans Bold, la misma del reporte, o la de la
+ * plantilla de imprenta). No se incrusta como tipografia: se leen las formas
+ * de cada cifra y se dibujan como curvas, porque las maquinas de la imprenta
+ * no reconocen tipografias.
  */
 // El paquete se publica como CommonJS y como módulo con export por defecto:
 // según cómo lo empaquete Next llega de una forma o de la otra.
 const fontkit =
   (fontkitModulo as unknown as { default?: typeof fontkitModulo }).default ?? fontkitModulo;
 
-let tipografia: Promise<Font> | null = null;
-function cargarTipografia(): Promise<Font> {
-  tipografia ??= readFile(join(process.cwd(), "src/assets/fuentes/noto-sans-700.woff")).then((datos) =>
-    fontkit.create(datos),
-  );
-  return tipografia;
+const tipografias = new Map<FuenteNumero, Promise<Font>>();
+function cargarTipografia(cual: FuenteNumero): Promise<Font> {
+  let fuente = tipografias.get(cual);
+  if (!fuente) {
+    fuente = readFile(join(process.cwd(), "src/assets/fuentes", FUENTES_NUMERO[cual].archivo)).then((datos) =>
+      fontkit.create(datos),
+    );
+    tipografias.set(cual, fuente);
+  }
+  return fuente;
 }
 
 /**
@@ -77,6 +93,8 @@ function cargarTipografia(): Promise<Font> {
  * adentro por el sangrado.
  */
 type Marco = { left: number; top: number };
+
+type Caja = { x: number; y: number; width: number; height: number };
 
 /**
  * Dibuja el QR como rectangulos vectoriales.
@@ -112,7 +130,7 @@ function drawQr(
       y: originY - side - margin,
       width: box,
       height: box,
-      color: rgb(1, 1, 1),
+      color: BLANCO,
     });
   }
 
@@ -136,7 +154,7 @@ function drawQr(
           y: originY - (row + 1) * moduleSize,
           width: (col - runStart) * moduleSize,
           height: moduleSize,
-          color: rgb(0, 0, 0),
+          color: NEGRO,
         });
         runStart = -1;
       }
@@ -144,7 +162,14 @@ function drawQr(
   }
 }
 
-/** El numero identificatorio de la placa, en su propia posicion, en curvas. */
+/**
+ * El numero identificatorio de la placa, en su propia posicion, en curvas.
+ *
+ * Se ubica por la tinta, no por la caja de la letra: el borde de arriba de
+ * las cifras cae en numberYMm y el centro de lo dibujado en numberXMm. Asi,
+ * con la misma tipografia y el mismo cuerpo, el numero real queda exactamente
+ * encima del numero de ejemplo que traia el diseno.
+ */
 function drawNumber(
   page: PDFPage,
   label: string,
@@ -157,26 +182,50 @@ function drawNumber(
   const size = layout.numberSizeMm * MM;
   const escala = size / font.unitsPerEm;
   const corrida = font.layout(label);
-  const width = corrida.positions.reduce((total, p) => total + p.xAdvance, 0) * escala;
-  const left = marco.left + layout.numberXMm * MM - width / 2;
+  const tope = FUENTES_NUMERO[layout.numberFont].tope0 * size;
+  // El espacio extra entre cifras, en unidades de la tipografia.
+  const extra = (layout.numberSpacingMm * MM) / escala;
+
+  // Donde empieza y termina la tinta, desde el origen del primer glifo.
+  let avance = 0;
+  let tintaIzquierda = Infinity;
+  let tintaDerecha = -Infinity;
+  corrida.glyphs.forEach((glifo, i) => {
+    const caja = glifo.bbox;
+    if (Number.isFinite(caja.minX) && caja.maxX > caja.minX) {
+      tintaIzquierda = Math.min(tintaIzquierda, avance + caja.minX);
+      tintaDerecha = Math.max(tintaDerecha, avance + caja.maxX);
+    }
+    avance += corrida.positions[i].xAdvance + extra;
+  });
+  if (!Number.isFinite(tintaIzquierda)) {
+    tintaIzquierda = 0;
+    tintaDerecha = avance;
+  }
+
+  const ancho = (tintaDerecha - tintaIzquierda) * escala;
+  const centro = marco.left + layout.numberXMm * MM;
   const top = marco.top - layout.numberYMm * MM;
+  const base = top - tope;
+  const origen = centro - ancho / 2 - tintaIzquierda * escala;
 
   if (layout.numberBackdrop) {
-    const pad = size * 0.25;
+    // Justo lo que ocupan las cifras, con un poco de aire: tapa el numero de
+    // ejemplo sin comerse el texto que el diseno tenga cerca. En los disenos
+    // de Canva el de ejemplo podia ser de otra letra, mas ancha: ahi va mas aire.
+    const pad = size * (layout.numberFont === "noto" ? 0.25 : 0.12);
     page.drawRectangle({
-      x: left - pad,
-      y: top - size - pad * 0.6,
-      width: width + pad * 2,
-      height: size + pad * 1.2,
-      color: rgb(1, 1, 1),
+      x: centro - ancho / 2 - pad,
+      y: base - size * 0.06 - pad,
+      width: ancho + pad * 2,
+      height: tope + size * 0.06 + pad * 2,
+      color: BLANCO,
     });
   }
 
   // Cada cifra se dibuja con su contorno, en las unidades de la tipografia y
-  // llevada a su lugar con una transformacion. La linea de base queda donde
-  // la dejaba el texto de antes: el alto de una cifra es ~0,72 del cuerpo.
-  const base = top - size * 0.78;
-  let x = left;
+  // llevada a su lugar con una transformacion.
+  let x = origen;
   corrida.glyphs.forEach((glifo, i) => {
     const trazos: Operador[] = [];
     (glifo.path.toFunction() as (ctx: unknown) => void)({
@@ -193,13 +242,13 @@ function drawNumber(
       page.pushOperators(
         pushGraphicsState(),
         concatTransformationMatrix(escala, 0, 0, escala, x, base),
-        setFillingRgbColor(0, 0, 0),
+        setFillingCmykColor(0, 0, 0, 1),
         ...trazos,
         fill(),
         popGraphicsState(),
       );
     }
-    x += corrida.positions[i].xAdvance * escala;
+    x += corrida.positions[i].xAdvance * escala + layout.numberSpacingMm * MM;
   });
 }
 
@@ -253,24 +302,41 @@ export async function renderPlacas({
   output.setTitle("Placas TOQA");
   output.setCreator("Panel de QR dinámicos TOQA");
 
-  // El numero va en curvas: no se incrusta ninguna tipografia.
-  const font = await cargarTipografia();
-
   // Cada fondo se incrusta una sola vez aunque lo usen 100 placas: por eso
-  // un lote de 1000 pesa poco mas de un megabyte.
-  const embedded = new Map<number, PDFEmbeddedPage[]>();
+  // un lote de 1000 pesa poco mas de un megabyte. Junto con cada pagina se
+  // guarda su caja de corte si es una plantilla de imprenta.
+  const embedded = new Map<
+    number,
+    { pagina: PDFEmbeddedPage; corte: ReturnType<typeof cajaDeCorte>; sangrado: Caja }[]
+  >();
   // El color de la linea de corte, uno solo para todo el archivo.
   let cutContour: PDFRef | undefined;
 
   for (const { design } of items) {
     if (embedded.has(design.id) || !design.backgroundPdf) continue;
     const source = await PDFDocument.load(design.backgroundPdf, { ignoreEncryption: true });
-    embedded.set(design.id, await embedAllPages(output, source));
+    const paginas = await embedAllPages(output, source);
+    const originales = source.getPages();
+    embedded.set(
+      design.id,
+      paginas.map((pagina, i) => {
+        // El sangrado, medido desde la esquina de la hoja como queda en la salida.
+        const hoja = originales[i].getMediaBox();
+        const caja = originales[i].getBleedBox();
+        return {
+          pagina,
+          corte: cajaDeCorte(originales[i]),
+          sangrado: { x: caja.x - hoja.x, y: caja.y - hoja.y, width: caja.width, height: caja.height },
+        };
+      }),
+    );
   }
 
   for (const { qrId, design } of items) {
     const target = qrTargetUrl(qrId, baseUrl);
     const pages = embedded.get(design.id) ?? [];
+    // El numero va en curvas: no se incrusta ninguna tipografia.
+    const font = await cargarTipografia(design.layout.numberFont);
 
     const numberLabel = formatQrCode(qrId);
 
@@ -283,7 +349,27 @@ export async function renderPlacas({
 
     const qrPageIndex = Math.min(design.layout.qrPage, pages.length) - 1;
 
-    pages.forEach((background, index) => {
+    pages.forEach(({ pagina: background, corte, sangrado }, index) => {
+      if (corte) {
+        // Plantilla de la imprenta: sale tal cual la mando, con su sangrado,
+        // sus marcas y su linea de corte. Solo se cambian el QR y el numero.
+        const page = output.addPage([background.width, background.height]);
+        page.drawPage(background, { x: 0, y: 0, width: background.width, height: background.height });
+        // La caja de corte viaja con la hoja: el programa de la imprenta la
+        // usa para saber cual es la pieza terminada.
+        const x = corte.xMm * MM;
+        const ancho = corte.anchoMm * MM;
+        const alto = corte.altoMm * MM;
+        const y = background.height - corte.yMm * MM - alto;
+        page.setTrimBox(x, y, ancho, alto);
+        page.setArtBox(x, y, ancho, alto);
+        page.setBleedBox(sangrado.x, sangrado.y, sangrado.width, sangrado.height);
+        if (index === qrPageIndex) {
+          drawQr(page, target, design.layout, { left: 0, top: background.height }, numberLabel, font);
+        }
+        return;
+      }
+
       if (!esCircular(background.width / MM, background.height / MM)) {
         // Placa rectangular: el diseno tal cual, con DEMASIA_MM en blanco
         // alrededor y la linea de corte en su borde.
@@ -298,14 +384,14 @@ export async function renderPlacas({
         return;
       }
 
-      const { page, layout, corte } = paginaCircular(output, background, design.layout);
+      const { page, layout, corte: diametro } = paginaCircular(output, background, design.layout);
       if (index === qrPageIndex) {
         drawQr(page, target, layout, { left: 0, top: page.getHeight() }, numberLabel, font);
       }
       // La linea de corte va al final, arriba de todo.
       cutContour ??= espacioCutContour(output);
       const centro = page.getWidth() / 2;
-      lineaDeCorte(output, page, circulo(centro, centro, corte / 2), cutContour);
+      lineaDeCorte(output, page, circulo(centro, centro, diametro / 2), cutContour);
     });
   }
 

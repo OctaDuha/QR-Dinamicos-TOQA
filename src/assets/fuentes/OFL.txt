@@ -1,3 +1,8 @@
+Tipografías de esta carpeta (todas bajo la SIL Open Font License 1.1, copiada abajo):
+- noto-sans-400.woff, noto-sans-700.woff: Noto Sans. Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)
+- carlito-700.ttf: Carlito Bold. Copyright 2013 The Carlito Project Authors (https://github.com/googlefonts/carlito)
+- lato-600.woff: Lato Semibold 2.015. Copyright (c) 2011-2015 by tyPoland Lukasz Dziedzic (http://www.typoland.com/) with Reserved Font Name "Lato".
+
 Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic) NotoSans-Italic[wdth,wght].ttf: Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.

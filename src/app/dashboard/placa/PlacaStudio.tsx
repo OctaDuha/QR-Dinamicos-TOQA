@@ -6,10 +6,51 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DPI_APLANADO, aplanarPdf } from "@/lib/aplanar-pdf";
 import { detectarCirculo } from "@/lib/detect-circulo";
 import { detectQrInPdf } from "@/lib/detect-qr";
+import { FUENTES_NUMERO, type FuenteNumero } from "@/lib/fuentes-numero";
 import { DEMASIA_MM, FRANJA_MM, SANGRADO_MM, esCircular, escalaVinilo, suggestedSizeMm } from "@/lib/page-size";
-import { numberDefaults, type PlacaLayout } from "@/lib/placa-layout";
+import { imprentaCircular, numberDefaults, type Imprenta, type PlacaLayout } from "@/lib/placa-layout";
+import { cajaDeCorte } from "@/lib/plantilla-imprenta";
 
-import { PdfPreview } from "./PdfPreview";
+import { PdfPreview, type CortePreview } from "./PdfPreview";
+
+/**
+ * ¿El PDF elegido es una plantilla de la imprenta? Se mira en el navegador
+ * apenas se elige el archivo, para no aplanarlo: aplanarlo lo pasaría a una
+ * imagen RGB y perdería el vector y el CMYK que manda la imprenta.
+ */
+async function plantillaDelArchivo(datos: ArrayBuffer): Promise<Imprenta | null> {
+  try {
+    const { PDFDocument } = await import("pdf-lib");
+    const pdf = await PDFDocument.load(datos, { ignoreEncryption: true });
+    return pdf.getPageCount() > 0 ? cajaDeCorte(pdf.getPage(0)) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Medida de la pieza terminada: en una plantilla, la del corte; si no, la de la hoja. */
+function medidaPieza(design: Design) {
+  const imprenta = design.layout.imprenta;
+  return imprenta
+    ? { ancho: imprenta.anchoMm, alto: imprenta.altoMm }
+    : { ancho: design.page_width_mm, alto: design.page_height_mm };
+}
+
+/** Busca el QR, el número y su tipografía, y arma la posición completa. */
+async function posicionDetectada(archivo: ArrayBuffer, layout: PlacaLayout) {
+  const detection = await detectQrInPdf(archivo.slice(0));
+  if (!detection) return null;
+  const next: PlacaLayout = {
+    ...layout,
+    qrPage: detection.page,
+    xMm: detection.xMm,
+    yMm: detection.yMm,
+    sizeMm: detection.sizeMm,
+    // El número acompaña el tamaño del QR de cada diseño.
+    ...numberDefaults(detection.xMm, detection.yMm, detection.sizeMm, detection.freeBandYMm, detection.sampleNumber),
+  };
+  return { detection, layout: next };
+}
 
 export type Design = {
   id: number;
@@ -48,7 +89,7 @@ export function PlacaStudio({
   // todavía no tienen medido su círculo: se mide una vez y queda guardado.
   useEffect(() => {
     const pendientes = initialDesigns.filter(
-      (d) => esCircular(d.page_width_mm, d.page_height_mm) && d.layout.circuloMm == null,
+      (d) => !d.layout.imprenta && esCircular(d.page_width_mm, d.page_height_mm) && d.layout.circuloMm == null,
     );
     if (pendientes.length === 0) return;
     let cancelado = false;
@@ -107,7 +148,8 @@ export function PlacaStudio({
               >
                 {design.name}
                 <span className="ml-1 text-xs opacity-70">
-                  {design.page_width_mm} × {design.page_height_mm} mm
+                  {medidaPieza(design).ancho} × {medidaPieza(design).alto} mm
+                  {design.layout.imprenta ? " · imprenta" : ""}
                 </span>
               </button>
             ))}
@@ -163,6 +205,7 @@ function NewDesign({
   const [objetivo, setObjetivo] = useState<{ w: string; h: string }>({ w: "", h: "" });
   const [aviso, setAviso] = useState<string | null>(null);
   const [aplanar, setAplanar] = useState(true);
+  const [plantilla, setPlantilla] = useState<Imprenta | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   /** Al elegir el archivo miramos cuánto mide, antes de subir nada. */
@@ -171,7 +214,17 @@ function NewDesign({
     setMedida(null);
     setAviso(null);
     setObjetivo({ w: "", h: "" });
+    setPlantilla(null);
+    setAplanar(true);
     if (!file) return;
+
+    // Una plantilla de la imprenta va tal cual: ni se aplana ni se ajusta.
+    const caja = await plantillaDelArchivo(await file.arrayBuffer());
+    if (caja) {
+      setPlantilla(caja);
+      setAplanar(false);
+      return;
+    }
 
     try {
       const pdfjs = await import("pdfjs-dist");
@@ -209,7 +262,7 @@ function NewDesign({
 
     try {
       let subir: Blob = file;
-      if (aplanar) {
+      if (aplanar && !plantilla) {
         setNote({ kind: "info", text: "Aplanando el diseño para imprenta…" });
         // Se aplana ya con la medida final: si Canva exportó en píxeles, la
         // imagen sale directamente en milímetros de verdad.
@@ -226,7 +279,7 @@ function NewDesign({
       const body = new FormData();
       body.append("name", name.trim());
       body.append("file", subir, file.name);
-      if (objetivo.w && objetivo.h) {
+      if (!plantilla && objetivo.w && objetivo.h) {
         body.append("width_mm", objetivo.w);
         body.append("height_mm", objetivo.h);
       }
@@ -251,6 +304,8 @@ function NewDesign({
       setMedida(null);
       setAviso(null);
       setObjetivo({ w: "", h: "" });
+      setPlantilla(null);
+      setAplanar(true);
       if (fileRef.current) fileRef.current.value = "";
 
       const ajuste = payload.normalizado
@@ -264,15 +319,20 @@ function NewDesign({
       const guardado = await fetch(`/api/placa/designs/${design.id}/file`);
       const archivo = guardado.ok ? await guardado.arrayBuffer() : null;
       // pdf.js se queda con el buffer que recibe: cada búsqueda lleva su copia.
-      const detection = archivo ? await detectQrInPdf(archivo.slice(0)) : null;
+      const encontrado = archivo ? await posicionDetectada(archivo, design.layout) : null;
+      const detection = encontrado?.detection ?? null;
 
-      // Los diseños cuadrados son vinilos circulares: además se mide el
-      // círculo de color, para llevarlo al tamaño justo.
-      const circular = esCircular(design.page_width_mm, design.page_height_mm);
+      // Los diseños cuadrados de Canva son vinilos circulares: además se mide
+      // el círculo de color, para llevarlo al tamaño justo. Las plantillas de
+      // la imprenta ya traen su corte y salen tal cual.
+      const imprenta = design.layout.imprenta;
+      const circular = !imprenta && esCircular(design.page_width_mm, design.page_height_mm);
       const corte = archivo && circular ? await detectarCirculo(archivo.slice(0), detection?.page ?? 1).catch(() => null) : null;
-      const textoCorte = circular
-        ? ` Es un vinilo circular: sale de ${design.page_width_mm} mm con una franja blanca de ${FRANJA_MM} mm.`
-        : "";
+      const textoCorte = imprenta
+        ? ` Es una plantilla de imprenta de ${imprenta.anchoMm} × ${imprenta.altoMm} mm: sale tal cual, con su sangrado, sus marcas y su línea de corte.`
+        : circular
+          ? ` Es un vinilo circular: sale de ${design.page_width_mm} mm con una franja blanca de ${FRANJA_MM} mm.`
+          : "";
 
       if (corte && !detection) {
         const conCorte: PlacaLayout = { ...design.layout, circuloMm: corte };
@@ -293,13 +353,7 @@ function NewDesign({
       }
 
       const layout: PlacaLayout = {
-        ...design.layout,
-        qrPage: detection.page,
-        xMm: detection.xMm,
-        yMm: detection.yMm,
-        sizeMm: detection.sizeMm,
-        // El número acompaña el tamaño del QR de cada diseño.
-        ...numberDefaults(detection.xMm, detection.yMm, detection.sizeMm, detection.freeBandYMm, detection.sampleNumber),
+        ...encontrado!.layout,
         ...(corte ? { circuloMm: corte } : {}),
       };
 
@@ -314,7 +368,9 @@ function NewDesign({
         kind: "ok",
         text:
           `Listo: encontré el QR en la página ${detection.page}, a ${detection.xMm} mm del borde izquierdo ` +
-          `y ${detection.yMm} mm del superior, de ${detection.sizeMm} mm de lado.${ajuste}${textoCorte} Ya quedó guardado.`,
+          `y ${detection.yMm} mm del superior, de ${detection.sizeMm} mm de lado.` +
+          `${detection.sampleNumber?.font ? ` El número va en ${FUENTES_NUMERO[detection.sampleNumber.font].nombre}, como el de ejemplo.` : ""}` +
+          `${ajuste}${textoCorte} Ya quedó guardado.`,
       });
     } catch (error) {
       setNote({ kind: "error", text: `Algo falló: ${(error as Error).message}` });
@@ -327,9 +383,9 @@ function NewDesign({
     <div className="card p-5">
       <h2 className="text-sm font-semibold">Agregar un diseño</h2>
       <p className="mt-1 text-sm text-ink-2">
-        Exportá el diseño de Canva como <strong>“PDF para imprimir”</strong>, con el QR y el número
-        de ejemplo puestos: los uso para saber exactamente dónde van, y después los reemplazo por los
-        reales de cada placa.
+        Subí la <strong>plantilla que manda la imprenta</strong> (el PDF con marcas de corte), con el QR y
+        el número de ejemplo puestos: los uso para saber exactamente dónde van, con qué tamaño y con qué
+        letra, y después los reemplazo por los reales de cada placa. Todo lo demás sale tal cual.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1.2fr_auto] sm:items-end">
@@ -363,7 +419,7 @@ function NewDesign({
         </button>
       </div>
 
-      <CasillaAplanar valor={aplanar} cambiar={setAplanar} id="aplanar-nuevo" />
+      <CasillaAplanar valor={aplanar} cambiar={setAplanar} id="aplanar-nuevo" plantilla={plantilla} />
 
       {medida ? (
         <p className="mt-3 text-sm text-ink-2">
@@ -443,10 +499,16 @@ function DesignEditor({
   const [previewId, setPreviewId] = useState("1");
   const [nonce, setNonce] = useState(0);
   const [name, setName] = useState(design.name);
-  const circular = esCircular(design.page_width_mm, design.page_height_mm);
+  // Una plantilla de la imprenta sale tal cual; las de Canva cuadradas son
+  // vinilos que la página achica, recorta y les pone su línea de corte.
+  const imprenta = design.layout.imprenta;
+  const circular = imprenta ? imprentaCircular(imprenta) : esCircular(design.page_width_mm, design.page_height_mm);
+  const vinilo = circular && !imprenta;
   const ladoMm = design.page_width_mm ?? 100;
   const reemplazoRef = useRef<HTMLInputElement>(null);
   const [aplanarReemplazo, setAplanarReemplazo] = useState(true);
+  const [plantillaReemplazo, setPlantillaReemplazo] = useState<Imprenta | null>(null);
+  const [hojaCompleta, setHojaCompleta] = useState(false);
 
   // Cuando la detección automática guarda una posición nueva, los campos
   // tienen que mostrarla: si no, seguirían con los valores por defecto.
@@ -476,6 +538,8 @@ function DesignEditor({
       numberXMm: String(debounced.numberXMm),
       numberYMm: String(debounced.numberYMm),
       numberBackdrop: String(debounced.numberBackdrop),
+      numberFont: debounced.numberFont,
+      numberSpacingMm: String(debounced.numberSpacingMm),
       ...(debounced.circuloMm != null ? { circuloMm: String(debounced.circuloMm) } : {}),
       v: String(nonce),
     });
@@ -495,30 +559,24 @@ function DesignEditor({
         return;
       }
       const archivo = await response.arrayBuffer();
-      const detection = await detectQrInPdf(archivo.slice(0));
-      const corte = circular ? await detectarCirculo(archivo.slice(0), detection?.page ?? layout.qrPage).catch(() => null) : null;
+      const encontrado = await posicionDetectada(archivo, layout);
+      const detection = encontrado?.detection;
+      const corte = vinilo ? await detectarCirculo(archivo.slice(0), detection?.page ?? layout.qrPage).catch(() => null) : null;
       if (corte) set("circuloMm", corte);
-      if (!detection) {
+      if (!encontrado || !detection) {
         setNote({
           kind: "error",
-          text: "No encontré ningún QR en el diseño. Exportalo de Canva con el QR de ejemplo puesto, o ubicalo a mano.",
+          text: "No encontré ningún QR en el diseño. Pedile a la imprenta la plantilla con el QR de ejemplo puesto, o ubicalo a mano.",
         });
         return;
       }
-      const next: PlacaLayout = {
-        ...layout,
-        qrPage: detection.page,
-        xMm: detection.xMm,
-        yMm: detection.yMm,
-        sizeMm: detection.sizeMm,
-        ...numberDefaults(detection.xMm, detection.yMm, detection.sizeMm, detection.freeBandYMm, detection.sampleNumber),
-        ...(corte ? { circuloMm: corte } : {}),
-      };
+      const next: PlacaLayout = { ...encontrado.layout, ...(corte ? { circuloMm: corte } : {}) };
       setLayout(next);
       setNote({
         kind: "ok",
         text:
           `Encontrado: página ${detection.page}, X ${detection.xMm} mm, Y ${detection.yMm} mm, lado ${detection.sizeMm} mm.` +
+          `${detection.sampleNumber?.font ? ` Número en ${FUENTES_NUMERO[detection.sampleNumber.font].nombre}.` : ""}` +
           `${corte ? ` Círculo del diseño: ${corte} mm.` : ""} Tocá “Guardar” para fijarlo.`,
       });
     } finally {
@@ -557,7 +615,7 @@ function DesignEditor({
     setBusy(true);
     try {
       let subir: Blob = file;
-      if (aplanarReemplazo) {
+      if (aplanarReemplazo && !plantillaReemplazo) {
         setNote({ kind: "info", text: "Aplanando el diseño para imprenta…" });
         const medida =
           design.page_width_mm && design.page_height_mm
@@ -581,16 +639,46 @@ function DesignEditor({
         });
         return;
       }
-      onFondo({ background_name: payload.background_name, page_count: payload.page_count });
+      onFondo({
+        background_name: payload.background_name,
+        page_count: payload.page_count,
+        ...(payload.page_width_mm ? { page_width_mm: payload.page_width_mm, page_height_mm: payload.page_height_mm } : {}),
+      });
+      const layoutNuevo: PlacaLayout = payload.layout ?? design.layout;
+      let textoDeteccion = "";
 
-      // En los vinilos se vuelve a medir el círculo sobre el PDF nuevo.
-      if (circular) {
+      if (layoutNuevo.imprenta) {
+        // Plantilla de la imprenta: el QR y el número están en otro lugar que
+        // en el diseño viejo, así que se vuelven a buscar y se guardan solos.
+        setNote({ kind: "info", text: "Buscando el QR y el número en la plantilla…" });
+        const guardado = await fetch(`/api/placa/designs/${design.id}/file`);
+        const encontrado = guardado.ok ? await posicionDetectada(await guardado.arrayBuffer(), layoutNuevo) : null;
+        const final = encontrado?.layout ?? layoutNuevo;
+        await fetch(`/api/placa/designs/${design.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ layout: final }),
+        });
+        onChange(final);
+        textoDeteccion = encontrado
+          ? ` Es una plantilla de imprenta: ubiqué el QR y el número${
+              encontrado.detection.sampleNumber?.font
+                ? ` (en ${FUENTES_NUMERO[encontrado.detection.sampleNumber.font].nombre})`
+                : ""
+            } donde estaban los de ejemplo.`
+          : " Es una plantilla de imprenta, pero no encontré el QR de ejemplo: ubicalo a mano.";
+      } else if (layoutNuevo !== design.layout) {
+        onChange(layoutNuevo);
+      }
+
+      // En los vinilos de Canva se vuelve a medir el círculo sobre el PDF nuevo.
+      if (!layoutNuevo.imprenta && esCircular(design.page_width_mm, design.page_height_mm)) {
         const guardado = await fetch(`/api/placa/designs/${design.id}/file`);
         const corte = guardado.ok
           ? await detectarCirculo(await guardado.arrayBuffer(), design.layout.qrPage).catch(() => null)
           : null;
         if (corte) {
-          const conCorte: PlacaLayout = { ...design.layout, circuloMm: corte };
+          const conCorte: PlacaLayout = { ...layoutNuevo, circuloMm: corte };
           await fetch(`/api/placa/designs/${design.id}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -601,13 +689,16 @@ function DesignEditor({
       }
 
       if (reemplazoRef.current) reemplazoRef.current.value = "";
+      setPlantillaReemplazo(null);
+      setAplanarReemplazo(true);
       setNonce((n) => n + 1);
       setNote({
         kind: "ok",
-        text:
-          `Listo: “${design.name}” ya usa el PDF nuevo.${payload.ajustado ? " Lo ajusté a la medida del diseño." : ""} ` +
-          "Los números ya asignados y la posición del QR siguen igual. Revisá la vista previa: si algo quedó corrido, " +
-          "tocá “Detectar el QR automáticamente”.",
+        text: layoutNuevo.imprenta
+          ? `Listo: “${design.name}” ya usa la plantilla nueva. Los números ya asignados siguen atados a este diseño.${textoDeteccion} Revisá la vista previa.`
+          : `Listo: “${design.name}” ya usa el PDF nuevo.${payload.ajustado ? " Lo ajusté a la medida del diseño." : ""} ` +
+            "Los números ya asignados y la posición del QR siguen igual. Revisá la vista previa: si algo quedó corrido, " +
+            "tocá “Detectar el QR automáticamente”.",
       });
     } catch (error) {
       setNote({ kind: "error", text: `Algo falló: ${(error as Error).message}` });
@@ -653,14 +744,21 @@ function DesignEditor({
       <details className="mt-4 rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
         <summary className="cursor-pointer text-sm font-medium">Reemplazar el PDF del diseño</summary>
         <p className="mt-2 text-xs text-ink-3">
-          Para cambiar el fondo por una versión nueva del mismo diseño, por ejemplo exportada de Canva como
-          “PDF para imprimir”. Los números ya asignados y la posición del QR y del número se mantienen.
+          Para cambiar el fondo por una versión nueva del mismo diseño, por ejemplo la plantilla que mandó la
+          imprenta. Los números ya asignados siguen atados a este diseño. Si es una plantilla de imprenta, el QR y
+          el número se vuelven a ubicar solos.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input
             ref={reemplazoRef}
             type="file"
             accept="application/pdf,.pdf"
+            onChange={async () => {
+              const file = reemplazoRef.current?.files?.[0];
+              const caja = file ? await plantillaDelArchivo(await file.arrayBuffer()) : null;
+              setPlantillaReemplazo(caja);
+              setAplanarReemplazo(!caja);
+            }}
             aria-label="PDF nuevo del diseño"
             className="input max-w-sm file:mr-3 file:rounded-md file:border-0 file:bg-[var(--surface)] file:px-3 file:py-1 file:text-sm file:text-[var(--ink-1)]"
           />
@@ -668,7 +766,12 @@ function DesignEditor({
             Reemplazar
           </button>
         </div>
-        <CasillaAplanar valor={aplanarReemplazo} cambiar={setAplanarReemplazo} id={`aplanar-${design.id}`} />
+        <CasillaAplanar
+          valor={aplanarReemplazo}
+          cambiar={setAplanarReemplazo}
+          id={`aplanar-${design.id}`}
+          plantilla={plantillaReemplazo}
+        />
       </details>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[280px_1fr]">
@@ -683,7 +786,20 @@ function DesignEditor({
           <Field label="Página del fondo" value={layout.qrPage} onChange={(v) => set("qrPage", Math.round(v))} step={1} min={1} />
           <Field label="Margen blanco (módulos)" value={layout.quietModules} onChange={(v) => set("quietModules", Math.round(v))} step={1} min={0} max={8} />
 
-          {circular ? (
+          {imprenta ? (
+            <div className="flex flex-col gap-2 rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
+              <p className="text-sm font-medium">
+                Plantilla de imprenta · {circular ? "vinilo redondo" : "placa"} de {imprenta.anchoMm / 10} ×{" "}
+                {imprenta.altoMm / 10} cm
+              </p>
+              <p className="text-xs text-ink-3">
+                Sale tal cual la mandó la imprenta: en CMYK, con su sangrado, sus marcas y su línea de corte. Solo
+                se cambian el QR y el número, también en CMYK.
+              </p>
+            </div>
+          ) : null}
+
+          {vinilo ? (
             <div className="flex flex-col gap-2 rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
               <p className="text-sm font-medium">Vinilo circular de {ladoMm / 10} cm</p>
               <p className="text-xs text-ink-3">
@@ -733,12 +849,38 @@ function DesignEditor({
 
             {layout.showNumber ? (
               <>
+                <div>
+                  <label className="label" htmlFor={`fuente-${design.id}`}>
+                    Letra del número
+                  </label>
+                  <select
+                    id={`fuente-${design.id}`}
+                    className="input"
+                    value={layout.numberFont}
+                    onChange={(event) => set("numberFont", event.target.value as FuenteNumero)}
+                  >
+                    {(Object.keys(FUENTES_NUMERO) as FuenteNumero[]).map((fuente) => (
+                      <option key={fuente} value={fuente}>
+                        {FUENTES_NUMERO[fuente].nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-ink-3">Se elige sola: la misma del número de ejemplo.</p>
+                </div>
                 <Field
                   label="Altura del número mm"
                   value={layout.numberSizeMm}
                   onChange={(v) => set("numberSizeMm", v)}
-                  step={0.5}
+                  step={0.1}
                   min={1}
+                />
+                <Field
+                  label="Espacio entre cifras mm"
+                  value={layout.numberSpacingMm}
+                  onChange={(v) => set("numberSpacingMm", v)}
+                  step={0.05}
+                  min={-5}
+                  max={5}
                 />
                 <Field
                   label="Número · izquierda (X) mm"
@@ -803,13 +945,20 @@ function DesignEditor({
         </div>
 
         <div className="flex flex-col gap-2">
+          {imprenta ? (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={hojaCompleta} onChange={(event) => setHojaCompleta(event.target.checked)} />
+              Ver la hoja completa, como va a la imprenta
+            </label>
+          ) : null}
           <PdfPreview
             url={previewUrl}
             page={debounced.qrPage}
+            corte={imprenta && !hojaCompleta ? cortePlantilla(imprenta, design, circular) : undefined}
             // Un pelo adentro del corte, para no mostrar la línea magenta.
-            circulo={circular ? (ladoMm - 0.3) / (ladoMm + 2 * SANGRADO_MM) : undefined}
+            circulo={vinilo ? (ladoMm - 0.3) / (ladoMm + 2 * SANGRADO_MM) : undefined}
             margen={
-              circular
+              imprenta || vinilo
                 ? undefined
                 : {
                     x: (DEMASIA_MM + 0.6) / ((design.page_width_mm ?? 100) + 2 * DEMASIA_MM),
@@ -817,8 +966,32 @@ function DesignEditor({
                   }
             }
           />
-          {circular ? (
-            <AvisoBorde layout={layout} lado={ladoMm} />
+          {imprenta ? (
+            <>
+              {circular ? (
+                <AvisoBorde
+                  layout={layout}
+                  centroX={imprenta.xMm + imprenta.anchoMm / 2}
+                  centroY={imprenta.yMm + imprenta.altoMm / 2}
+                  radio={imprenta.anchoMm / 2}
+                  escala={1}
+                  soloAviso
+                />
+              ) : null}
+              <p className="text-xs text-ink-3">
+                {hojaCompleta
+                  ? "Así va el PDF a la imprenta: la plantilla entera, con su sangrado y sus marcas de corte."
+                  : `Así queda ${circular ? "el vinilo" : "la placa"} una vez cortad${circular ? "o" : "a"}. Tildá “Ver la hoja completa” para ver el PDF entero.`}
+              </p>
+            </>
+          ) : vinilo ? (
+            <AvisoBorde
+              layout={layout}
+              centroX={ladoMm / 2}
+              centroY={ladoMm / 2}
+              radio={ladoMm / 2}
+              escala={escalaVinilo(ladoMm, layout.circuloMm)}
+            />
           ) : (
             <p className="text-xs text-ink-3">
               Así queda la placa una vez cortada. El PDF para la imprenta lleva {DEMASIA_MM} mm en blanco alrededor y
@@ -832,7 +1005,25 @@ function DesignEditor({
 }
 
 /** La casilla para aplanar el PDF al subirlo, con su explicación. */
-function CasillaAplanar({ valor, cambiar, id }: { valor: boolean; cambiar: (v: boolean) => void; id: string }) {
+function CasillaAplanar({
+  valor,
+  cambiar,
+  id,
+  plantilla,
+}: {
+  valor: boolean;
+  cambiar: (v: boolean) => void;
+  id: string;
+  plantilla?: Imprenta | null;
+}) {
+  if (plantilla) {
+    return (
+      <p className="mt-3 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--surface-2)" }}>
+        Es una <strong>plantilla de imprenta</strong> de {plantilla.anchoMm} × {plantilla.altoMm} mm: va tal cual, sin
+        aplanar, así conserva el vector y los colores CMYK. Solo se cambian el QR y el número.
+      </p>
+    );
+  }
   return (
     <div className="mt-3">
       <label className="flex items-center gap-2 text-sm" htmlFor={id}>
@@ -852,12 +1043,25 @@ function CasillaAplanar({ valor, cambiar, id }: { valor: boolean; cambiar: (v: b
  * En un vinilo circular, el QR y el número tienen que quedar lejos del corte:
  * si el plotter se corre un poco, no puede llevarse un pedazo del QR.
  */
-function AvisoBorde({ layout, lado }: { layout: PlacaLayout; lado: number }) {
-  const centro = lado / 2;
-  const radio = lado / 2 - 3;
-  // El diseño se escala desde el centro: las distancias, también.
-  const escala = escalaVinilo(lado, layout.circuloMm);
-  const lejos = (x: number, y: number) => Math.hypot(x - centro, y - centro) * escala;
+function AvisoBorde({
+  layout,
+  centroX,
+  centroY,
+  radio: radioCorte,
+  escala,
+  soloAviso,
+}: {
+  layout: PlacaLayout;
+  centroX: number;
+  centroY: number;
+  radio: number;
+  /** En los vinilos de Canva el diseño se escala desde el centro: las distancias, también. */
+  escala: number;
+  /** Sin el texto de "así queda": solo el aviso, si hay algo cerca del corte. */
+  soloAviso?: boolean;
+}) {
+  const radio = radioCorte - 3;
+  const lejos = (x: number, y: number) => Math.hypot(x - centroX, y - centroY) * escala;
   const esquinas = [
     [layout.xMm, layout.yMm],
     [layout.xMm + layout.sizeMm, layout.yMm],
@@ -868,7 +1072,7 @@ function AvisoBorde({ layout, lado }: { layout: PlacaLayout; lado: number }) {
   const numeroAfuera = layout.showNumber && lejos(layout.numberXMm, layout.numberYMm + layout.numberSizeMm) > radio;
 
   if (!qrAfuera && !numeroAfuera) {
-    return <p className="text-xs text-ink-3">Así queda el vinilo una vez cortado.</p>;
+    return soloAviso ? null : <p className="text-xs text-ink-3">Así queda el vinilo una vez cortado.</p>;
   }
   return (
     <p className="text-xs font-medium text-danger">
@@ -876,6 +1080,21 @@ function AvisoBorde({ layout, lado }: { layout: PlacaLayout; lado: number }) {
       el plotter no se lleve un pedazo.
     </p>
   );
+}
+
+/** La pieza terminada de una plantilla, en fracciones de la hoja, para el preview. */
+function cortePlantilla(imprenta: Imprenta, design: Design, circular: boolean): CortePreview {
+  const hojaAncho = design.page_width_mm ?? imprenta.anchoMm;
+  const hojaAlto = design.page_height_mm ?? imprenta.altoMm;
+  // Un pelo adentro del corte, para no mostrar la línea de corte de la plantilla.
+  const adentro = 0.3;
+  return {
+    forma: circular ? "circulo" : "rectangulo",
+    x: (imprenta.xMm + adentro) / hojaAncho,
+    y: (imprenta.yMm + adentro) / hojaAlto,
+    ancho: (imprenta.anchoMm - 2 * adentro) / hojaAncho,
+    alto: (imprenta.altoMm - 2 * adentro) / hojaAlto,
+  };
 }
 
 /* --------------------------------------------------------------- generar */

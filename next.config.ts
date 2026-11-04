@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     "/api/placa/preview": ["./src/assets/fuentes/*"],
     "/api/placa/generate": ["./src/assets/fuentes/*"],
     "/api/placa/create-batch": ["./src/assets/fuentes/*"],
+    "/api/placa/fuente/[id]": ["./src/assets/fuentes/*"],
   },
 };
 

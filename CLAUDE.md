@@ -76,18 +76,24 @@ A printed plaque can't be corrected, so every URL form that was ever printed kee
 
 ### Print-ready plaques
 
-`src/lib/placa.ts` (pdf-lib) stamps a vector QR and the plaque number onto each design's Canva PDF background.
+`src/lib/placa.ts` (pdf-lib) stamps a vector QR and the plaque number onto each design's background PDF.
 
-- Layout coordinates are in mm from the top-left of the background page.
-- Positions are auto-detected in the browser: `detect-qr.ts` with pdf.js + jsQR, and `detect-circulo.ts`.
-- Square designs (10×10 vinyls) are output as circles:
-  - the design is scaled so its colour ring ends 1 mm inside a cut equal to the page side;
-  - a `CutContour` spot-colour cut line;
-  - a 2 mm sheet margin.
-- Rectangular plaques (10×15) keep their size: the sheet gets a 3 mm white margin (`DEMASIA_MM`) and a rectangular `CutContour` line at the design edge.
-- The plaque number is drawn as glyph outlines (Noto Sans Bold via `@pdf-lib/fontkit`), never as text, because the printer's machines don't recognise fonts. Output PDFs must contain no fonts.
-- Uploaded or replaced backgrounds are flattened in the browser by default (`src/lib/aplanar-pdf.ts`): each page becomes a 400 dpi JPEG at the design's exact size, so no Canva fonts reach the printer. Flattening can't sharpen low-res logos: the source must be Canva's "PDF para imprimir".
-- A design's background can be replaced in place (`POST /api/placa/designs/[id]/file`), keeping its id, layout and the numbers already tied to it.
+- **Printer templates are the source of truth** (since 4/11/2026). The printer sends Illustrator PDFs in CMYK, all vector, with bleed, crop marks and a TrimBox inside the MediaBox (10×10 round vinyls with a magenta cut circle; 10×20 plaques = the 10×15 design plus 5 cm blank). `plantilla-imprenta.ts` (`cajaDeCorte`) recognises them by that TrimBox, and then:
+  - the page is output exactly as sent: same size, with its TrimBox, BleedBox and ArtBox, no scaling, no extra margin and no cut line of ours;
+  - uploading or replacing one never flattens or resizes it;
+  - `layout.imprenta` (the trim box in mm) is computed by the server from the stored PDF on every upload, replace and save; the browser only uses it to show the cut piece.
+- Everything the page draws is CMYK: QR and number in K 100 %, white boxes 0 %. Never RGB.
+- Layout coordinates are in mm from the top-left of the background page (the MediaBox, so in templates they include the bleed and marks area).
+- Positions are auto-detected in the browser: `detect-qr.ts` with pdf.js + jsQR, and `detect-circulo.ts` (Canva vinyls only).
+  - The sample number is re-rendered at ~160 px tall. Its first digit (always a "0") picks the font by shape and gives the exact body size; the gap to the second "0" gives the letter spacing (`numberSpacingMm`).
+  - The number is placed by ink: digit tops at `numberYMm`, ink centred on `numberXMm`.
+- The number fonts live in `fuentes-numero.ts` and `src/assets/fuentes` (all SIL OFL): Noto Sans Bold (Canva designs), Calibri Bold via its free clone Carlito (printer's round vinyls) and Lato Semibold (printer's plaques). The browser loads them from `/api/placa/fuente/[id]` to recognise the font.
+- The number is drawn as glyph outlines (`@pdf-lib/fontkit`), never as text, because the printer's machines don't recognise fonts. Output PDFs must contain no fonts.
+- Legacy Canva designs (no TrimBox) keep the old path:
+  - square ones are output as circles: scaled so the colour ring ends 1 mm inside a cut equal to the page side, a `CutContour` spot-colour cut line and a 2 mm sheet margin;
+  - rectangular ones get a 3 mm white margin (`DEMASIA_MM`) and a rectangular `CutContour` line;
+  - they are flattened in the browser on upload by default (`aplanar-pdf.ts`, 400 dpi JPEG, which is RGB).
+- A design's background can be replaced in place (`POST /api/placa/designs/[id]/file`), keeping its id and the numbers already tied to it. With a template, the browser re-detects the QR, number and font right after.
 - `placa-layout.ts` holds the layout type and helpers that the browser uses. `placa.ts` reads fonts from disk, so it is server-only.
 - One PDF per plaque is the ZIP option.
 
