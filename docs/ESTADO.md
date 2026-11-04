@@ -56,7 +56,7 @@ Las variables de entorno están documentadas en `.env.example`.
 | Configuración de registro insertado | ID `2363042957797849`. Plantilla "registro insertado de WhatsApp con token de 60 días": el token se usa una sola vez, al conectar. |
 | Portfolio para el número | **TOQA WhatsApp** (ID 4043326102477101), creado el 2/11/2026 a nombre del dueño (toqa.nfc@gmail.com), con los mismos datos legales que toqa.nfc y verificación en dos pasos para todos. Existe porque Meta exige que la app del proveedor y la cuenta de WhatsApp estén en portfolios distintos. Todavía sin verificar: Meta no ofrece la verificación mientras el portfolio esté vacío. |
 | Número de prueba (bot actual) | +1 555-666-9190, phone id `1297383330136006`, cuenta de WhatsApp `2110399713184006`. |
-| Número real a conectar | **+54 9 11 2243-4691**: el WhatsApp Business de TOQA, que el dueño usa en el celular. |
+| Número real | **+54 9 11 2243-4691**: el WhatsApp Business de TOQA, que el dueño usa en el celular. **Conectado por coexistencia el 4/11/2026**: phone id `746573765202229`, cuenta de WhatsApp (WABA) `9544882982278941`, propiedad del portfolio TOQA WhatsApp y compartida con toqa.nfc. |
 | Token | Usuario del sistema con token permanente (`WHATSAPP_TOKEN` en Vercel). |
 | Webhook | `https://toqaqr.com.ar/api/whatsapp`. Hoy está suscrito el campo `messages`. |
 | Configuración básica de la app | Dominio `toqaqr.com.ar`, política de privacidad y eliminación de datos en `/privacidad`, ícono cargado y plataforma Sitio web. |
@@ -94,7 +94,8 @@ Las variables de entorno están documentadas en `.env.example`.
   - La WABA 1801639751103898 la creó el propio registro y no tiene número: no importa.
   - Pidió captura de TOQA WhatsApp → Configuración → Cuentas → Cuentas de WhatsApp. Se la mandamos: estaba vacío, y "Agregar" ofrece "Crear una nueva cuenta de WhatsApp" o "Link a WhatsApp Business account".
   - Respuesta (Bhavana): usar **"Link a WhatsApp Business account"** con +54 9 11 2243-4691, nunca "Crear una nueva". Si la cuenta aparece en TOQA WhatsApp, reintentar el registro insertado desde el panel eligiendo TOQA WhatsApp. Si da error, mandarle el mensaje exacto y la hora.
-  - 4/11: hecho. Con el código que llegó a la app, quedó "WhatsApp Business account linked" en TOQA WhatsApp ("Messaging accounts"). Falta ver dónde figura y reintentar el registro insertado.
+  - 4/11: hecho. Con el código que llegó a la app, quedó "WhatsApp Business account linked" en TOQA WhatsApp ("Messaging accounts"). Figura en TOQA WhatsApp como WABA 9544882982278941 ("App de WhatsApp Business").
+  - **4/11: CONECTADO.** El registro insertado, eligiendo el número "Registrado", mostró el portfolio TOQA WhatsApp, el QR de coexistencia y terminó con "Tu cuenta está conectada a toqa.nfc" (Session ID 01a1a781-897d-7e96-80fa-0a0bfd033de3). El panel mostró "✅ Conectado". No se agregó método de pago (el bot solo responde). Meta revisa la empresa en 24 h.
 - **Casos:** 30092177693715783 (chat, cerrado) y **29136970462605848** (abierto, por mail), en https://business.facebook.com/direct-support. El chat automático se cierra solo apenas contesta. Al caso por mail se le responde desde el mismo mail.
 - **Session IDs:** 01a194f1-8386-7aba-b26f-5bd63b202c72, 01a194f6-a015-7f5c-9183-699eb9a7cf83, 01a19532-451f-7e19-adba-da9eae360b86, 01a19e2e-e14b-7218-9f4f-e39ea7b7e5ff, 01a19e33-7fe6-7392-bd8c-2d9cb706fa98.
 - **Nunca quitar** la WABA 2110399713184006, la del número de prueba: es con la que anda el bot.
