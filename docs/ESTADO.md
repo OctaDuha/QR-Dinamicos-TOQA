@@ -75,7 +75,7 @@ Las variables de entorno están documentadas en `.env.example`.
 | Revisión de la app | ✅ Aprobada el 31/10. Se había enviado el 18/10. |
 | Publicar la app | ✅ 1/11 |
 | Registro como proveedor | ✅ 1/11, como "Independent Tech Provider" (paso "Continuar registro"). Sin eso, Meta decía "toqa.nfc no puede registrar clientes". |
-| Conectar el número real | ⛔ Trabado, con un caso abierto en Meta. Detalle abajo. |
+| Conectar el número real | ✅ 4/11. **El bot ya atiende en +54 9 11 2243-4691** y la app del celular sigue andando. Probado desde otro celular: llega el menú, y si responde el dueño el bot se calla. Detalle del camino abajo. |
 
 **El bloqueo al conectar el número (1 al 4/11):**
 - **Síntoma:** el registro insertado detectaba el WhatsApp Business, el QR se escaneaba bien y al final fallaba con "1466992878784395 no es un identificador del negocio válido (#1690130)". El selector de portfolio quedaba fijo en toqa.nfc.
@@ -112,15 +112,15 @@ Las variables de entorno están documentadas en `.env.example`.
   - Pedidos de autoridades: no hubo. Se marcaron las 4 políticas.
 - **Instrucciones para revisores:** el panel es privado y por eso no se dieron credenciales. El inicio de sesión con Facebook se usa solo dentro del panel, por el dueño, para el registro insertado.
 
-**Cuando el número conecte**, en este orden:
+**Pasos después de conectar** (1 a 6 hechos el 4/11):
 
 1. ~~Publicar la app~~ (hecho el 1/11).
-2. **Conectar el número.** Panel → WhatsApp → **Conectar tu WhatsApp Business**, eligiendo el portfolio **TOQA WhatsApp**: se escanea un QR con el celular y se hace **una sola vez**. El panel muestra el phone id, el número y la cuenta de WhatsApp.
-3. **Asignar la cuenta al usuario del sistema.** Meta Business → Usuarios del sistema → Asignar activos → la nueva cuenta de WhatsApp, con **control total**.
-4. **Suscribir `smb_message_echoes`** en los campos del webhook. Es lo que calla al bot cuando responde una persona desde el celular.
-5. **Actualizar Vercel.** Cambiar `WHATSAPP_PHONE_ID` y `WHATSAPP_NUMERO` y hacer Redeploy. Hasta ese momento, el webhook ignora los mensajes del número nuevo, así que nadie recibe respuestas a medias.
-6. **Probar** desde otro celular.
-7. **Verificar el portfolio TOQA WhatsApp** (Configuración → Centro de seguridad), apenas Meta lo ofrezca. Sin verificar, quedan límites en los mensajes que inicia la empresa.
+2. ✅ **Conectar el número.** Panel → WhatsApp → **Conectar tu WhatsApp Business**, eligiendo el portfolio **TOQA WhatsApp**: se escanea un QR con el celular y se hace **una sola vez**. El panel muestra el phone id, el número y la cuenta de WhatsApp.
+3. ✅ **Asignar la cuenta al usuario del sistema.** En toqa.nfc: Cuentas de WhatsApp → la cuenta del número → Asignar personas → toqa-bot, acceso total. En la lista de activos de toqa-bot figura como "unknown" porque es de otro portfolio.
+4. ✅ **Suscribir `smb_message_echoes`** (developers.facebook.com → TOQA Bot → Casos de uso → WhatsApp → Configuración) en los campos del webhook. Es lo que calla al bot cuando responde una persona desde el celular.
+5. ✅ **Actualizar Vercel.** Cambiar `WHATSAPP_PHONE_ID` y `WHATSAPP_NUMERO` y hacer Redeploy. Hasta ese momento, el webhook ignora los mensajes del número nuevo, así que nadie recibe respuestas a medias.
+6. ✅ **Probar** desde otro celular.
+7. **Verificar el portfolio TOQA WhatsApp**: ya aparece "Iniciar verificación" (en su Cuenta de mensajes). Pendiente. Sin verificar, quedan límites en los mensajes que inicia la empresa.
 8. Volver a vincular la página y el Instagram de **TOQA** al número, y comprobar que el bot sigue respondiendo.
 
 **Cuidados de la coexistencia:**
