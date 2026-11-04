@@ -92,7 +92,8 @@ Las variables de entorno están documentadas en `.env.example`.
   - El destino correcto es TOQA WhatsApp. Devolverla a toqa.nfc trae el mismo error.
   - La opción de conectar la app solo aparece si la cuenta del número está en el portfolio elegido, y hoy no está en ninguno.
   - La WABA 1801639751103898 la creó el propio registro y no tiene número: no importa.
-  - Pidió captura de TOQA WhatsApp → Configuración → Cuentas → Cuentas de WhatsApp.
+  - Pidió captura de TOQA WhatsApp → Configuración → Cuentas → Cuentas de WhatsApp. Se la mandamos: estaba vacío, y "Agregar" ofrece "Crear una nueva cuenta de WhatsApp" o "Link a WhatsApp Business account".
+  - Respuesta (Bhavana): usar **"Link a WhatsApp Business account"** con +54 9 11 2243-4691, nunca "Crear una nueva". Si la cuenta aparece en TOQA WhatsApp, reintentar el registro insertado desde el panel eligiendo TOQA WhatsApp. Si da error, mandarle el mensaje exacto y la hora.
 - **Casos:** 30092177693715783 (chat, cerrado) y **29136970462605848** (abierto, por mail), en https://business.facebook.com/direct-support. El chat automático se cierra solo apenas contesta. Al caso por mail se le responde desde el mismo mail.
 - **Session IDs:** 01a194f1-8386-7aba-b26f-5bd63b202c72, 01a194f6-a015-7f5c-9183-699eb9a7cf83, 01a19532-451f-7e19-adba-da9eae360b86, 01a19e2e-e14b-7218-9f4f-e39ea7b7e5ff, 01a19e33-7fe6-7392-bd8c-2d9cb706fa98.
 - **Nunca quitar** la WABA 2110399713184006, la del número de prueba: es con la que anda el bot.
@@ -179,7 +180,7 @@ Las variables de entorno están documentadas en `.env.example`.
   - Medidas: vinilos redondos de 10 cm (con su círculo de corte magenta) y placas de **10 × 20 cm** (la de 10 × 15 más 5 cm en blanco abajo, pedido de la imprenta).
   - **Todo lo que agrega la página va en CMYK** (pedido de la imprenta, para que tomen bien los negros): QR y número en K 100 %, recuadros blancos al 0 %.
   - El número sale **con la misma letra que el de ejemplo** (pedido del dueño): Calibri Bold en los vinilos (con Carlito, su copia libre) y Lato Semibold en las placas. Se reconoce sola, igual que el tamaño y el espacio entre cifras.
-  - **La pestaña Canva se sacó del panel** (pedido del dueño, 4/11), con sus rutas y su código. Nunca se usó porque pedía Canva Enterprise. Las variables `CANVA_*` de Vercel, si están cargadas, ya no se usan y se pueden borrar.
+  - **La pestaña Canva se sacó del panel** (pedido del dueño, 4/11), con sus rutas y su código. Nunca se usó porque pedía Canva Enterprise. El dueño dio de baja el plan de Canva. Las variables `CANVA_*` de Vercel, si están cargadas, ya no se usan y se pueden borrar.
   - Lo que sigue vale para los diseños viejos de Canva, si quedara alguno:
   - Las placas rectangulares (10×15) mantienen su medida, con **3 mm en blanco alrededor** (hoja de 106 × 156 mm) y línea de corte `CutContour` rectangular, de esquinas rectas. Pedido de la imprenta (29/10).
   - **Sin tipografías en los PDF** (pedido de la imprenta): el número va en curvas, y los fondos se aplanan a 400 dpi al subirlos ("Aplanar para imprenta"). Los diseños se exportan de Canva como **"PDF para imprimir"** y se cambian con "Reemplazar el PDF del diseño".
