@@ -7,6 +7,7 @@ import { DPI_APLANADO, aplanarPdf } from "@/lib/aplanar-pdf";
 import { detectarCirculo } from "@/lib/detect-circulo";
 import { detectQrInPdf } from "@/lib/detect-qr";
 import { FUENTES_NUMERO, type FuenteNumero } from "@/lib/fuentes-numero";
+import type { NumerosDeDiseno } from "@/lib/numeros-por-diseno";
 import { DEMASIA_MM, FRANJA_MM, SANGRADO_MM, esCircular, escalaVinilo, suggestedSizeMm } from "@/lib/page-size";
 import { imprentaCircular, numberDefaults, type Imprenta, type PlacaLayout } from "@/lib/placa-layout";
 import { cajaDeCorte } from "@/lib/plantilla-imprenta";
@@ -68,10 +69,12 @@ export function PlacaStudio({
   initialDesigns,
   defaultDestination,
   puedeBorrar,
+  numeros,
 }: {
   initialDesigns: Design[];
   defaultDestination: string;
   puedeBorrar: boolean;
+  numeros: NumerosDeDiseno[];
 }) {
   const router = useRouter();
   const [designs, setDesigns] = useState(initialDesigns);
@@ -179,7 +182,7 @@ export function PlacaStudio({
       ) : null}
 
       {designs.length > 0 ? (
-        <GeneratePanel designs={designs} defaultDestination={defaultDestination} />
+        <GeneratePanel designs={designs} defaultDestination={defaultDestination} numeros={numeros} />
       ) : null}
     </div>
   );
@@ -1102,10 +1105,13 @@ function cortePlantilla(imprenta: Imprenta, design: Design, circular: boolean): 
 function GeneratePanel({
   designs,
   defaultDestination,
+  numeros,
 }: {
   designs: Design[];
   defaultDestination: string;
+  numeros: NumerosDeDiseno[];
 }) {
+  const router = useRouter();
   const [modo, setModo] = useState<"nuevas" | "existentes">("nuevas");
   const [designId, setDesignId] = useState<string>(String(designs[0]?.id ?? ""));
   const [count, setCount] = useState("100");
@@ -1154,6 +1160,31 @@ function GeneratePanel({
         kind: "ok",
         text: `Listo: ${total} QR nuevos (#${desde} al #${hasta}) y su PDF descargado. Ya los ves en la pestaña QRs, con sus estadísticas.`,
       });
+      // Para que "Reimprimir" ya muestre los números nuevos.
+      router.refresh();
+    } catch (error) {
+      setNote({ kind: "error", text: `Algo falló: ${(error as Error).message}` });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Reimprime exactamente los números de un diseño, aunque estén salteados. */
+  const reimprimirTodos = async (designId: number, ids: number[], zip: boolean) => {
+    setBusy(true);
+    setNote({ kind: "info", text: `Armando las ${ids.length} placas…` });
+    try {
+      const response = await fetch("/api/placa/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, design: designId, zip }),
+      });
+      if (!response.ok) {
+        setNote({ kind: "error", text: (await response.text().catch(() => "")) || "No pude armar las placas." });
+        return;
+      }
+      descargar(await response.blob(), response.headers.get("Content-Disposition"), zip ? "placas.zip" : "placas.pdf");
+      setNote({ kind: "ok", text: `Listo: se descargaron las ${ids.length} placas.` });
     } catch (error) {
       setNote({ kind: "error", text: `Algo falló: ${(error as Error).message}` });
     } finally {
@@ -1295,7 +1326,12 @@ function GeneratePanel({
                 id="gen-design-old"
                 className="input"
                 value={rangoDesign}
-                onChange={(e) => setRangoDesign(e.target.value)}
+                onChange={(e) => {
+                  setRangoDesign(e.target.value);
+                  // Un tramo de otro diseño no se puede reimprimir con este.
+                  setFrom("");
+                  setTo("");
+                }}
               >
                 <option value="">El de cada QR</option>
                 {designs.map((design) => (
@@ -1324,6 +1360,18 @@ function GeneratePanel({
               ZIP por placa
             </a>
           </div>
+
+          <NumerosDisponibles
+            designs={designs}
+            numeros={numeros}
+            disenoElegido={rangoDesign}
+            elegirTramo={(desde, hasta) => {
+              setFrom(String(desde));
+              setTo(String(hasta));
+            }}
+            reimprimirTodos={reimprimirTodos}
+            busy={busy}
+          />
         </>
       )}
 
@@ -1335,6 +1383,116 @@ function GeneratePanel({
       </p>
     </div>
   );
+}
+
+const TOPE_REIMPRESION = 1000;
+const MAX_TRAMOS_A_LA_VISTA = 12;
+
+/**
+ * Los números que ya tiene cada diseño, para reimprimir sin tener que ir a
+ * buscarlos a la pestaña QRs. Tocando un tramo se cargan "Desde" y "Hasta".
+ * Con un diseño elegido, además, se pueden reimprimir todos sus números de
+ * una, aunque estén salteados (los del medio pueden ser de otro diseño).
+ */
+function NumerosDisponibles({
+  designs,
+  numeros,
+  disenoElegido,
+  elegirTramo,
+  reimprimirTodos,
+  busy,
+}: {
+  designs: Design[];
+  numeros: NumerosDeDiseno[];
+  disenoElegido: string;
+  elegirTramo: (desde: number, hasta: number) => void;
+  reimprimirTodos: (designId: number, ids: number[], zip: boolean) => void;
+  busy: boolean;
+}) {
+  const nombre = (id: number | null) =>
+    id === null ? "Sin diseño asignado" : (designs.find((d) => d.id === id)?.name ?? "Diseño borrado");
+  const grupos = disenoElegido
+    ? numeros.filter((g) => String(g.designId) === disenoElegido)
+    : [...numeros].sort((a, b) => (a.designId === null ? 1 : b.designId === null ? -1 : a.designId - b.designId));
+
+  if (numeros.length === 0) return null;
+
+  return (
+    <div className="mt-4 flex flex-col gap-3 rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
+      <p className="text-sm font-medium">
+        {disenoElegido ? `Números de “${nombre(Number(disenoElegido))}”` : "Números de cada diseño"}
+      </p>
+      {grupos.length === 0 ? (
+        <p className="text-xs text-ink-3">Este diseño todavía no tiene ningún número.</p>
+      ) : null}
+      {grupos.map((grupo) => {
+        const ids = grupo.rangos.flatMap(([a, b]) => Array.from({ length: b - a + 1 }, (_, i) => a + i));
+        return (
+          <div key={String(grupo.designId)} className="flex flex-col gap-2">
+            {disenoElegido ? null : (
+              <p className="text-xs font-medium">
+                {nombre(grupo.designId)} · {grupo.total} {grupo.total === 1 ? "placa" : "placas"}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {grupo.rangos.slice(0, MAX_TRAMOS_A_LA_VISTA).map(([a, b]) => (
+                <button
+                  key={a}
+                  type="button"
+                  className="btn btn-ghost text-xs"
+                  style={{ border: "1px solid var(--line)" }}
+                  onClick={() => elegirTramo(a, b)}
+                  title="Cargar en Desde y Hasta"
+                >
+                  {a === b ? formatoNumero(a) : `${formatoNumero(a)} a ${formatoNumero(b)}`}
+                </button>
+              ))}
+              {grupo.rangos.length > MAX_TRAMOS_A_LA_VISTA ? (
+                <span className="self-center text-xs text-ink-3">
+                  y {grupo.rangos.length - MAX_TRAMOS_A_LA_VISTA} tramos más
+                </span>
+              ) : null}
+            </div>
+            {disenoElegido && grupo.designId !== null ? (
+              ids.length > TOPE_REIMPRESION ? (
+                <p className="text-xs text-ink-3">
+                  Son {ids.length} placas: de a {TOPE_REIMPRESION} por vez, con Desde y Hasta.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-primary text-xs"
+                    disabled={busy}
+                    onClick={() => reimprimirTodos(grupo.designId as number, ids, false)}
+                  >
+                    Reimprimir las {ids.length} en un PDF
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary text-xs"
+                    disabled={busy}
+                    onClick={() => reimprimirTodos(grupo.designId as number, ids, true)}
+                  >
+                    Las {ids.length} en ZIP, un PDF por placa
+                  </button>
+                </div>
+              )
+            ) : null}
+          </div>
+        );
+      })}
+      <p className="text-xs text-ink-3">
+        Tocá un tramo para cargarlo en Desde y Hasta.
+        {disenoElegido ? "" : " Elegí un diseño arriba para reimprimir todos sus números de una."}
+      </p>
+    </div>
+  );
+}
+
+/** 42 -> "0042", como va impreso en la placa. */
+function formatoNumero(n: number) {
+  return String(n).padStart(4, "0");
 }
 
 /** Dispara la descarga de lo que devolvió el servidor. */

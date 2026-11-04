@@ -1,4 +1,5 @@
 import { chequeosPreImprenta, urlDeMuestra } from "@/lib/pre-imprenta";
+import { numerosPorDiseno } from "@/lib/numeros-por-diseno";
 import { listDesigns } from "@/lib/placa-designs";
 import { sesionActual } from "@/lib/roles";
 import { siteUrl } from "@/lib/qr";
@@ -11,8 +12,11 @@ export const dynamic = "force-dynamic";
 
 export default async function PlacaPage() {
   const supabase = await createClient();
-  const designs = (await listDesigns(supabase)) as unknown as Design[];
-  const sesion = await sesionActual();
+  const [designs, numeros, sesion] = await Promise.all([
+    listDesigns(supabase) as unknown as Promise<Design[]>,
+    numerosPorDiseno(supabase),
+    sesionActual(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -33,6 +37,7 @@ export default async function PlacaPage() {
         initialDesigns={designs}
         defaultDestination={`${siteUrl()}/`}
         puedeBorrar={sesion?.rol === "dueno"}
+        numeros={numeros}
       />
     </div>
   );
