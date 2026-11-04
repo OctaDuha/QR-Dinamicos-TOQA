@@ -48,7 +48,7 @@ export default async function WhatsappPage() {
   }
 
   const config = configWhatsapp();
-  const [verificacion, consultas, textos] = await Promise.all([
+  const [verificacion, consultas, textos, usuarios] = await Promise.all([
     sesion.supabase.rpc("bot_llave_valida", { p_llave: config.llave ?? "" }),
     sesion.supabase
       .from("bot_consultas")
@@ -56,7 +56,11 @@ export default async function WhatsappPage() {
       .order("creado_en", { ascending: false })
       .limit(30),
     sesion.supabase.from("bot_textos").select("clave, texto"),
+    // Sin llave contesta "llave inválida" si la función existe; si no existe,
+    // falta la migración de los usuarios con número oculto.
+    sesion.supabase.rpc("bot_telefono_de_usuario", { p_llave: "", p_user_id: "" }),
   ]);
+  const migradaUsuarios = usuarios.error?.code !== "PGRST202";
   const textosActuales = textosDelBot(
     Object.fromEntries(((textos.data ?? []) as { clave: string; texto: string }[]).map((t) => [t.clave, t.texto])),
   );
@@ -82,6 +86,11 @@ export default async function WhatsappPage() {
         <h2 className="text-sm font-semibold">Estado</h2>
         <ul className="mt-3 flex flex-col gap-2 text-sm">
           <Paso listo={migrada} texto="Base de datos preparada" falta="Correr en Supabase el archivo 2026-10-bot-whatsapp.sql." />
+          <Paso
+            listo={migradaUsuarios}
+            texto="Reconoce a los clientes que escriben con el número oculto"
+            falta="Falta correr la migración 2026-11-bot-usuarios.sql en Supabase. Mientras tanto, el bot los atiende como a alguien que no es cliente."
+          />
           <Paso
             listo={llaveOk}
             texto="Llave del bot cargada en Vercel"

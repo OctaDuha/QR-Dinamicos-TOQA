@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 };
 
 const CONTACTO = "toqa.nfc@gmail.com";
-const ACTUALIZADA = "4 de octubre de 2026";
+const ACTUALIZADA = "4 de noviembre de 2026";
 
 /**
  * Politica de privacidad publica. La pide Google para publicar el inicio de
@@ -89,7 +89,9 @@ export default function PrivacidadPage() {
           empezar la conversación. Si sos cliente, reconoce tu número entre los teléfonos que nos
           diste y puede mandarte el reporte de tus placas. De esas consultas guardamos el número, la
           fecha, la opción elegida y el período pedido. El resto de la conversación la lee y la
-          contesta una persona.
+          contesta una persona. Si usás un nombre de usuario de WhatsApp, también guardamos el
+          identificador que WhatsApp nos da para tu cuenta junto con el número con el que nos
+          escribiste, para seguir reconociéndote si después nos escribís con el número oculto.
         </p>
       </Seccion>
 
@@ -131,7 +133,8 @@ export default function PrivacidadPage() {
           elimina definitivamente. Las copias de
           seguridad de la lista de placas guardan versiones anteriores, así que una placa eliminada
           puede seguir figurando en copias viejas hasta que se borren. Las consultas al asistente de
-          WhatsApp, mientras el comercio tenga el servicio. El registro de quién hizo
+          WhatsApp, y el identificador de usuario con su número, mientras el comercio tenga el
+          servicio. El registro de quién hizo
           cada cosa en el panel se conserva aunque la placa se elimine, para que quede constancia de
           quién la eliminó.
         </p>

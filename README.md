@@ -287,9 +287,18 @@ tiene un asistente que comparte el número con la persona que atiende:
   cada conversación con cifras (hasta 20), así que `claveBot()` lo convierte
   en "00" + 18 cifras de su huella: la misma siempre para la misma persona, y
   distinta de cualquier teléfono. No hizo falta migración. Como no hay
-  número, no se lo reconoce como cliente: ve el menú sin Estadísticas, y en
-  el panel figura como "Número oculto". Los ecos por identificador también
-  lo callan.
+  número, en principio no se lo reconoce como cliente: ve el menú sin
+  Estadísticas, y en el panel figura como "Número oculto". Los ecos por
+  identificador también lo callan.
+- **Clientes que después ocultan el número** (migración
+  `2026-11-bot-usuarios.sql`). Cuando un mensaje trae el número y el
+  identificador juntos, el bot anota el par en `bot_usuarios` (solo con su
+  llave, sin políticas para nadie más). Si después esa persona escribe con el
+  número oculto, `bot_telefono_de_usuario` devuelve el número y el bot la
+  atiende como siempre: mismo cliente, mismas estadísticas, mismos
+  silencios. Se le sigue contestando por su identificador. Solo sirve con
+  quien escribió alguna vez con el número a la vista; si nunca lo mostró, no
+  hay cómo saber quién es. Sin la migración, el bot sigue como antes.
 - Después de producto o problema, el primer mensaje en que el cliente cuenta
   qué quiere (texto, foto o audio, dentro de 15 minutos) recibe una sola vez
   el aviso "¡Perfecto! En breve te responderá una persona del equipo 🙌"
@@ -616,7 +625,11 @@ lado con el preview del PDF real.
 La pestaña *Reimprimir QR que ya tengo* hace lo mismo sobre números que ya
 existen, sin crear ninguno: sirve para rehacer un archivo perdido o una
 impresión arruinada. Ahí se puede forzar un diseño o dejar que cada QR use el
-suyo.
+suyo. Debajo se listan los números de cada diseño en tramos seguidos
+(`src/lib/numeros-por-diseno.ts`, que lee de a 1000): tocar un tramo carga
+Desde y Hasta, y con un diseño elegido se reimprimen todos sus números de una
+por POST con la lista exacta, así no entran los números de otro diseño que
+queden en el medio.
 
 Si un fondo tiene varias páginas (frente y dorso), cada placa las emite todas y
 el QR va sólo en la que indique *Página del fondo*.

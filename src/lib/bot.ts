@@ -37,6 +37,12 @@ export type MensajeEntrante = {
    * a quien se le contesta.
    */
   de: string;
+  /**
+   * Su identificador de usuario de WhatsApp, si vino, aunque también haya
+   * venido el número. Con los dos juntos se aprende el par, para reconocerlo
+   * el día que escriba con el número oculto.
+   */
+  usuario: string | null;
   /** El texto escrito (null si es audio, foto, etc.). */
   texto: string | null;
   /** El id de la opción elegida de una lista. */
@@ -54,6 +60,29 @@ export function claveBot(de: string): string {
   if (!esUsuarioSinNumero(de)) return de;
   const hex = createHash("sha256").update(de).digest("hex").slice(0, 15);
   return `00${BigInt(`0x${hex}`).toString().padStart(18, "0").slice(-18)}`;
+}
+
+/**
+ * Anota a qué número corresponde un identificador de usuario. Si la
+ * migración 2026-11-bot-usuarios.sql todavía no se corrió, no pasa nada: el
+ * bot sigue como antes.
+ */
+async function vincularUsuario(supabase: SupabaseClient, llave: string, usuario: string, telefono: string) {
+  const { error } = await supabase.rpc("bot_vincular_usuario", { p_llave: llave, p_user_id: usuario, p_telefono: telefono });
+  if (error && error.code !== "PGRST202") console.error("[bot] no pude anotar el usuario:", error.message);
+}
+
+/**
+ * La clave con que la base conoce a quien escribió. Si vino con el número
+ * oculto pero ya se lo había visto con el número, es ese número: así sigue
+ * siendo el mismo cliente, con sus estadísticas y sus silencios. Si no, la
+ * clave "00…" de claveBot().
+ */
+async function claveConocida(supabase: SupabaseClient, llave: string, de: string): Promise<string> {
+  if (!esUsuarioSinNumero(de)) return de;
+  const { data, error } = await supabase.rpc("bot_telefono_de_usuario", { p_llave: llave, p_user_id: de });
+  if (error && error.code !== "PGRST202") console.error("[bot] no pude buscar el usuario:", error.message);
+  return typeof data === "string" && /^\d{6,20}$/.test(data) ? data : claveBot(de);
 }
 
 /** Un teléfono que llega como "+54911…" o "54911…": solo cifras. Si no es teléfono, null. */
@@ -124,6 +153,7 @@ export function leerAviso(
         mensajes.push({
           id: m.id,
           de,
+          usuario: usuarioDe(m.from_user_id, m.user_id, contacto?.user_id, m.from),
           texto: m.type === "text" ? (m.text?.body ?? null) : null,
           opcion: m.interactive?.list_reply?.id ?? m.interactive?.button_reply?.id ?? null,
         });
@@ -252,10 +282,10 @@ type Recibido = {
  * leímos", que después de una respuesta de verdad quedaría raro).
  */
 export async function respondioUnaPersona(quien: string): Promise<void> {
-  const telefono = claveBot(quien);
   const { llave } = configWhatsapp();
   const supabase = clienteBase();
   if (!llave || !supabase) return;
+  const telefono = await claveConocida(supabase, llave, quien);
   await supabase.rpc("bot_silenciar", { p_llave: llave, p_telefono: telefono, p_horas: HORAS_SILENCIO });
   await supabase.rpc("bot_esperar", { p_llave: llave, p_telefono: telefono, p_espera: "" });
 }
@@ -266,10 +296,18 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
   const supabase = clienteBase();
   if (!llave || !supabase) return;
 
+  // Con el número a la vista, se anota a qué identificador corresponde.
+  if (mensaje.usuario && !esUsuarioSinNumero(mensaje.de)) {
+    await vincularUsuario(supabase, llave, mensaje.usuario, mensaje.de);
+  }
+  // La base anota por la clave (el número, aunque haya venido oculto, si ya
+  // se conocía); los mensajes van a quien escribió.
+  const clave = await claveConocida(supabase, llave, mensaje.de);
+
   const { data, error } = await supabase.rpc("bot_recibir", {
     p_llave: llave,
     p_wamid: mensaje.id,
-    p_telefono: claveBot(mensaje.de),
+    p_telefono: clave,
   });
   if (error) {
     console.error("[bot] no pude anotar el mensaje:", error.message);
@@ -282,8 +320,6 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
   const esCliente = r.clientes.length > 0;
   const textos = textosDelBot(r.textos);
   const opcion = mensaje.opcion?.startsWith("toqa:") ? mensaje.opcion : null;
-  // La base anota por la clave; los mensajes van a quien escribió.
-  const clave = claveBot(de);
   const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn, { p_llave: llave, p_telefono: clave, ...args });
   const anotar = (resultado: string, rango?: Rango) =>
     rpc("bot_anotar", {
@@ -357,7 +393,7 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
       default: {
         if (!esCliente) return;
         const rango = rangoDeOpcion(opcion, fechaArgentina(new Date()));
-        if (rango) await anotar(await mandarReporte(supabase, llave, de, rango, r.clientes), rango);
+        if (rango) await anotar(await mandarReporte(supabase, llave, de, clave, rango, r.clientes), rango);
         return;
       }
     }
@@ -389,7 +425,7 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
     const rango = leerFechas(mensaje.texto, fechaArgentina(new Date()));
     if (rango) {
       await rpc("bot_esperar", { p_espera: "" });
-      await anotar(await mandarReporte(supabase, llave, de, rango, r.clientes), rango);
+      await anotar(await mandarReporte(supabase, llave, de, clave, rango, r.clientes), rango);
     } else if (/\d/.test(mensaje.texto)) {
       await enviarTexto(de, "No entendí esas fechas 🙈 Probá así: 1/9 al 30/9");
     } else {
@@ -410,12 +446,15 @@ async function mandarReporte(
   supabase: SupabaseClient,
   llave: string,
   telefono: string,
+  clave: string,
   rango: Rango,
   clientes: string[],
 ): Promise<string> {
+  // `telefono` es a quien se le manda (su número o su identificador); `clave`
+  // es con qué lo conoce la base, que es lo que dice de qué cliente es.
   const { data, error } = await supabase.rpc("bot_estadisticas", {
     p_llave: llave,
-    p_telefono: claveBot(telefono),
+    p_telefono: clave,
     p_desde: rango.desde,
     p_hasta: rango.hasta,
     p_bucket: rango.bucket,

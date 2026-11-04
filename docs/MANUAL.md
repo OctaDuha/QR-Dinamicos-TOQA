@@ -90,7 +90,7 @@ Arriba están las secciones: **QRs · Clientes · Placas · Historial · Usuario
 - **Diseños viejos de Canva** (si quedara alguno): siguen saliendo como antes. Los cuadrados salen redondos con franja blanca de 1 mm y línea de corte CutContour, y las placas con 3 mm en blanco alrededor. Su fondo aplanado no sale en CMYK.
 - **Generar placas**:
   - **Nuevas**: cantidad, diseño y destino. Crea los números y baja el PDF de una.
-  - **Existentes**: por rango de números o con los tildados en QRs.
+  - **Existentes** ("Reimprimir QR que ya tengo"): por rango de números o con los tildados en QRs. Abajo aparecen **los números de cada diseño**, agrupados en tramos (por ejemplo "0001 a 0040"): tocando un tramo se carga en Desde y Hasta. Si elegís un diseño, aparece el botón para **reimprimir todos sus números de una**, aunque estén salteados.
   - **PDF único** (todas juntas) o **ZIP** (un PDF por placa o vinilo, lo que pide la imprenta para los vinilos).
 - Cada número queda atado a un diseño: no se puede reimprimir el mismo número con otro diseño.
 
@@ -123,7 +123,7 @@ Arriba están las secciones: **QRs · Clientes · Placas · Historial · Usuario
 - En medio de una charla no se mete. Escribiendo "menú" o "estadísticas" se lo llama cuando se quiera.
 - Después de 🛒 Quiero un producto o 🔧 Tengo un problema, cuando el cliente cuenta qué necesita, le responde una sola vez "¡Perfecto! En breve te responderá una persona del equipo 🙌". Si ya le respondiste vos, no lo manda.
 - Si piden hablar con una persona, o si respondés vos desde el celular, se calla 12 horas con ese número.
-- Si alguien te escribe con su **nombre de usuario de WhatsApp sin mostrar su número**, el bot le contesta igual con el menú, como a alguien que no es cliente (sin Estadísticas). En "Últimas consultas" aparece como **"Número oculto"**.
+- Si alguien te escribe con su **nombre de usuario de WhatsApp sin mostrar su número**, el bot le contesta igual con el menú. Si esa persona ya te había escrito alguna vez con el número a la vista, el bot la reconoce y la trata como siempre (si es cliente, le ofrece Estadísticas). Si no, la atiende como a alguien que no es cliente, y en "Últimas consultas" aparece como **"Número oculto"**.
 
 ---
 
