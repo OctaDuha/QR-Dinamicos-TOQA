@@ -54,6 +54,7 @@ Las variables de entorno están documentadas en `.env.example`.
 | Portfolio comercial | `toqa.nfc` (ID 1466992878784395). **Verificado el 16/10/2026** como persona física/monotributo del dueño, con nombre alternativo "TOQA". La verificación salió por **identidad (DNI)**: el registro público de Meta tenía un teléfono viejo que no era suyo. |
 | App de Meta | **TOQA Bot**, ID `1138106575564279`, tipo empresa. **Marcada como proveedor de tecnología**, decisión irreversible y correcta. |
 | Configuración de registro insertado | ID `2363042957797849`. Plantilla "registro insertado de WhatsApp con token de 60 días": el token se usa una sola vez, al conectar. |
+| Portfolio para el número | **TOQA WhatsApp** (ID 4043326102477101), creado el 2/11/2026 a nombre del dueño (toqa.nfc@gmail.com), con los mismos datos legales que toqa.nfc y verificación en dos pasos para todos. Existe porque Meta exige que la app del proveedor y la cuenta de WhatsApp estén en portfolios distintos. Todavía sin verificar: Meta no ofrece la verificación mientras el portfolio esté vacío. |
 | Número de prueba (bot actual) | +1 555-666-9190, phone id `1297383330136006`, cuenta de WhatsApp `2110399713184006`. |
 | Número real a conectar | **+54 9 11 2243-4691**: el WhatsApp Business de TOQA, que el dueño usa en el celular. |
 | Token | Usuario del sistema con token permanente (`WHATSAPP_TOKEN` en Vercel). |
@@ -71,9 +72,31 @@ Las variables de entorno están documentadas en `.env.example`.
 | Proveedor de tecnología (marcado) | ✅ |
 | Pruebas de los permisos (llamadas a la API) | ✅ Valen 30 días: hay que enviar y aprobar antes de mediados de noviembre o rehacerlas con el explorador (`GET 2110399713184006/phone_numbers` con permiso `whatsapp_business_management`). |
 | Verificación de acceso | ✅ Aprobada (avisado el 29/10). Se había enviado el 17/10. |
-| Revisión de la app | ⏳ Enviada el 18/10. Plazo de hasta 20 días (vence alrededor del 7/11). Hay un recordatorio agendado en la sesión para el 7/11. |
-| Publicar la app | Pendiente de las dos aprobaciones. |
-| Conectar el número real | Pendiente. El botón ya está en Panel → WhatsApp. |
+| Revisión de la app | ✅ Aprobada el 31/10. Se había enviado el 18/10. |
+| Publicar la app | ✅ 1/11 |
+| Registro como proveedor | ✅ 1/11, como "Independent Tech Provider" (paso "Continuar registro"). Sin eso, Meta decía "toqa.nfc no puede registrar clientes". |
+| Conectar el número real | ⛔ Trabado, con un caso abierto en Meta. Detalle abajo. |
+
+**El bloqueo al conectar el número (1 al 4/11):**
+- **Síntoma:** el registro insertado detectaba el WhatsApp Business, el QR se escaneaba bien y al final fallaba con "1466992878784395 no es un identificador del negocio válido (#1690130)". El selector de portfolio quedaba fijo en toqa.nfc.
+- **Causa, confirmada por Meta:** en la coexistencia, **la app del proveedor y la cuenta de WhatsApp del número tienen que estar en portfolios distintos**, y toqa.nfc tenía las dos.
+- **Lo que se hizo, en orden:**
+  1. Se quitaron los vínculos del número con las páginas de Facebook TOQA y "ExplOcta tus redes" (la marca de marketing anterior del dueño) y con el Instagram. **No volver a vincular ExplOcta a este número.** La página y el Instagram de TOQA se pueden volver a vincular cuando el bot ande.
+  2. Se desconectó la "Plataforma para empresas" desde la app del celular. El reintento la volvió a crear.
+  3. Se creó el portfolio **TOQA WhatsApp**.
+  4. Se quitó de toqa.nfc la cuenta de WhatsApp del número (WABA 9544882982278941). En toqa.nfc quedó solo el número de prueba.
+  5. Se quitó TOQA Bot de las "Integraciones comerciales" del perfil personal del dueño.
+- **Estado al 4/11:** desde el paso 4, el registro ya no pide portfolio ni ofrece conectar la app. Salta a "Agrega tu número de teléfono", el alta común por SMS, que **sacaría el número de la app**. Opciones que muestra: número nuevo, número virtual o Maruja Logística (cliente). **No avanzar ahí.**
+- **Qué dice Meta (Bhavana, 4/11):**
+  - No reintentar, no registrar el número y no volver a agregar la cuenta a ningún portfolio todavía.
+  - El destino correcto es TOQA WhatsApp. Devolverla a toqa.nfc trae el mismo error.
+  - La opción de conectar la app solo aparece si la cuenta del número está en el portfolio elegido, y hoy no está en ninguno.
+  - La WABA 1801639751103898 la creó el propio registro y no tiene número: no importa.
+  - Pidió captura de TOQA WhatsApp → Configuración → Cuentas → Cuentas de WhatsApp.
+- **Casos:** 30092177693715783 (chat, cerrado) y **29136970462605848** (abierto, por mail), en https://business.facebook.com/direct-support. El chat automático se cierra solo apenas contesta. Al caso por mail se le responde desde el mismo mail.
+- **Session IDs:** 01a194f1-8386-7aba-b26f-5bd63b202c72, 01a194f6-a015-7f5c-9183-699eb9a7cf83, 01a19532-451f-7e19-adba-da9eae360b86, 01a19e2e-e14b-7218-9f4f-e39ea7b7e5ff, 01a19e33-7fe6-7392-bd8c-2d9cb706fa98.
+- **Nunca quitar** la WABA 2110399713184006, la del número de prueba: es con la que anda el bot.
+- El código del botón no hace falta tocarlo: según Meta, la versión actual del registro no necesita `version: "v3"`.
 
 **Lo que se mandó en la revisión de la app**, todo en inglés:
 - **Permisos:** `whatsapp_business_messaging`, `whatsapp_business_management` y `public_profile`.
@@ -86,14 +109,16 @@ Las variables de entorno están documentadas en `.env.example`.
   - Pedidos de autoridades: no hubo. Se marcaron las 4 políticas.
 - **Instrucciones para revisores:** el panel es privado y por eso no se dieron credenciales. El inicio de sesión con Facebook se usa solo dentro del panel, por el dueño, para el registro insertado.
 
-**Cuando Meta apruebe todo**, en este orden:
+**Cuando el número conecte**, en este orden:
 
-1. **Publicar la app.** Pasa a modo activo.
-2. **Conectar el número.** Panel → WhatsApp → **Conectar mi WhatsApp Business**: se escanea un QR con el celular y se hace **una sola vez**. El panel muestra el phone id, el número y la cuenta de WhatsApp.
+1. ~~Publicar la app~~ (hecho el 1/11).
+2. **Conectar el número.** Panel → WhatsApp → **Conectar tu WhatsApp Business**, eligiendo el portfolio **TOQA WhatsApp**: se escanea un QR con el celular y se hace **una sola vez**. El panel muestra el phone id, el número y la cuenta de WhatsApp.
 3. **Asignar la cuenta al usuario del sistema.** Meta Business → Usuarios del sistema → Asignar activos → la nueva cuenta de WhatsApp, con **control total**.
 4. **Suscribir `smb_message_echoes`** en los campos del webhook. Es lo que calla al bot cuando responde una persona desde el celular.
 5. **Actualizar Vercel.** Cambiar `WHATSAPP_PHONE_ID` y `WHATSAPP_NUMERO` y hacer Redeploy. Hasta ese momento, el webhook ignora los mensajes del número nuevo, así que nadie recibe respuestas a medias.
 6. **Probar** desde otro celular.
+7. **Verificar el portfolio TOQA WhatsApp** (Configuración → Centro de seguridad), apenas Meta lo ofrezca. Sin verificar, quedan límites en los mensajes que inicia la empresa.
+8. Volver a vincular la página y el Instagram de **TOQA** al número, y comprobar que el bot sigue respondiendo.
 
 **Cuidados de la coexistencia:**
 - **No registrar el número por API**: lo sacaría de la app del celular.
@@ -104,10 +129,11 @@ Las variables de entorno están documentadas en `.env.example`.
 
 ## 5. Otros pendientes
 
-- **Teléfono del negocio en Meta:** el portfolio muestra +54 11 4132-2221, que salió del registro público y no es de TOQA. Hay que corregirlo **después** de que aprueben las dos revisiones, porque editar datos del negocio verificado puede pedir verificar de nuevo.
+- **Teléfono del negocio en Meta:** el portfolio muestra +54 11 4132-2221, que salió del registro público y no es de TOQA. Las dos revisiones ya están aprobadas, así que se puede corregir, pero **no mientras siga abierto el caso de la conexión**: editar datos del negocio verificado puede pedir verificar de nuevo.
 - **Nombres de usuario de WhatsApp (BSUID):** WhatsApp va a permitir chatear con un nombre de usuario sin mostrar el número. En ese caso llega un identificador (BSUID) en vez del teléfono. El bot reconoce a los clientes por teléfono (`bot_telefono_comparable`), así que cuando esté disponible en Argentina hay que sumar el BSUID. Además, reservar **@toqa** una vez conectado el número real.
 - Aviso amarillo "WhatsApp needs more information" en el portfolio (24/10): **resuelto, no hay que hacer nada.** Es la invitación de Meta a subir el límite de conversaciones **iniciadas por la empresa** (250 por día; para pasar a 2000 hay que iniciar conversaciones de calidad). TOQA no inicia conversaciones: el bot solo responde a quien escribe primero, y eso no cuenta para ese límite.
 
+- **Plantillas de la imprenta:** sigue viendo "serruchadas" las imágenes de Canva y va a mandar sus propias plantillas en vector. Cuando lleguen, se revisan y se suben con **"Aplanar" destildado**.
 - **Fotos reales de productos** para la página de inicio. El dueño las va a mandar; hoy hay ilustraciones.
 - **Domicilio fiscal en ARCA:** el dueño se mudó y el domicilio fiscal quedó viejo. Actualizarlo es trámite suyo, y conviene hacerlo **después** de que Meta termine las revisiones, para no generar diferencias mientras revisan.
 - La tarjeta "QR y NFC en uno" de la página de inicio sigue diciendo "funciona con cualquier celular". El dueño pidió **no cambiarla** por ahora, aunque el NFC funciona en alrededor del 90 % de los celulares.
