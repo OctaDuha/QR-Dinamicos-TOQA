@@ -12,7 +12,7 @@ type AdminResult =
  *
  * Que la cuenta este logueada no alcanza. La base ya le niega todo a una
  * cuenta pendiente, pero varias de estas rutas leen cosas que no viven en la
- * base —el respaldo, los mails, Canva—, y esas no pasan por sus politicas.
+ * base —el respaldo, los mails—, y esas no pasan por sus politicas.
  */
 export async function requireAdmin(): Promise<AdminResult> {
   const sesion = await sesionActual();

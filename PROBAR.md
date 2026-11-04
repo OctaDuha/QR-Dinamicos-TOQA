@@ -129,11 +129,13 @@ mantenerse **idénticos**.
 Pestaña **Placas**. Podés tener varios diseños (Google Reseñas, Instagram,
 WhatsApp…) y cada uno recuerda dónde va su QR.
 
-1. En Canva, abrí el diseño y descargalo con *Compartir → Descargar → PDF para
-   imprimir*. **Dejá el QR de ejemplo puesto**: se usa para saber dónde va.
-2. En la web: **Agregar un diseño** → ponele nombre y subí el PDF.
-3. Solo, el sistema busca el QR adentro y te dice dónde lo encontró. No hay que
-   medir nada. Si no lo encuentra, podés ubicarlo a mano con los campos en
+1. Pedile a la imprenta la **plantilla** del diseño en PDF (en CMYK, con marcas
+   de corte), **con el QR y el número de ejemplo puestos**: se usan para saber
+   dónde van.
+2. En la web: **Agregar un diseño** → ponele nombre y subí la plantilla. Va tal
+   cual, sin aplanar.
+3. Solo, el sistema busca el QR y el número adentro, con su tamaño y su letra, y
+   te dice dónde los encontró. No hay que medir nada. Si no lo encuentra, podés ubicarlo a mano con los campos en
    milímetros, mirando el preview.
 4. En **Generar placas**, con *Crear QR nuevos*: escribís la cantidad (por
    ejemplo 100), elegís el diseño y el destino inicial, y tocás **Crear 100 y
@@ -145,8 +147,9 @@ Los 100 aparecen en la pestaña **QRs** con su número, su destino editable y su
 estadísticas. La solapa *Reimprimir QR que ya tengo* rehace las placas de
 números que ya existen, sin crear nuevos.
 
-Si algún día rediseñás una placa, la cambiás en Canva, exportás de nuevo y la
-volvés a agregar. No hay que tocar nada más.
+Si algún día la imprenta te manda una plantilla nueva de un diseño, usá
+**Reemplazar el PDF del diseño** adentro de ese diseño: mantiene sus números y
+vuelve a ubicar solo el QR y el número.
 
 ## Dos cosas para tener en cuenta
 
@@ -170,7 +173,7 @@ serio conviene el plan pago (unos 25 USD por mes) para que no se apague nunca.
 | `permission denied for table qr_codes` | El paso 2 no se completó. Volvé a pegar y correr el archivo entero. |
 | El QR lleva a una dirección rara o no abre nada | Falta poner tu dominio en `NEXT_PUBLIC_SITE_URL` **y hacer Redeploy**. |
 | `Este QR todavía no tiene destino` | Ese número no existe en la base. Fijate en el listado del panel. |
-| Al generar placas dice que falta el fondo | Subí primero el PDF de Canva en la pestaña **Placas**. |
+| Al generar placas dice que falta el fondo | Subí primero la plantilla de la imprenta en la pestaña **Placas**. |
 
 ---
 

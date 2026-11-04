@@ -35,7 +35,7 @@ export function PlacaCard({
       <div className="card p-5">
         <h2 className="text-sm font-semibold">Placa para imprenta</h2>
         <p className="mt-2 text-sm text-ink-2">
-          Todavía no cargaste ningún diseño. Subí el PDF que exportaste de Canva en la pestaña{" "}
+          Todavía no cargaste ningún diseño. Subí la plantilla de la imprenta en la pestaña{" "}
           <strong>Placas</strong> y acá vas a ver esta placa lista para imprimir.
         </p>
       </div>

@@ -18,7 +18,6 @@ redirige esa URL.
   de escaneos por día / semana / mes.
 - **`/dashboard/placa`** — varios diseños de placa; detecta solo dónde va el QR
   en cada uno y genera los lotes listos para imprenta.
-- **`/dashboard/canva`** — generación vía Canva Connect API (requiere Enterprise).
 
 ## Stack
 
@@ -673,34 +672,14 @@ color y el corte.
   el número quedan a menos de 3 mm del corte.
 - Un PDF por vinilo: los botones de **ZIP**.
 
-## Canva Connect API (sólo Enterprise)
+## Canva (dado de baja)
 
-`/dashboard/canva` implementa la Opción A del brief —subir el QR como asset,
-autofill del campo `qr_code` y export a PDF— y queda lista por si alguna vez
-pasás a Enterprise.
-
-**No funciona con Canva Business (Canva Negocios).** El gate está en un punto
-preciso:
-
-| API | Planes |
-|---|---|
-| Brand templates (leer plantillas y su dataset) | Pro, Business, Enterprise |
-| **Autofill** (rellenar el campo y generar el diseño) | **Sólo Enterprise** |
-
-Con Business la API responde 403 al pedir el lote.
-
-La **Creación masiva** manual de Canva tampoco resuelve el QR: acepta hasta 300
-filas y rellena texto e imágenes, pero **ignora las URLs de imagen**. Las
-imágenes tienen que estar embebidas como valor de celda en un `.xlsx` (la
-función “Insertar imagen en celda” de Excel), lo que implica pegar cada QR a
-mano. Por eso la generación de placas vive en `/dashboard/placa`.
-
-Para configurarla si algún día corresponde: integración privada en
-[developers.canva.com](https://www.canva.com/developers/), URL de retorno
-`https://tu-dominio/api/canva/callback`, scopes `asset:read`, `asset:write`,
-`brandtemplate:meta:read`, `brandtemplate:content:read`, `design:content:read`,
-`design:content:write`, `design:meta:read`, y las variables `CANVA_CLIENT_ID` /
-`CANVA_CLIENT_SECRET`.
+Hubo una pestaña `/dashboard/canva` que generaba placas con la Canva Connect
+API, pero nunca se usó: el autofill de plantillas solo existe en Canva
+Enterprise. Se sacó el 4/11/2026, junto con sus rutas (`/api/canva/*`) y
+`src/lib/canva.ts`, cuando los diseños pasaron a ser las plantillas de la
+imprenta. Las tablas `canva_connections`, `canva_batches` y `canva_batch_items`
+siguen en `supabase/schema.sql` sin uso; no molestan y no hace falta borrarlas.
 
 ## Seguridad
 

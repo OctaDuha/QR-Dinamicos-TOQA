@@ -56,7 +56,7 @@ export function chequeosPreImprenta({ cantidadDisenos }: { cantidadDisenos: numb
         cantidadDisenos > 0
           ? `Tenés ${cantidadDisenos} ${cantidadDisenos === 1 ? "diseño cargado" : "diseños cargados"}.`
           : "Todavía no cargaste ningún diseño, así que no hay placas para generar.",
-      comoArreglar: cantidadDisenos > 0 ? null : "Subí acá abajo el PDF que exportaste de Canva.",
+      comoArreglar: cantidadDisenos > 0 ? null : "Subí acá abajo la plantilla que te mandó la imprenta.",
     },
   ];
 }

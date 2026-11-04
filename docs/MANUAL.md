@@ -32,7 +32,7 @@ Lo impreso y lo grabado **nunca cambia**. Lo único que cambia es el destino, y 
 
 ## El panel (`/dashboard`)
 
-Arriba están las secciones: **QRs · Clientes · Placas · Canva · Historial · Usuarios · WhatsApp**. Algunas solo las ve el dueño.
+Arriba están las secciones: **QRs · Clientes · Placas · Historial · Usuarios · WhatsApp**. Algunas solo las ve el dueño.
 
 ### QRs: la lista de todos los productos
 
@@ -93,10 +93,6 @@ Arriba están las secciones: **QRs · Clientes · Placas · Canva · Historial �
   - **Existentes**: por rango de números o con los tildados en QRs.
   - **PDF único** (todas juntas) o **ZIP** (un PDF por placa o vinilo, lo que pide la imprenta para los vinilos).
 - Cada número queda atado a un diseño: no se puede reimprimir el mismo número con otro diseño.
-
-### Canva
-
-Para generar diseños directo en Canva. **Requiere Canva Enterprise**: con el plan Business no está disponible, así que hoy no se usa. Los diseños se suben como PDF en **Placas**.
 
 ### Historial (solo el dueño)
 
