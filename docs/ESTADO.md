@@ -182,7 +182,7 @@ Las variables de entorno están documentadas en `.env.example`.
   - Medidas: vinilos redondos de 10 cm (con su círculo de corte magenta) y placas de **10 × 20 cm** (la de 10 × 15 más 5 cm en blanco abajo, pedido de la imprenta).
   - **Todo lo que agrega la página va en CMYK** (pedido de la imprenta, para que tomen bien los negros): QR y número en K 100 %, recuadros blancos al 0 %.
   - El número sale **con la misma letra que el de ejemplo** (pedido del dueño): Calibri Bold en los vinilos (con Carlito, su copia libre) y Lato Semibold en las placas. Se reconoce sola, igual que el tamaño y el espacio entre cifras.
-  - **La pestaña Canva se sacó del panel** (pedido del dueño, 4/11), con sus rutas y su código. Nunca se usó porque pedía Canva Enterprise. El dueño dio de baja el plan de Canva. Las variables `CANVA_*` de Vercel, si están cargadas, ya no se usan y se pueden borrar.
+  - **La pestaña Canva se sacó del panel** (pedido del dueño, 4/11), con sus rutas y su código. Nunca se usó porque pedía Canva Enterprise. El dueño dio de baja el plan de Canva. El dueño borró de Vercel las variables `CANVA_CLIENT_ID`, `CANVA_CLIENT_SECRET` y `CANVA_BRAND_TEMPLATE_ID` (4/11).
   - Lo que sigue vale para los diseños viejos de Canva, si quedara alguno:
   - Las placas rectangulares (10×15) mantienen su medida, con **3 mm en blanco alrededor** (hoja de 106 × 156 mm) y línea de corte `CutContour` rectangular, de esquinas rectas. Pedido de la imprenta (29/10).
   - **Sin tipografías en los PDF** (pedido de la imprenta): el número va en curvas, y los fondos se aplanan a 400 dpi al subirlos ("Aplanar para imprenta"). Los diseños se exportan de Canva como **"PDF para imprimir"** y se cambian con "Reemplazar el PDF del diseño".
