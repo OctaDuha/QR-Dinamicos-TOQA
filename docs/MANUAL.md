@@ -123,6 +123,7 @@ Arriba están las secciones: **QRs · Clientes · Placas · Historial · Usuario
 - En medio de una charla no se mete. Escribiendo "menú" o "estadísticas" se lo llama cuando se quiera.
 - Después de 🛒 Quiero un producto o 🔧 Tengo un problema, cuando el cliente cuenta qué necesita, le responde una sola vez "¡Perfecto! En breve te responderá una persona del equipo 🙌". Si ya le respondiste vos, no lo manda.
 - Si piden hablar con una persona, o si respondés vos desde el celular, se calla 12 horas con ese número.
+- Si alguien te escribe con su **nombre de usuario de WhatsApp sin mostrar su número**, el bot le contesta igual con el menú, como a alguien que no es cliente (sin Estadísticas). En "Últimas consultas" aparece como **"Número oculto"**.
 
 ---
 

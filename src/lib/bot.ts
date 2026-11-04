@@ -4,7 +4,9 @@ import { textosDelBot, type ClaveTexto } from "./bot-textos";
 import { fechaArgentina, fechaCorta, leerRango, type Rango } from "./estadisticas";
 import { slug } from "./estadisticas-pedido";
 import { dibujarReporte, sumarSeries, type TotalPlaca } from "./reporte-imagen";
-import { configWhatsapp, enviarImagen, enviarLista, enviarTexto, type Opcion } from "./whatsapp";
+import { createHash } from "node:crypto";
+
+import { configWhatsapp, enviarImagen, enviarLista, enviarTexto, esUsuarioSinNumero, type Opcion } from "./whatsapp";
 
 /**
  * El bot de TOQA. Comparte el número con la persona que atiende el WhatsApp
@@ -29,6 +31,11 @@ const HORAS_SILENCIO = 12;
 
 export type MensajeEntrante = {
   id: string;
+  /**
+   * Quién escribió: su teléfono (solo cifras) o, si usa nombre de usuario y
+   * oculta el número, su identificador de WhatsApp ("AR.1349…"). Es también
+   * a quien se le contesta.
+   */
   de: string;
   /** El texto escrito (null si es audio, foto, etc.). */
   texto: string | null;
@@ -37,9 +44,42 @@ export type MensajeEntrante = {
 };
 
 /**
- * Saca de un aviso de Meta los mensajes de los clientes, y los números a los
- * que la persona del negocio les escribió desde la app (los "ecos", que
- * llegan con el número en coexistencia). Los estados de entrega se ignoran.
+ * La clave con que la base anota una conversación. Para un teléfono es el
+ * teléfono. Para alguien sin número visible, la base solo guarda cifras (y
+ * hasta 20), así que se usa "00" + 18 cifras sacadas de su identificador:
+ * siempre la misma para la misma persona, y nunca igual a un teléfono, que
+ * no empieza con 00. Así no hizo falta cambiar la base.
+ */
+export function claveBot(de: string): string {
+  if (!esUsuarioSinNumero(de)) return de;
+  const hex = createHash("sha256").update(de).digest("hex").slice(0, 15);
+  return `00${BigInt(`0x${hex}`).toString().padStart(18, "0").slice(-18)}`;
+}
+
+/** Un teléfono que llega como "+54911…" o "54911…": solo cifras. Si no es teléfono, null. */
+function telefonoDe(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const limpio = valor.trim().replace(/^\+/, "");
+  return /^\d{6,15}$/.test(limpio) ? limpio : null;
+}
+
+/** El identificador de WhatsApp de quien oculta su número, si viene. */
+function usuarioDe(...valores: unknown[]): string | null {
+  for (const valor of valores) {
+    if (typeof valor === "string" && esUsuarioSinNumero(valor.trim())) return valor.trim();
+  }
+  return null;
+}
+
+/**
+ * Saca de un aviso de Meta los mensajes de los clientes, y a quiénes les
+ * escribió la persona del negocio desde la app (los "ecos", en coexistencia).
+ * Los estados de entrega se ignoran.
+ *
+ * Con los nombres de usuario de WhatsApp, alguien puede escribir sin mostrar
+ * su número: entonces llega su identificador (BSUID) en `from` o en
+ * `from_user_id`/`user_id`, y se le contesta por ahí. Si el número viene, se
+ * usa el número, que es con lo que se reconoce a los clientes.
  */
 export function leerAviso(
   aviso: unknown,
@@ -56,23 +96,34 @@ export function leerAviso(
       const destino = (cambio.value?.metadata as { phone_number_id?: string } | undefined)?.phone_number_id;
       if (phoneId && destino && destino !== phoneId) continue;
       if (cambio.field === "smb_message_echoes") {
-        for (const eco of (cambio.value?.message_echoes ?? []) as { to?: string }[]) {
-          if (eco.to) respondidos.push(eco.to.replace(/\D/g, ""));
+        for (const eco of (cambio.value?.message_echoes ?? []) as Record<string, unknown>[]) {
+          const quien = telefonoDe(eco.to) ?? usuarioDe(eco.to, eco.to_user_id, eco.recipient_user_id, eco.user_id);
+          if (quien) respondidos.push(quien);
         }
         continue;
       }
       if (cambio.field !== "messages") continue;
+      const contactos = (cambio.value?.contacts ?? []) as { wa_id?: string; user_id?: string }[];
       for (const m of (cambio.value?.messages ?? []) as {
         id?: string;
         from?: string;
+        from_user_id?: string;
+        user_id?: string;
         type?: string;
         text?: { body?: string };
         interactive?: { list_reply?: { id?: string }; button_reply?: { id?: string } };
       }[]) {
-        if (!m.id || !m.from) continue;
+        if (!m.id) continue;
+        // Con un solo contacto en el aviso (lo normal), es quien escribió.
+        const contacto = contactos.length === 1 ? contactos[0] : undefined;
+        const de =
+          telefonoDe(m.from) ??
+          telefonoDe(contacto?.wa_id) ??
+          usuarioDe(m.from, m.from_user_id, m.user_id, contacto?.user_id, contacto?.wa_id);
+        if (!de) continue;
         mensajes.push({
           id: m.id,
-          de: m.from.replace(/\D/g, ""),
+          de,
           texto: m.type === "text" ? (m.text?.body ?? null) : null,
           opcion: m.interactive?.list_reply?.id ?? m.interactive?.button_reply?.id ?? null,
         });
@@ -200,7 +251,8 @@ type Recibido = {
  * corre, y ya no espera nada de ese número (ni fechas ni el aviso de "lo
  * leímos", que después de una respuesta de verdad quedaría raro).
  */
-export async function respondioUnaPersona(telefono: string): Promise<void> {
+export async function respondioUnaPersona(quien: string): Promise<void> {
+  const telefono = claveBot(quien);
   const { llave } = configWhatsapp();
   const supabase = clienteBase();
   if (!llave || !supabase) return;
@@ -217,7 +269,7 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
   const { data, error } = await supabase.rpc("bot_recibir", {
     p_llave: llave,
     p_wamid: mensaje.id,
-    p_telefono: mensaje.de,
+    p_telefono: claveBot(mensaje.de),
   });
   if (error) {
     console.error("[bot] no pude anotar el mensaje:", error.message);
@@ -230,7 +282,9 @@ export async function atender(mensaje: MensajeEntrante): Promise<void> {
   const esCliente = r.clientes.length > 0;
   const textos = textosDelBot(r.textos);
   const opcion = mensaje.opcion?.startsWith("toqa:") ? mensaje.opcion : null;
-  const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn, { p_llave: llave, p_telefono: de, ...args });
+  // La base anota por la clave; los mensajes van a quien escribió.
+  const clave = claveBot(de);
+  const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn, { p_llave: llave, p_telefono: clave, ...args });
   const anotar = (resultado: string, rango?: Rango) =>
     rpc("bot_anotar", {
       p_clientes: r.clientes.join(", ") || null,
@@ -361,7 +415,7 @@ async function mandarReporte(
 ): Promise<string> {
   const { data, error } = await supabase.rpc("bot_estadisticas", {
     p_llave: llave,
-    p_telefono: telefono,
+    p_telefono: claveBot(telefono),
     p_desde: rango.desde,
     p_hasta: rango.hasta,
     p_bucket: rango.bucket,

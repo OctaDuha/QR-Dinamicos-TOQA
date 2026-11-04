@@ -77,11 +77,30 @@ async function llamar(ruta: string, cuerpo: BodyInit, json: boolean): Promise<Re
 }
 
 /**
+ * El identificador de WhatsApp de alguien que usa nombre de usuario y oculta
+ * su número (BSUID): el país en dos letras, un punto y letras o números,
+ * como "AR.13491208655302741918". Un teléfono, en cambio, son solo cifras.
+ */
+export function esUsuarioSinNumero(id: string): boolean {
+  return /^[A-Z]{2}\.[A-Za-z0-9]{1,128}$/.test(id);
+}
+
+/**
  * Manda un mensaje. WhatsApp informa los celulares de Argentina con el 9
  * (549…), pero hay casos en que para responder hay que mandarlo sin el 9:
  * si falla con el 9, se reintenta una vez sin él.
+ *
+ * A quien oculta su número se le escribe por su identificador, que va en
+ * `recipient` en lugar de `to`.
  */
 async function mandar(para: string, mensaje: Record<string, unknown>): Promise<Respuesta> {
+  if (esUsuarioSinNumero(para)) {
+    return llamar(
+      "messages",
+      JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", recipient: para, ...mensaje }),
+      true,
+    );
+  }
   const enviar = (a: string) =>
     llamar("messages", JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: a, ...mensaje }), true);
   const primero = await enviar(para);

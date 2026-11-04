@@ -280,6 +280,16 @@ tiene un asistente que comparte el número con la persona que atiende:
   número 12 horas (`bot_silencios`): sigue una persona. Con el número en
   coexistencia, también se calla si la persona responde desde la app (llegan
   como `smb_message_echoes`).
+- **Nombres de usuario de WhatsApp.** Alguien puede escribir con su usuario
+  sin mostrar el número. Entonces Meta manda su identificador de negocio
+  (BSUID, como `AR.1349…`) en `from`, `from_user_id` o `contacts[].user_id`,
+  y se le contesta poniéndolo en `recipient` en vez de `to`. La base anota
+  cada conversación con cifras (hasta 20), así que `claveBot()` lo convierte
+  en "00" + 18 cifras de su huella: la misma siempre para la misma persona, y
+  distinta de cualquier teléfono. No hizo falta migración. Como no hay
+  número, no se lo reconoce como cliente: ve el menú sin Estadísticas, y en
+  el panel figura como "Número oculto". Los ecos por identificador también
+  lo callan.
 - Después de producto o problema, el primer mensaje en que el cliente cuenta
   qué quiere (texto, foto o audio, dentro de 15 minutos) recibe una sola vez
   el aviso "¡Perfecto! En breve te responderá una persona del equipo 🙌"

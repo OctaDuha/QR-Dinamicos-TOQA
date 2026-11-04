@@ -72,6 +72,7 @@ A printed plaque can't be corrected, so every URL form that was ever printed kee
 - The bot never uses `service_role`. It authenticates with `BOT_LLAVE`, which the owner generates in the panel; the database stores only its hash, and the bot's anon-callable `bot_*` functions require it.
 - Interactive list titles are limited to 24 characters, emojis included.
 - `smb_message_echoes` (replies sent from the phone app) silence the bot for 12 hours with that number.
+- WhatsApp usernames: a user can write without showing their number. Then the webhook carries their business-scoped user id (BSUID, like `AR.1349…`) in `from` / `from_user_id` / `contacts[].user_id`, and replies go in `recipient` instead of `to` (`esUsuarioSinNumero`, `mandar` in `whatsapp.ts`). The database only stores digits (≤ 20) per conversation, so `claveBot()` turns a BSUID into `"00"` + 18 digits from its hash; the panel shows those as "Número oculto". Such users are never matched to clients, so they get the non-client menu.
 - The owner's real number is being connected through Embedded Signup coexistence (`ConectarWhatsapp.tsx`). The number must **not** be registered through the API, because that would remove it from the phone app.
 
 ### Print-ready plaques
