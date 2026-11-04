@@ -94,6 +94,7 @@ Las variables de entorno están documentadas en `.env.example`.
   - La WABA 1801639751103898 la creó el propio registro y no tiene número: no importa.
   - Pidió captura de TOQA WhatsApp → Configuración → Cuentas → Cuentas de WhatsApp. Se la mandamos: estaba vacío, y "Agregar" ofrece "Crear una nueva cuenta de WhatsApp" o "Link a WhatsApp Business account".
   - Respuesta (Bhavana): usar **"Link a WhatsApp Business account"** con +54 9 11 2243-4691, nunca "Crear una nueva". Si la cuenta aparece en TOQA WhatsApp, reintentar el registro insertado desde el panel eligiendo TOQA WhatsApp. Si da error, mandarle el mensaje exacto y la hora.
+  - 4/11: hecho. Con el código que llegó a la app, quedó "WhatsApp Business account linked" en TOQA WhatsApp ("Messaging accounts"). Falta ver dónde figura y reintentar el registro insertado.
 - **Casos:** 30092177693715783 (chat, cerrado) y **29136970462605848** (abierto, por mail), en https://business.facebook.com/direct-support. El chat automático se cierra solo apenas contesta. Al caso por mail se le responde desde el mismo mail.
 - **Session IDs:** 01a194f1-8386-7aba-b26f-5bd63b202c72, 01a194f6-a015-7f5c-9183-699eb9a7cf83, 01a19532-451f-7e19-adba-da9eae360b86, 01a19e2e-e14b-7218-9f4f-e39ea7b7e5ff, 01a19e33-7fe6-7392-bd8c-2d9cb706fa98.
 - **Nunca quitar** la WABA 2110399713184006, la del número de prueba: es con la que anda el bot.
