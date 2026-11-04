@@ -96,7 +96,7 @@ Las variables de entorno están documentadas en `.env.example`.
   - Respuesta (Bhavana): usar **"Link a WhatsApp Business account"** con +54 9 11 2243-4691, nunca "Crear una nueva". Si la cuenta aparece en TOQA WhatsApp, reintentar el registro insertado desde el panel eligiendo TOQA WhatsApp. Si da error, mandarle el mensaje exacto y la hora.
   - 4/11: hecho. Con el código que llegó a la app, quedó "WhatsApp Business account linked" en TOQA WhatsApp ("Messaging accounts"). Figura en TOQA WhatsApp como WABA 9544882982278941 ("App de WhatsApp Business").
   - **4/11: CONECTADO.** El registro insertado, eligiendo el número "Registrado", mostró el portfolio TOQA WhatsApp, el QR de coexistencia y terminó con "Tu cuenta está conectada a toqa.nfc" (Session ID 01a1a781-897d-7e96-80fa-0a0bfd033de3). El panel mostró "✅ Conectado". No se agregó método de pago (el bot solo responde). Meta revisa la empresa en 24 h.
-- **Casos:** 30092177693715783 (chat, cerrado) y **29136970462605848** (abierto, por mail), en https://business.facebook.com/direct-support. El chat automático se cierra solo apenas contesta. Al caso por mail se le responde desde el mismo mail.
+- **Casos:** 30092177693715783 (chat, cerrado) y **29136970462605848** (por mail, cerrado por el dueño el 4/11 después de agradecer), en https://business.facebook.com/direct-support. El chat automático se cierra solo apenas contesta. Al caso por mail se le responde desde el mismo mail.
 - **Session IDs:** 01a194f1-8386-7aba-b26f-5bd63b202c72, 01a194f6-a015-7f5c-9183-699eb9a7cf83, 01a19532-451f-7e19-adba-da9eae360b86, 01a19e2e-e14b-7218-9f4f-e39ea7b7e5ff, 01a19e33-7fe6-7392-bd8c-2d9cb706fa98.
 - **Nunca quitar** la WABA 2110399713184006, la del número de prueba: es con la que anda el bot.
 - El código del botón no hace falta tocarlo: según Meta, la versión actual del registro no necesita `version: "v3"`.
@@ -105,7 +105,7 @@ Las variables de entorno están documentadas en `.env.example`.
 - **Permisos:** `whatsapp_business_messaging`, `whatsapp_business_management` y `public_profile`.
 - **Videos:**
   - `video1-mensajes-bot`: desde un WhatsApp personal se escribe "menú", llega el menú, se elige Estadísticas y llega el reporte en imagen.
-  - `video2-plantilla`: en WhatsApp Manager se crea la plantilla `aviso_estadisticas`, de categoría Utilidad. Se creó **solo para el video**: no se usa y se puede borrar después de la aprobación.
+  - `video2-plantilla`: en WhatsApp Manager se crea la plantilla `aviso_estadisticas`, de categoría Utilidad. Se creó **solo para el video** y no se usa. El dueño decidió dejarla (4/11): no afecta en nada.
 - **Tratamiento de datos:**
   - Encargados: Vercel Inc. (EE. UU.) y Supabase Inc. (Brasil y EE. UU.), los dos como "servicios de TI".
   - Responsable: el dueño, en Argentina.
