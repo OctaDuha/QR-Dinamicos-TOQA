@@ -61,6 +61,9 @@ export default async function WhatsappPage() {
     sesion.supabase.rpc("bot_telefono_de_usuario", { p_llave: "", p_user_id: "" }),
   ]);
   const migradaUsuarios = usuarios.error?.code !== "PGRST202";
+  // Los números de prueba que da Meta son todos +1 555…: con cualquier otro,
+  // el bot ya está en el número real y la conexión está hecha.
+  const conectado = Boolean(config.numero) && !config.numero?.startsWith("1555");
   const textosActuales = textosDelBot(
     Object.fromEntries(((textos.data ?? []) as { clave: string; texto: string }[]).map((t) => [t.clave, t.texto])),
   );
@@ -131,16 +134,37 @@ export default async function WhatsappPage() {
         <div className="card p-5">
           <h2 className="text-sm font-semibold">Para pegar en Meta</h2>
           <p className="mt-1 mb-3 text-sm text-ink-2">
-            En tu app de Meta → WhatsApp → Configuración → Webhook. Después, en “Campos del webhook”, suscribite a{" "}
-            <code>messages</code> y, para cuando el bot use el número de la app del celular,{" "}
-            <code>smb_message_echoes</code>.
+            En tu app de Meta → WhatsApp → Configuración → Webhook. En “Campos del webhook” tienen que estar
+            suscriptos <code>messages</code> y <code>smb_message_echoes</code> (este último hace que el bot se calle
+            cuando respondés vos desde el celular).
           </p>
           <Dato titulo="URL de devolución de llamada" valor={webhook} />
           <Dato titulo="Token de verificación" valor={verificar} />
         </div>
       ) : null}
 
-      {datosMeta && llaveOk ? (
+      {datosMeta && llaveOk && conectado ? (
+        <div className="card p-5">
+          <h2 className="text-sm font-semibold">Tu WhatsApp Business</h2>
+          <p className="mt-2 text-sm font-medium">
+            ✅ Conectado: el bot atiende en el <strong>{mostrarTelefono(config.numero ?? "")}</strong>, y vos seguís
+            usando la app del celular.
+          </p>
+          <ul className="mt-3 ml-4 flex list-disc flex-col gap-1 text-xs text-ink-2">
+            <li>Abrí la app WhatsApp Business al menos una vez cada 14 días, para que la conexión no se corte.</li>
+            <li>Si respondés vos desde el celular, el bot se calla 12 horas con esa persona.</li>
+          </ul>
+          <details className="mt-4 rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
+            <summary className="cursor-pointer text-sm">Volver a conectar (solo si Meta te lo pide)</summary>
+            <p className="mt-2 mb-3 text-xs text-ink-2">
+              No hace falta hacerlo de nuevo. Usalo únicamente si Meta te avisa que la conexión se cortó o si te lo
+              pide el soporte. Elegí siempre el portfolio <strong>TOQA WhatsApp</strong> y tu número existente, con
+              el QR.
+            </p>
+            <ConectarWhatsapp appId={META_APP_ID} configId={META_CONFIG_ID} version={META_VERSION} />
+          </details>
+        </div>
+      ) : datosMeta && llaveOk ? (
         <div className="card p-5">
           <h2 className="text-sm font-semibold">Conectar tu WhatsApp Business</h2>
           <p className="mt-1 text-sm text-ink-2">

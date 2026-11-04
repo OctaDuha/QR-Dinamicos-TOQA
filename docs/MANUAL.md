@@ -112,7 +112,7 @@ Arriba están las secciones: **QRs · Clientes · Placas · Historial · Usuario
 - **Estado**: la lista de lo que falta configurar.
 - **Llave del bot**: se genera acá y se pega en Vercel como `BOT_LLAVE`. Es lo único que le permite al bot leer estadísticas.
 - **Para pegar en Meta**: la dirección del webhook y la palabra de verificación.
-- **Conectar tu WhatsApp Business**: el botón para pasar el bot al número real de TOQA sin dejar de usar la app del celular. **Todavía no usarlo**: falta que Meta apruebe. Ver [ESTADO.md](ESTADO.md).
+- **Tu WhatsApp Business**: muestra que el bot ya atiende en el número real de TOQA (conectado el 4/11), sin dejar de usar la app del celular. Abajo hay un "Volver a conectar", escondido: **no hace falta usarlo**, solo si Meta avisa que la conexión se cortó o lo pide el soporte.
 - **Probar**: a qué número escribirle para ver el menú.
 - **Textos del bot**: lo que contesta en cada opción del menú. Se cambian cuando quieras.
 - **Últimas consultas al bot**: quién escribió, qué pidió y si **te toca responder** (pidió un producto, avisó un problema o quiere hablar con una persona).
