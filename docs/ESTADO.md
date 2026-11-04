@@ -120,7 +120,7 @@ Las variables de entorno están documentadas en `.env.example`.
 4. ✅ **Suscribir `smb_message_echoes`** (developers.facebook.com → TOQA Bot → Casos de uso → WhatsApp → Configuración) en los campos del webhook. Es lo que calla al bot cuando responde una persona desde el celular.
 5. ✅ **Actualizar Vercel.** Cambiar `WHATSAPP_PHONE_ID` y `WHATSAPP_NUMERO` y hacer Redeploy. Hasta ese momento, el webhook ignora los mensajes del número nuevo, así que nadie recibe respuestas a medias.
 6. ✅ **Probar** desde otro celular.
-7. **Verificar el portfolio TOQA WhatsApp**: ya aparece "Iniciar verificación" (en su Cuenta de mensajes). Pendiente. Sin verificar, quedan límites en los mensajes que inicia la empresa.
+7. ⏳ **Verificar el portfolio TOQA WhatsApp**: enviada el 4/11 (Sociedad unipersonal → Registrado → DUHALDE OCTAVIO GABRIEL, alternativo TOQA → verificación de identidad con DNI, porque el registro público tiene el teléfono viejo). Meta dice hasta 48 h. Sin verificar, quedan límites en los mensajes que inicia la empresa.
 8. Volver a vincular la página y el Instagram de **TOQA** al número, y comprobar que el bot sigue respondiendo.
 
 **Cuidados de la coexistencia:**
@@ -136,7 +136,7 @@ Las variables de entorno están documentadas en `.env.example`.
 - **Nombres de usuario de WhatsApp (BSUID):** WhatsApp va a permitir chatear con un nombre de usuario sin mostrar el número. En ese caso llega un identificador (BSUID) en vez del teléfono. El bot reconoce a los clientes por teléfono (`bot_telefono_comparable`), así que cuando esté disponible en Argentina hay que sumar el BSUID. Además, reservar **@toqa** una vez conectado el número real.
 - Aviso amarillo "WhatsApp needs more information" en el portfolio (24/10): **resuelto, no hay que hacer nada.** Es la invitación de Meta a subir el límite de conversaciones **iniciadas por la empresa** (250 por día; para pasar a 2000 hay que iniciar conversaciones de calidad). TOQA no inicia conversaciones: el bot solo responde a quien escribe primero, y eso no cuenta para ese límite.
 
-- **Plantillas de la imprenta:** llegaron el 4/11 (5 PDF de Illustrator, en CMYK y en vector). La página ya las reconoce y las usa tal cual (ver §6). Falta que el dueño **reemplace los 5 diseños** con "Reemplazar el PDF del diseño" cuando se publique, y que la imprenta revise un PDF de prueba.
+- **Plantillas de la imprenta:** llegaron el 4/11 (5 PDF de Illustrator, en CMYK y en vector). La página ya las reconoce y las usa tal cual (ver §6). El dueño ya reemplazó los 5 diseños y mandó las placas a la imprenta. Falta su visto bueno, y preguntarle si la línea de corte del vinilo de Google va en celeste (los otros vienen en magenta).
 - **Fotos reales de productos** para la página de inicio. El dueño las va a mandar; hoy hay ilustraciones.
 - **Domicilio fiscal en ARCA:** el dueño se mudó y el domicilio fiscal quedó viejo. Actualizarlo es trámite suyo, y conviene hacerlo **después** de que Meta termine las revisiones, para no generar diferencias mientras revisan.
 - La tarjeta "QR y NFC en uno" de la página de inicio sigue diciendo "funciona con cualquier celular". El dueño pidió **no cambiarla** por ahora, aunque el NFC funciona en alrededor del 90 % de los celulares.
