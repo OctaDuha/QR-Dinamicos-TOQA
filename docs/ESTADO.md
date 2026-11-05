@@ -138,7 +138,7 @@ Las variables de entorno están documentadas en `.env.example`.
 
 - **Plantillas de la imprenta:** llegaron el 4/11 (5 PDF de Illustrator, en CMYK y en vector). La página ya las reconoce y las usa tal cual (ver §6). El dueño ya reemplazó los 5 diseños y mandó las placas a la imprenta. Falta su visto bueno, y preguntarle si la línea de corte del vinilo de Google va en celeste (los otros vienen en magenta).
 - **Fotos reales de productos** para la página de inicio. El dueño las va a mandar; hoy hay ilustraciones.
-- **Domicilio fiscal en ARCA:** el dueño se mudó y el domicilio fiscal quedó viejo. Actualizarlo es trámite suyo, y conviene hacerlo **después** de que Meta termine las revisiones, para no generar diferencias mientras revisan.
+- **Domicilio fiscal en ARCA:** queda como está por ahora. El dueño se muda a Capital en unos 2 meses (alrededor de enero de 2027) y ahí lo cambia al domicilio nuevo. En Meta, los dos portfolios ya verificados dicen La Rioja 1920, CABA: no hace falta tocarlos. Si algún día Meta pide verificar de nuevo con la constancia de ARCA, habrá que poner en Meta el mismo domicilio que figure en ARCA.
 - La tarjeta "QR y NFC en uno" de la página de inicio sigue diciendo "funciona con cualquier celular". El dueño pidió **no cambiarla** por ahora, aunque el NFC funciona en alrededor del 90 % de los celulares.
 
 ## 6. Decisiones de producto, y por qué
