@@ -121,7 +121,7 @@ Las variables de entorno están documentadas en `.env.example`.
 5. ✅ **Actualizar Vercel.** Cambiar `WHATSAPP_PHONE_ID` y `WHATSAPP_NUMERO` y hacer Redeploy. Hasta ese momento, el webhook ignora los mensajes del número nuevo, así que nadie recibe respuestas a medias.
 6. ✅ **Probar** desde otro celular.
 7. ✅ **Verificar el portfolio TOQA WhatsApp**: **verificada el 4/11** (Meta subió el límite a 2000 conversaciones iniciadas por el negocio por día). Se había enviado el 4/11 (Sociedad unipersonal → Registrado → DUHALDE OCTAVIO GABRIEL, alternativo TOQA → verificación de identidad con DNI, porque el registro público tiene el teléfono viejo). Meta dice hasta 48 h. Sin verificar, quedan límites en los mensajes que inicia la empresa.
-8. Volver a vincular la página y el Instagram de **TOQA** al número, y comprobar que el bot sigue respondiendo.
+8. ✅ Volver a vincular la página y el Instagram de **TOQA** al número: hecho por el dueño el 5/11, desde la app WhatsApp Business (Herramientas para la empresa → Facebook e Instagram). ExplOcta no se vincula.
 
 **Cuidados de la coexistencia:**
 - **No registrar el número por API**: lo sacaría de la app del celular.
@@ -132,7 +132,7 @@ Las variables de entorno están documentadas en `.env.example`.
 
 ## 5. Otros pendientes
 
-- **Teléfono del negocio en Meta:** el portfolio muestra +54 11 4132-2221, que salió del registro público y no es de TOQA. Las dos revisiones ya están aprobadas, así que se puede corregir, pero **no mientras siga abierto el caso de la conexión**: editar datos del negocio verificado puede pedir verificar de nuevo.
+- **Teléfono del negocio en Meta:** el portfolio toqa.nfc muestra +54 11 4132-2221, que salió del registro público y no es de TOQA. **Decisión del dueño (5/11): no tocarlo.** No lo ve ningún cliente, y editar datos de toqa.nfc (el portfolio de la app de proveedor) puede pedir verificarlo de nuevo.
 - **Nombres de usuario de WhatsApp (BSUID):** WhatsApp va a permitir chatear con un nombre de usuario sin mostrar el número. En ese caso llega un identificador (BSUID) en vez del teléfono. El bot reconoce a los clientes por teléfono (`bot_telefono_comparable`), así que cuando esté disponible en Argentina hay que sumar el BSUID. El nombre de usuario ya está habilitado en Argentina: **@toqa** estaba tomado y el dueño reservó **@toqa.nfc** (4/11). El bot ya contesta a quien escribe sin mostrar su número (4/11): le responde por su identificador con el menú de alguien que no es cliente, y en el panel aparece como "Número oculto". Desde el 4/11, además, el bot **reconoce a un cliente que oculta su número** si alguna vez le escribió con el número a la vista: aprende el par identificador ↔ número (tabla `bot_usuarios`). El dueño corrió la migración `2026-11-bot-usuarios.sql` el 4/11. Si un cliente nunca mostró su número, no hay cómo reconocerlo (se podría sumar un botón en "Últimas consultas" para asignarlo a mano).
 - Aviso amarillo "WhatsApp needs more information" en el portfolio (24/10): **resuelto, no hay que hacer nada.** Es la invitación de Meta a subir el límite de conversaciones **iniciadas por la empresa** (250 por día; para pasar a 2000 hay que iniciar conversaciones de calidad). TOQA no inicia conversaciones: el bot solo responde a quien escribe primero, y eso no cuenta para ese límite.
 
