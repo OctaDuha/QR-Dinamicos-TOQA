@@ -54,7 +54,7 @@ Las variables de entorno están documentadas en `.env.example`.
 | Portfolio comercial | `toqa.nfc` (ID 1466992878784395). **Verificado el 16/10/2026** como persona física/monotributo del dueño, con nombre alternativo "TOQA". La verificación salió por **identidad (DNI)**: el registro público de Meta tenía un teléfono viejo que no era suyo. |
 | App de Meta | **TOQA Bot**, ID `1138106575564279`, tipo empresa. **Marcada como proveedor de tecnología**, decisión irreversible y correcta. |
 | Configuración de registro insertado | ID `2363042957797849`. Plantilla "registro insertado de WhatsApp con token de 60 días": el token se usa una sola vez, al conectar. |
-| Portfolio para el número | **TOQA WhatsApp** (ID 4043326102477101), creado el 2/11/2026 a nombre del dueño (toqa.nfc@gmail.com), con los mismos datos legales que toqa.nfc y verificación en dos pasos para todos. Existe porque Meta exige que la app del proveedor y la cuenta de WhatsApp estén en portfolios distintos. Todavía sin verificar: Meta no ofrece la verificación mientras el portfolio esté vacío. |
+| Portfolio para el número | **TOQA WhatsApp** (ID 4043326102477101), creado el 2/11/2026 a nombre del dueño (toqa.nfc@gmail.com), con los mismos datos legales que toqa.nfc y verificación en dos pasos para todos. Existe porque Meta exige que la app del proveedor y la cuenta de WhatsApp estén en portfolios distintos. **Verificado el 4/11/2026** por identidad (DNI), igual que toqa.nfc. |
 | Número de prueba (bot actual) | +1 555-666-9190, phone id `1297383330136006`, cuenta de WhatsApp `2110399713184006`. |
 | Número real | **+54 9 11 2243-4691**: el WhatsApp Business de TOQA, que el dueño usa en el celular. **Conectado por coexistencia el 4/11/2026**: phone id `746573765202229`, cuenta de WhatsApp (WABA) `9544882982278941`, propiedad del portfolio TOQA WhatsApp y compartida con toqa.nfc. |
 | Token | Usuario del sistema con token permanente (`WHATSAPP_TOKEN` en Vercel). |
@@ -120,7 +120,7 @@ Las variables de entorno están documentadas en `.env.example`.
 4. ✅ **Suscribir `smb_message_echoes`** (developers.facebook.com → TOQA Bot → Casos de uso → WhatsApp → Configuración) en los campos del webhook. Es lo que calla al bot cuando responde una persona desde el celular.
 5. ✅ **Actualizar Vercel.** Cambiar `WHATSAPP_PHONE_ID` y `WHATSAPP_NUMERO` y hacer Redeploy. Hasta ese momento, el webhook ignora los mensajes del número nuevo, así que nadie recibe respuestas a medias.
 6. ✅ **Probar** desde otro celular.
-7. ⏳ **Verificar el portfolio TOQA WhatsApp**: enviada el 4/11 (Sociedad unipersonal → Registrado → DUHALDE OCTAVIO GABRIEL, alternativo TOQA → verificación de identidad con DNI, porque el registro público tiene el teléfono viejo). Meta dice hasta 48 h. Sin verificar, quedan límites en los mensajes que inicia la empresa.
+7. ✅ **Verificar el portfolio TOQA WhatsApp**: **verificada el 4/11** (Meta subió el límite a 2000 conversaciones iniciadas por el negocio por día). Se había enviado el 4/11 (Sociedad unipersonal → Registrado → DUHALDE OCTAVIO GABRIEL, alternativo TOQA → verificación de identidad con DNI, porque el registro público tiene el teléfono viejo). Meta dice hasta 48 h. Sin verificar, quedan límites en los mensajes que inicia la empresa.
 8. Volver a vincular la página y el Instagram de **TOQA** al número, y comprobar que el bot sigue respondiendo.
 
 **Cuidados de la coexistencia:**
